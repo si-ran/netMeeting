@@ -43,6 +43,26 @@ object AppSettings {
       sessionEncryptData = sConf.getBoolean("encryptData")
     )
   }
+  val appConfig = config.getConfig("app")
+
+  val projectVersion = appConfig.getString("projectVersion")
+  val httpInterface = appConfig.getString("http.interface")
+  val httpPort = appConfig.getInt("http.port")
+
+  val appId = appConfig.getString("appId")
+  val secureKey = appConfig.getString("secureKey")
+  val rtpToHost = appConfig.getString("rtpToHost")
+  val isRecord = appConfig.getBoolean("isRecord")
+  val addTs = appConfig.getBoolean("addTs")
+  val distributorHost = appConfig.getString("distributorHost")
+  val roomManagerHost = appConfig.getString("roomManagerHost")
+  val rtpServerDst = appConfig.getString("rtpServerDst")
+  val bitRate = appConfig.getInt("bitRate")
+  val imageWidth = appConfig.getInt("imageWidth")
+  val imageHeight = appConfig.getInt("imageHeight")
+  val isTest = appConfig.getBoolean("isTest")
+  val debugPath = appConfig.getString("debugPath")
+  val isDebug = appConfig.getBoolean("isDebug")
 
   //slick
   val slickConfig = config.getConfig("slick.db")
