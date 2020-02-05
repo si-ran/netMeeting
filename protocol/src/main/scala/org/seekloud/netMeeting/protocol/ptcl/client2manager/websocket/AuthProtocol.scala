@@ -68,6 +68,7 @@ object AuthProtocol {
                                userId: Long
                              ) extends WsMsgHost
 
+  //踢出会议室
   case class KickOut(
                       roomId: Long,
                       userId: Long
@@ -90,14 +91,13 @@ object AuthProtocol {
                        userId: Long
                      ) extends WsMsgHost
 
-
-  //控制用户的声音/画面
+  //控制用户的声音或画面
   case class MediaControl(
                            roomId: Long,
                            userId: Long,
                            needAudio: Boolean = true,
                            needVideo: Boolean = true
-                         ) extends WsMsgHost
+                         ) extends WsMsgHost with WsMsgRm2Audience
 
   case class SpeakRsp4Host(
                      roomId: Long,
@@ -117,6 +117,7 @@ object AuthProtocol {
 //
 //                      ) extends WsMsgRm2Host
 
+  //向主持人发送申请说话的请求
   case class SpeakReq4Host(
                      roomId: Long,
                      userId: Long

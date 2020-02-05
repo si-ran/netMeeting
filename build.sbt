@@ -131,7 +131,7 @@ lazy val roomManager = (project in file("roomManager")).enablePlugins(PackPlugin
   .dependsOn(protocolJvm)
 
 
-val processorMain = "org.seekloud.theia.processor.Boot"
+val processorMain = "org.seekloud.netMeeting.processor.Boot"
 lazy val processor = (project in file("processor")).enablePlugins(PackPlugin)
   .settings(commonSettings: _*)
   .settings(
