@@ -71,7 +71,7 @@ object Dependencies {
     )
 
 
-  val javacppVersion = "1.5"
+  val javacppVersion = "1.5.2"
 
   // Platform classifier for native library dependencies
   //val platform = org.bytedeco.javacpp.Loader.getPlatform
@@ -79,8 +79,8 @@ object Dependencies {
 
   // Libraries with native dependencies
   private val bytedecoPresetLibs = Seq(
-    "opencv" -> s"4.0.1-$javacppVersion",
-    "ffmpeg" -> s"4.1.3-$javacppVersion").flatMap {
+    "opencv" -> s"4.1.2-$javacppVersion",
+    "ffmpeg" -> s"4.2.1-$javacppVersion").flatMap {
     case (lib, ver) => Seq(
       // Add both: dependency and its native binaries for the current `platform`
       "org.bytedeco" % lib % ver withSources() withJavadoc(),
