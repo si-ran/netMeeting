@@ -19,6 +19,8 @@ object StreamPullActor {
   private final val InitTime = Some(5.minutes)
 
 
+  case class StartFilePull(filepath:String) extends Command
+
   case object Stop extends Command
 
   case class RoomClose(lives: List[String]) extends Command
@@ -128,6 +130,10 @@ object StreamPullActor {
         case PullStream =>
           val lives = liveInfoMap.keys.toList
 //          client.pullStreamData(lives)
+          Behaviors.same
+
+        case StartFilePull(filepath) =>
+
           Behaviors.same
 
 //        case StreamStop(liveId) =>
