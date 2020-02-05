@@ -2,7 +2,7 @@ name := "netMeeting"
 
 val scalaV = "2.12.10"
 
-val projectName = "theia"
+val projectName = "netMeeting"
 
 val projectVersion = "19.11.1"
 
