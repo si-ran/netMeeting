@@ -1,10 +1,11 @@
-package org.seekloud.netMeeting.processor.stream
+package org.seekloud.netMeeting.processor
 
 import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.javacv.OpenCVFrameConverter.ToMat
 import org.bytedeco.javacv.{FFmpegFrameGrabber, FFmpegFrameRecorder, Frame, OpenCVFrameConverter}
-import org.bytedeco.opencv.global.{opencv_core => OpenCVCore, opencv_imgproc => OpenCVProc}
 import org.bytedeco.opencv.opencv_core.{Mat, Rect, Scalar, Size}
+import org.bytedeco.opencv.global.{opencv_imgproc => OpenCVProc}
+import org.bytedeco.opencv.global.{opencv_core => OpenCVCore}
 
 /**
   * @user: wanruolong
