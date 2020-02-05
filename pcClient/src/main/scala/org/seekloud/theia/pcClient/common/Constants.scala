@@ -15,7 +15,7 @@ object Constants {
 
 //  private val splitSymbol =
 
-  val cachePath: String = s"${System.getProperty("user.home")}/.theia/pcClient"
+  val cachePath: String = s"${System.getProperty("user.home")}/.netMeeting/pcClient"
 
   val cacheFile = new File(cachePath)
 
@@ -23,7 +23,7 @@ object Constants {
 
   val imageCachePath: String = cachePath + "/images"
   val loginInfoCachePath: String = cachePath + "/login"
-  val recordPath: String = System.getProperty("user.home") + "\\.theia\\pcClient\\record"
+  val recordPath: String = System.getProperty("user.home") + "\\.netMeeting\\pcClient\\record"
 
   val imageCache = new File(imageCachePath)
   if (!imageCache.exists()) {
@@ -60,12 +60,6 @@ object Constants {
   object HostStatus {
     val LIVE = 0
     val CONNECT = 1
-  }
-
-  object AudienceStatus {
-    val LIVE = 0
-    val CONNECT = 1
-    val RECORD = 2
   }
 
   object WindowStatus{
