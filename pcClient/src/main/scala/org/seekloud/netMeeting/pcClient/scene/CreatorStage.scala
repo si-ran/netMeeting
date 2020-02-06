@@ -3,6 +3,7 @@ package org.seekloud.netMeeting.pcClient.scene
 import java.io.File
 
 import javafx.application.Application
+import javafx.event.Event
 import javafx.geometry.{Insets, Pos}
 import javafx.scene.Scene
 import javafx.scene.control.{Button, Label, TextField}
@@ -60,19 +61,28 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
     vBox.setSpacing(16)
 
 //    val anchorPane = new AnchorPane(vBox)
-    val pane = new GridPane()
-    pane.add(vBox, 0, 0)
-    pane.setHgap(0)
-    pane.setVgap(0)
+    val gripdPane = new GridPane()
+    gripdPane.add(vBox, 0, 0)
+    gripdPane.setHgap(0)
+    gripdPane.setVgap(0)
 //    pane.setGridLinesVisible(true)
-    pane.setAlignment(Pos.CENTER)
-    pane.setPadding(new Insets(20))
+    gripdPane.setAlignment(Pos.CENTER)
+    gripdPane.setPadding(new Insets(20))
 
-    val scene = new Scene(pane)
+    val scene = new Scene(gripdPane)
 //    pane.setPadding()
 //    anchorPane.setLayoutX()
 
-    pane.setPadding(new Insets(10))
+    confirmButton.setOnAction { _ =>
+      //todo 将数据传到后台
+      primaryStage.close()
+      val livingStage = new LivingState
+      livingStage.showStage()
+    }
+
+    cancelButton.setOnAction{_ =>
+      stage.close()
+    }
 
     primaryStage.setResizable(false)
     primaryStage.setTitle("netMeeting")

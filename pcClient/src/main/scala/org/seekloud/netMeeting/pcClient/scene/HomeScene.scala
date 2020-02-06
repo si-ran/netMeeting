@@ -20,6 +20,9 @@ import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
   */
 
 object HomeScene{
+  val file = new File("E:\\file\\camera.png").toURI.toString
+  val icon = new Image(file)
+
   trait HomeSceneListener{
 
   }
@@ -30,15 +33,11 @@ class HomeScene() {
   import HomeScene._
 
   private var listener: HomeSceneListener = _
-  val file = new File("E:\\file\\camera.png").toURI.toString
 
   private var creatorStage: CreatorStage = _
 
-  private var canCreate: Boolean = true
-
   val button = new Button("second")
 //  val creatorScene = new CreatorScene()
-  val img1 = new Image(file)
 //  creatorScene.stage.setOnCloseRequest(_ => {
 //    button.setDisable(false)
 //  })
@@ -49,7 +48,7 @@ class HomeScene() {
 
   val label1 = new Label("新会议")
   val startMeeting = new Canvas(88, 88)
-  startMeeting.getGraphicsContext2D.drawImage(img1, 0, 0, startMeeting.getWidth, startMeeting.getHeight)
+  startMeeting.getGraphicsContext2D.drawImage(icon, 0, 0, startMeeting.getWidth, startMeeting.getHeight)
   val vBox1 = new VBox(startMeeting, label1)
   vBox1.setAlignment(Pos.CENTER)
   vBox1.setPadding(new Insets(10, 0,0,0))
@@ -57,7 +56,7 @@ class HomeScene() {
   val label2 = new Label("加入会议")
   label2.setTextAlignment(TextAlignment.CENTER)
   val joinMeeting = new Canvas(88, 88)
-  joinMeeting.getGraphicsContext2D.drawImage(img1, 0, 0, startMeeting.getWidth, startMeeting.getHeight)
+  joinMeeting.getGraphicsContext2D.drawImage(icon, 0, 0, startMeeting.getWidth, startMeeting.getHeight)
   val vBox2 = new VBox(joinMeeting, label2)
   vBox2.setAlignment(Pos.CENTER)
   vBox2.setPadding(new Insets(10, 0,0,0))
@@ -89,32 +88,13 @@ class HomeScene() {
 
   def setCreatorStage(creatorStage: CreatorStage) = {
     this.creatorStage = creatorStage
-    creatorStage.stage.setOnCloseRequest { event =>
-      setCancreate(true)
-    }
   }
-
-   def setCancreate(canCreate: Boolean) = {
-     this.synchronized {
-       this.canCreate = canCreate
-     }
-  }
-
-  def getCancreate() = {
-    this.synchronized{
-      this.canCreate
-    }
-  }
-
 
   startMeeting.addEventFilter(MouseEvent.MOUSE_PRESSED, (event: MouseEvent) => {
     //todo goto new meeting
-    if(this.canCreate){
       println("goto new meeting")
       setCreatorStage(new CreatorStage(MeetingType.CREATE))
       creatorStage.showStage()
-      setCancreate(false)
-    }
   })
 
   startMeeting.addEventFilter(MouseEvent.MOUSE_ENTERED, (event: MouseEvent) => {
