@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-import org.seekloud.netMeeting.protocol.ptcl.ChatEvent._
+import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.seekloud.netMeeting.roomManager.core.UserActor.{RoomCreateRsp, RoomJoinRsp}
 import org.slf4j.LoggerFactory
 
@@ -25,9 +25,13 @@ object RoomManager {
 
   private case class TimeOut(msg: String) extends Command
 
-  case class RMCreateRoom(host: Long, hostFrontActor: ActorRef[WsMsg], replyTo: ActorRef[UserActor.Command]) extends Command
+  case class RMCreateRoom(url: String, roomId: Long,  host: Long, hostFrontActor: ActorRef[WsMsgManager], replyTo: ActorRef[UserActor.Command]) extends Command
 
-  case class RMJoinRoom(roomId: Long, userId: Long, userFrontActor: ActorRef[WsMsg], replyTo: ActorRef[UserActor.Command]) extends Command
+  case class RMJoinRoom(roomId: Long, userId: Long, userFrontActor: ActorRef[WsMsgManager], replyTo: ActorRef[UserActor.Command]) extends Command
+
+  case class RMClientSpeakReq(userId: Long, roomId: Long) extends Command
+
+  case class RMUserExit(userId: Long, roomId: Long) extends Command
 
   private final case class SwitchBehavior(
     name: String,
@@ -93,11 +97,10 @@ object RoomManager {
   ): Behavior[Command] ={
     Behaviors.receive[Command]{(ctx, msg) =>
       msg match {
-        case RMCreateRoom(hostId, hostFrontActor, replyTo) =>
-          val roomId = hostId
+        case RMCreateRoom(url, roomId, hostId, hostFrontActor, replyTo) =>
           val roomActor = getRoomActor(ctx, roomId)
           roomMap.put(roomId, roomActor)
-          roomActor ! RoomActor.RAHostCreate(hostFrontActor)
+          roomActor ! RoomActor.RAHostCreate(url, hostId, hostFrontActor)
           replyTo ! RoomCreateRsp(roomId, 0)
           Behaviors.same
 
@@ -110,6 +113,26 @@ object RoomManager {
           else{
             log.debug(s"join error, no room: $roomId")
             replyTo ! RoomJoinRsp(roomId, 10001)
+          }
+          Behaviors.same
+
+        case RMClientSpeakReq(uId, rId) =>
+          val roomActor = getOptionRoomActor(ctx, rId)
+          if(roomActor.nonEmpty){
+            roomActor.foreach( _ ! RoomActor.RAClientSpeakReq(uId))
+          }
+          else{
+            log.debug(s"speaker request error, no room: $rId")
+          }
+          Behaviors.same
+
+        case RMUserExit(uId, rId) =>
+          val roomActor = getOptionRoomActor(ctx, rId)
+          if(roomActor.nonEmpty){
+            roomActor.foreach( _ ! RoomActor.RAUserExit(uId))
+          }
+          else{
+            log.debug(s"user exit room error, no room: $rId")
           }
           Behaviors.same
 

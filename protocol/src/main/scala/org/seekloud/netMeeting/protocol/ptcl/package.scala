@@ -14,25 +14,37 @@ package org.seekloud.netMeeting.protocol
 
 package object ptcl {
 
-  trait CommonRsp {
+  trait Request
+
+  trait Response {
     val errCode: Int
     val msg: String
   }
 
-  final case class ErrorRsp(
-    errCode: Int,
-    msg: String
-  ) extends CommonRsp
-
-  final case class SuccessRsp(
+  case class CommonRsp(
     errCode: Int = 0,
     msg: String = "ok"
-  ) extends CommonRsp
+  ) extends Response
 
-  trait Success extends CommonRsp {
-    implicit val errCode = 0
-    implicit val msg = "ok"
-  }
+//  trait CommonRsp {
+//    val errCode: Int
+//    val msg: String
+//  }
+//
+//  final case class ErrorRsp(
+//    errCode: Int,
+//    msg: String
+//  ) extends CommonRsp
+//
+//  final case class SuccessRsp(
+//    errCode: Int = 0,
+//    msg: String = "ok"
+//  ) extends CommonRsp
+//
+//  trait Success extends CommonRsp {
+//    implicit val errCode = 0
+//    implicit val msg = "ok"
+//  }
 
 
 

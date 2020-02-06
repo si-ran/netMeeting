@@ -8,7 +8,8 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.typed.scaladsl.{ActorSink, ActorSource}
 import org.seekloud.byteobject.ByteObject._
 import org.seekloud.byteobject.MiddleBufferInJvm
-import org.seekloud.netMeeting.protocol.ptcl.ChatEvent._
+import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
+import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.seekloud.netMeeting.roomManager.common.AppSettings
 import org.slf4j.LoggerFactory
 
@@ -36,9 +37,13 @@ object RoomActor {
 
   private final case object BehaviorChangeKey
 
-  final case class RAHostCreate(userFrontActor: ActorRef[WsMsg]) extends Command
+  final case class RAHostCreate(url: String, hostId: Long, userFrontActor: ActorRef[WsMsgManager]) extends Command
 
-  final case class RAUserJoin(userId:Long, userFrontActor: ActorRef[WsMsg]) extends Command
+  final case class RAUserJoin(userId:Long, userFrontActor: ActorRef[WsMsgManager]) extends Command
+
+  final case class RAClientSpeakReq(userId: Long) extends Command
+
+  final case class RAUserExit(userId: Long) extends Command
 
   private[this] def switchBehavior(
     ctx: ActorContext[Command],
@@ -73,15 +78,15 @@ object RoomActor {
       }
     }
 
-  def init(id: Long): Behavior[Command] =
+  def init(roomId: Long): Behavior[Command] =
     Behaviors.setup[Command] { ctx =>
-      log.info(s"roomActor($id) is starting...")
+      log.info(s"roomActor($roomId) is starting...")
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       implicit val sendBuffer: MiddleBufferInJvm = new MiddleBufferInJvm(81920)
       Behaviors.withTimers[Command] { implicit timer =>
         Behaviors.receiveMessage[Command] {
-          case RAHostCreate(hostFrontActor) =>
-            switchBehavior(ctx, "idle", idle(id, AppSettings.RtmpUrlHeader, id, hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsg]], mutable.HashMap(id -> s"$id"), s"9$id"))
+          case RAHostCreate(url, hostId, hostFrontActor) =>
+            switchBehavior(ctx, "idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url))
 
           case unknownMsg =>
             log.info(s"init unknown msg : $unknownMsg")
@@ -91,12 +96,9 @@ object RoomActor {
     }
 
   private def idle(
-    roomId: Long,
-    urlHeader: String,
-    hostId: Long,
-    hostFrontActor: ActorRef[WsMsg],
-    userMap: mutable.HashMap[Long, ActorRef[WsMsg]],
-    videoMap: mutable.HashMap[Long, String],
+    roomInfo: RoomInfo,
+    hostFrontActor: ActorRef[WsMsgManager],
+    userMap: mutable.HashMap[Long, ActorRef[WsMsgManager]],
     mixUrl: String
   )(
     implicit stashBuffer: StashBuffer[Command],
@@ -104,30 +106,34 @@ object RoomActor {
     timer: TimerScheduler[Command]
   ): Behavior[Command] ={
     Behaviors.setup[Command]{ ctx =>
-      dispatchTo(hostFrontActor, VideoUpdate(roomId, hostId, urlHeader, mixUrl,  List(VideoData(hostId, videoMap.get(hostId)))))
+      dispatchTo(hostFrontActor, TextMsg("房间已经建立"))
       Behaviors.receive[Command]{(ctx, msg) =>
         msg match {
           case RAUserJoin(userId, userFrontActor) =>
             userMap.put(userId, userFrontActor)
-            videoMap.put(userId, s"$userId")
-            dispatchTo(hostFrontActor, VideoUpdate(
-              roomId,
-              hostId,
-              urlHeader,
-              mixUrl,
-              videoMap.map{ data => VideoData(data._1, Some(data._2))}.toList
+            dispatchTo(hostFrontActor, JoinRsp(
+              roomInfo,
+              acceptance = true
             ))
-            dispatchAllTo(userMap.values, VideoUpdate(
-              roomId,
-              hostId,
-              urlHeader,
-              mixUrl,
-              videoMap.map{ data => VideoData(data._1, Some(data._2))}.toList
+            dispatchAllTo(userMap.values, JoinRsp(
+              roomInfo,
+              acceptance = true
             ))
+            idle(RoomInfo(roomInfo.roomId, userId :: roomInfo.userId, roomInfo.hostId), hostFrontActor, userMap, mixUrl)
+
+          case RAClientSpeakReq(uId) =>
+            //TODO 验证用户是否存在
+            dispatchTo(hostFrontActor, SpeakRsp(uId, roomInfo.roomId, acceptance = true))
             Behaviors.same
 
+          case RAUserExit(uId) =>
+            userMap.remove(uId)
+            val userList = roomInfo.userId.filterNot(_ == uId)
+            idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl)
+
+
           case unknownMsg =>
-            log.info(s"room:$roomId idle unknown msg : $unknownMsg")
+            log.info(s"room:${roomInfo.roomId} idle unknown msg : $unknownMsg")
             Behaviors.same
         }
       }
@@ -135,10 +141,10 @@ object RoomActor {
 
   }
 
-  private def dispatchTo(subscriber: ActorRef[WsMsg], msg: MeetingBackendEvent)(implicit sendBuffer: MiddleBufferInJvm) = {
+  private def dispatchTo(subscriber: ActorRef[WsMsgManager], msg: WsMsgRm)(implicit sendBuffer: MiddleBufferInJvm) = {
     subscriber ! Wrap(msg.fillMiddleBuffer(sendBuffer).result())
   }
-  private def dispatchAllTo(subscribers: Iterable[ActorRef[WsMsg]], msg: MeetingBackendEvent)(implicit sendBuffer: MiddleBufferInJvm) = {
+  private def dispatchAllTo(subscribers: Iterable[ActorRef[WsMsgManager]], msg: WsMsgRm)(implicit sendBuffer: MiddleBufferInJvm) = {
     subscribers.foreach{ subscriber =>
       subscriber ! Wrap(msg.fillMiddleBuffer(sendBuffer).result())
     }

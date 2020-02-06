@@ -1,11 +1,11 @@
 package org.seekloud.webClient.components
 
 import org.seekloud.webClient.common.Routes
-import org.seekloud.netMeeting.protocol.ptcl.ChatEvent._
 import org.scalajs.dom
 import org.scalajs.dom.raw._
 import org.seekloud.byteobject.MiddleBufferInJs
 import org.seekloud.byteobject.ByteObject._
+import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 
 import scala.scalajs.js.typedarray.ArrayBuffer
 
@@ -13,7 +13,7 @@ import scala.scalajs.js.typedarray.ArrayBuffer
 class WebSocketClient(
                        connectSuccessCallback: Event => Unit,
                        connectErrorCallback:Event => Unit,
-                       messageHandler: MeetingBackendEvent => Unit,
+                       messageHandler: WsMsgManager => Unit,
                        closeCallback:Event => Unit
                      ) {
 
@@ -35,7 +35,7 @@ class WebSocketClient(
 
   private val sendBuffer:MiddleBufferInJs = new MiddleBufferInJs(2048)
 
-  def sendByteMsg(msg: MeetingClientEvent): Unit = {
+  def sendByteMsg(msg: WsMsgClient): Unit = {
     import org.seekloud.byteobject.ByteObject._
     websocketStreamOpt.foreach{s =>
       s.send(msg.fillMiddleBuffer(sendBuffer).result())
@@ -58,7 +58,7 @@ class WebSocketClient(
 
       websocketStream.onopen = { (event: Event) =>
         wsSetup = true
-        dom.window.setInterval(()=> sendByteMsg(Ping), 3000)
+        dom.window.setInterval(()=> sendByteMsg(PingPackage), 3000)
         connectSuccessCallback(event)
       }
 
@@ -76,7 +76,7 @@ class WebSocketClient(
             fr.onloadend = { _: Event =>
               val buf = fr.result.asInstanceOf[ArrayBuffer]
               val middleDataInJs = new MiddleBufferInJs(buf)
-              val data = bytesDecode[MeetingBackendEvent](middleDataInJs) match {
+              val data = bytesDecode[WsMsgRm](middleDataInJs) match {
                 case Right(msg) => msg
               }
               messageHandler(data)

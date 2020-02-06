@@ -19,7 +19,9 @@ object AuthProtocol {
 
   sealed trait WsMsgRm extends WsMsgManager
 
-  //用户退出
+  //前端主动用户退出
+  case object EmptyFrontEvent extends WsMsgFront
+
   case object CompleteMsgClient extends WsMsgFront
 
   case class FailMsgClient(ex: Exception) extends WsMsgFront
@@ -28,8 +30,8 @@ object AuthProtocol {
 
   case class FailMsgRm(ex: Exception) extends WsMsgManager
 
+  //ws结构信息
   case class Wrap(ws: Array[Byte]) extends WsMsgRm
-
 
   case class TextMsg(msg: String) extends WsMsgRm
 
@@ -68,30 +70,31 @@ object AuthProtocol {
                                userId: Long
                              ) extends WsMsgHost
 
-  //踢出会议室
+  //TODO 踢出会议室
   case class KickOut(
                       roomId: Long,
                       userId: Long
                     ) extends WsMsgHost
 
+  //TODO
   case class GiveHost2(
                         roomId: Long,
                         userId: Long
                       ) extends WsMsgHost
 
-  //指定sb说话
+  //TODO 指定sb说话
   case class GiveMicrophone2(
                               roomId: Long,
                               userId: Long
                             ) extends WsMsgHost
 
-  //邀请用户加入会议
+  //TODO 邀请用户加入会议
   case class InviteReq(
                        roomId: Long,
                        userId: Long
                      ) extends WsMsgHost
 
-  //控制用户的声音或画面
+  //TODO 控制用户的声音或画面
   case class MediaControl(
                            roomId: Long,
                            userId: Long,
@@ -99,6 +102,7 @@ object AuthProtocol {
                            needVideo: Boolean = true
                          ) extends WsMsgHost with WsMsgRm2Audience
 
+  //TODO
   case class SpeakRsp4Host(
                      roomId: Long,
                      userId: Long,  //申请人id
@@ -106,6 +110,7 @@ object AuthProtocol {
                      ) extends WsMsgHost
 
 
+  //TODO
   case class UpdateRoomInfo(
                              roomInfo: RoomInfo,
                              errCode: Int = 0,
@@ -117,7 +122,7 @@ object AuthProtocol {
 //
 //                      ) extends WsMsgRm2Host
 
-  //向主持人发送申请说话的请求
+  //TODO 向主持人发送申请说话的请求
   case class SpeakReq4Host(
                      roomId: Long,
                      userId: Long
@@ -146,11 +151,12 @@ object AuthProtocol {
 
   case class JoinRsp(
                       roomInfo: RoomInfo,
-                      errCode: Int = 0,
                       acceptance: Boolean,
+                      errCode: Int = 0,
                       msg: String = "ok"
                     ) extends WsMsgRm2Audience
 
+  //
   case class SpeakReq(
                      userId: Long,
                      roomId: Long
