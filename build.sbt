@@ -87,7 +87,7 @@ lazy val pcClient = (project in file("pcClient")).enablePlugins(PackPlugin)
   .dependsOn(protocolJvm)
 
 
-val roomManagerMain = "org.seekloud.theia.roomManager.Boot"
+val roomManagerMain = "org.seekloud.netMeeting.roomManager.Boot"
 lazy val roomManager = (project in file("roomManager")).enablePlugins(PackPlugin)
   .settings(commonSettings: _*)
   .settings(
