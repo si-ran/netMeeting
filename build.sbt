@@ -60,7 +60,7 @@ lazy val webClient = (project in file("webClient"))
   .dependsOn(protocolJs)
 
 
-val pcClientMain = "org.seekloud.theia.pcClient.Boot"
+val pcClientMain = "org.seekloud.netMeeting.pcClient.Boot"
 lazy val pcClient = (project in file("pcClient")).enablePlugins(PackPlugin)
   .settings(commonSettings: _*)
   .settings(

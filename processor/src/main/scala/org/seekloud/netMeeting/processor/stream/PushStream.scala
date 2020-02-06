@@ -11,7 +11,7 @@ import org.bytedeco.javacv.{CanvasFrame, FFmpegFrameRecorder, Frame, OpenCVFrame
   *
   */
 object PushStream {
-  var startTime: Long = 0
+  @volatile var startTime: Long = 0
 
   val frameQueue = new LinkedBlockingDeque[Frame](1)
   val urlList = List[String]("rtmp://10.1.29.247/live/liveStream1", "rtmp://10.1.29.247/live/liveStream2", "rtmp://10.1.29.247/live/liveStream3", "rtmp://10.1.29.247/live/liveStream4")
