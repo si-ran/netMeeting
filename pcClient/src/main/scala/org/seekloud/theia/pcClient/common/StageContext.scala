@@ -21,7 +21,7 @@ class StageContext(stage: Stage) {
   def isFullScreen: Boolean = stage.isFullScreen
 
 
-  def switchScene(scene: Scene, title: String = "theia", resize: Boolean = false, fullScreen: Boolean = false, isSetOffX: Boolean = false): Unit = {
+  def switchScene(scene: Scene, title: String = "netMeeting", resize: Boolean = false, fullScreen: Boolean = false, isSetOffX: Boolean = false): Unit = {
     //    stage.centerOnScreen()
     stage.setScene(scene)
     stage.sizeToScene()
