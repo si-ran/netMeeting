@@ -5,7 +5,7 @@ import java.io.File
 import javafx.application.Application
 import javafx.geometry.Pos
 import javafx.scene.Scene
-import javafx.scene.canvas.Canvas
+import javafx.scene.canvas.{Canvas, GraphicsContext}
 import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.layout.{GridPane, Pane}
@@ -17,14 +17,33 @@ import org.seekloud.netMeeting.pcClient.scene.HomeScene.icon
   * @date: 2020/2/6 15:25
   *
   */
-class LivingState extends Application{
-  val stage = new Stage()
+
+object LivingStage{
+  trait LivingStageListener{
+
+  }
+}
+
+class LivingStage extends Application{
+  import LivingStage._
+  private val stage = new Stage()
+
+  private var listener: LivingStageListener = _
+
+  private val canvas = new Canvas( 640, 360)
+
+  def setListener(listener: LivingStageListener) = {
+    this.listener = listener
+  }
+
+  def getGC(): GraphicsContext = {
+    this.canvas.getGraphicsContext2D
+  }
 
   override def start(primaryStage: Stage): Unit = {
     val label = new Label("living")
     val file = new File("E:\\file\\1.jpg").toURI.toString
     val image = new Image(file)
-    val canvas = new Canvas( 640, 360)
     canvas.getGraphicsContext2D.drawImage(icon,140, 0, 360, 360)
 //    val pane = new Pane(canvas)
     val gridPane = new GridPane()

@@ -24,7 +24,7 @@ object HomeScene{
   val icon = new Image(file)
 
   trait HomeSceneListener{
-
+    def createNewIssue(meetingType: MeetingType.Value)
   }
 
 }
@@ -33,18 +33,6 @@ class HomeScene() {
   import HomeScene._
 
   private var listener: HomeSceneListener = _
-
-  private var creatorStage: CreatorStage = _
-
-  val button = new Button("second")
-//  val creatorScene = new CreatorScene()
-//  creatorScene.stage.setOnCloseRequest(_ => {
-//    button.setDisable(false)
-//  })
-//  button.setOnAction(_ =>{
-//    creatorScene.showStage()
-//    button.setDisable(true)
-//  })
 
   val label1 = new Label("新会议")
   val startMeeting = new Canvas(88, 88)
@@ -86,15 +74,8 @@ class HomeScene() {
     this.scene
   }
 
-  def setCreatorStage(creatorStage: CreatorStage) = {
-    this.creatorStage = creatorStage
-  }
-
   startMeeting.addEventFilter(MouseEvent.MOUSE_PRESSED, (event: MouseEvent) => {
-    //todo goto new meeting
-      println("goto new meeting")
-      setCreatorStage(new CreatorStage(MeetingType.CREATE))
-      creatorStage.showStage()
+    this.listener.createNewIssue(MeetingType.CREATE)
   })
 
   startMeeting.addEventFilter(MouseEvent.MOUSE_ENTERED, (event: MouseEvent) => {
@@ -107,8 +88,7 @@ class HomeScene() {
 
   joinMeeting.addEventFilter(MouseEvent.MOUSE_PRESSED, (event: MouseEvent) => {
     println("join meeting")
-    setCreatorStage(new CreatorStage(MeetingType.JOIN))
-    creatorStage.showStage()
+    this.listener.createNewIssue(MeetingType.JOIN)
   })
 
   joinMeeting.addEventFilter(MouseEvent.MOUSE_ENTERED, (event: MouseEvent) => {
