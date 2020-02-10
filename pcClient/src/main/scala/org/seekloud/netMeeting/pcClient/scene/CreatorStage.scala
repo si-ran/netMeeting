@@ -21,15 +21,37 @@ object CreatorStage{
   object MeetingType extends Enumeration {
     val CREATE, JOIN = Value
   }
+
+  trait CreatorStageListener {
+    def createNewMeeting()
+  }
 }
 
 import CreatorStage._
 
-class CreatorStage(meetingType: MeetingType.Value) extends Application{
+class CreatorStage() extends Application{
   val stage = new Stage()
   val file = new File("E:\\file\\camera.png").toURI.toString
   val icon = new Image(file)
 
+  var listener: CreatorStageListener = _
+
+  var meetingType: MeetingType.Value = _
+
+  def this(meetingType: MeetingType.Value) = {
+    this()
+    this.meetingType = meetingType
+  }
+
+  def setMeetingType(meetingType: MeetingType.Value) = {
+    this.meetingType = meetingType
+  }
+
+  def getMeetingType(): MeetingType.Value = this.meetingType
+
+  def setListener(listener: CreatorStageListener) = {
+    this.listener = listener
+  }
 
   override def start(primaryStage: Stage): Unit = {
     val roomLabel = new Label("roomId:")
@@ -74,10 +96,8 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
 //    anchorPane.setLayoutX()
 
     confirmButton.setOnAction { _ =>
-      //todo 将数据传到后台
+      listener.createNewMeeting()
       primaryStage.close()
-      val livingStage = new LivingState
-      livingStage.showStage()
     }
 
     cancelButton.setOnAction{_ =>
@@ -95,5 +115,4 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
   def showStage() = {
     start(stage)
   }
-
 }

@@ -14,9 +14,24 @@ package object ptcl {
     val msg: String
   }
 
-  case class CommonRsp(
-    errCode: Int = 0,
-    msg: String = "ok"
-  ) extends Response
+  trait CommonRsp {
+    val errCode: Int
+    val msg: String
+  }
+
+  final case class ErrorRsp(
+                             errCode: Int,
+                             msg: String
+                           ) extends CommonRsp
+
+  final case class SuccessRsp(
+                               errCode: Int = 0,
+                               msg: String = "ok"
+                             ) extends CommonRsp
+
+  trait Success extends CommonRsp {
+    implicit val errCode = 0
+    implicit val msg = "ok"
+  }
 
 }

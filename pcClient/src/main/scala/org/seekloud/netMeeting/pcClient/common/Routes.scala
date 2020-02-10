@@ -42,7 +42,7 @@ object Routes {
 
   val hostNotLive = 100024
 
-  def getWsUrl(id: Long) = s"http://10.1.29.247:40001/netMeeting/user/websocketJoin?id=$id"
+  def getWsUrl(id: Long) = s"ws://10.1.29.247:40001/netMeeting/user/websocketJoin?id=$id"
 
   def linkRoomManager(userId: Long, token: String, roomId: Long): String = wsBase + "/setupWebSocket" + s"?userId=$userId&token=$token&roomId=$roomId"
 
