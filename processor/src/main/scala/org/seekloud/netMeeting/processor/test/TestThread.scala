@@ -33,7 +33,7 @@ object TestThread extends HttpUtil{
     var payloadType = 96.toByte
   }
 
-  val processorBaseUrl = "http://127.0.0.1:30388/theia/processor"
+  val processorBaseUrl = "http://127.0.0.1:30388/netMeeting/processor"
   private val log = LoggerFactory.getLogger(this.getClass)
   def udpReceiver(buf: ByteBuffer,out1: SinkChannel, out2: SinkChannel ) = {
 
@@ -59,6 +59,7 @@ object TestThread extends HttpUtil{
       case Right(v) =>
         decode[NewConnectRsp](v) match {
           case Right(data) =>
+            log.info("get data")
             Right(data)
           case Left(e) =>
             log.error(s"connectRoom error:$e")

@@ -8,13 +8,17 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import org.seekloud.netMeeting.processor.core.{RoomManager, StreamPullActor, StreamPushActor}
 import akka.actor.typed._
+import akka.http.scaladsl.Http
 import scaladsl.adapter._
+
+import scala.language.postfixOps
+import org.seekloud.netMeeting.processor.http.HttpService
 
 /**
   * User: cq
   * Date: 2020/1/16
   */
-object Boot {
+object Boot extends HttpService {
   import org.seekloud.netMeeting.processor.common.AppSettings._
 
   import concurrent.duration._
@@ -38,6 +42,8 @@ object Boot {
 
   def main(args: Array[String]): Unit = {
 
+    Http().bindAndHandle(routes, httpInterface, httpPort)
+    log.info(s"Listen to the $httpInterface:$httpPort")
     log.info("Done")
   }
 }

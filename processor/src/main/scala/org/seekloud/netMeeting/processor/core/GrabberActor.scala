@@ -64,7 +64,7 @@ object GrabberActor {
           }
           log.info(s"$liveId grabber start successfully")
           ctx.self ! GrabFrameFirst
-          work(roomId, liveId, grabber, t.rec, buf)
+          work(roomId, liveId, grabber, t.rec, buf)//fixme 为什么要传回recorderActor不使用创建时的
 
         case StopGrabber =>
           log.info(s"grabber $liveId stopped when init")

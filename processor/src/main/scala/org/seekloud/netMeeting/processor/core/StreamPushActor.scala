@@ -86,9 +86,9 @@ object StreamPushActor {
         case x =>
           log.info("unknown message")
           Behaviors.same
-//        case PushData(liveId, data)=>
-//          client.pushStreamData(liveId,data)
-//          Behaviors.same
+        case PushData(liveId, data)=>
+          log.info(s"push data:$data")
+          Behaviors.same
 //
 //        case t:NewLive =>
 //          client.auth(t.liveId, t.liveCode)

@@ -6,6 +6,11 @@ package org.seekloud.netMeeting.processor.protocol
   */
 object SharedProtocol {
 
+  sealed trait CommonRsp{
+    val errCode:Int
+    val msg:String
+  }
+
   case class NewConnect(
                          roomId: Long,
                          host: String,
@@ -18,7 +23,7 @@ object SharedProtocol {
   case class NewConnectRsp(
                             errCode: Int = 0,
                             msg:String = "ok"
-                          )
+                          ) extends CommonRsp
 
   final case class SuccessRsp(
                                errCode: Int = 0,

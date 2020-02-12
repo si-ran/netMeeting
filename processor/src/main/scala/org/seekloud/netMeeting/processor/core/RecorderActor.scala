@@ -12,6 +12,7 @@ import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, Frame, Java2
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.processor.common.AppSettings._
 import scala.concurrent.duration._
+import org.seekloud.netMeeting.processor.Boot.roomManager
 
 
 /**
@@ -90,7 +91,7 @@ object RecorderActor {
             case e: Exception =>
               log.error(s" recorder meet error when start:$e")
           }
-//          roomManager ! RoomManager.RecorderRef(roomId, ctx.self) //fixme 取消注释
+          roomManager ! RoomManager.RecorderRef(roomId, ctx.self) //fixme 取消注释
           ctx.self ! Init
           single(roomId,  host, client, layout, recorder4ts, null, null, null, null, output, 30000, (0, 0))
       }
