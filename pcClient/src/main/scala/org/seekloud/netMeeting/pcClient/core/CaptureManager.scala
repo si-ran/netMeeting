@@ -86,11 +86,11 @@ object CaptureManager {
 
   final case class StartEncodeSuccess(recorder: FFmpegFrameRecorder1) extends CaptureCommand
 
-  final case class Ready4Grab(url: String) extends CaptureCommand
+  final case class Ready4GrabStream(url: String) extends CaptureCommand
 
   final case object Close extends CaptureCommand
 
-  final case object KillSelf extends CaptureCommand
+  final case object Terminate extends CaptureCommand
 
   case object STOP_KEY
 
@@ -130,12 +130,13 @@ object CaptureManager {
             drawActor: ActorRef[DrawCommand],
             grabberMap: mutable.HashMap[MediaType.Value, ActorRef[ImageCapture.Command]],
             soundCaptureOpt: Option[ActorRef[SoundCapture.Command]] = None,
-            recorderActorOpt: Option[ActorRef[EncodeActor.EncodeCmd]] = None,
+            recorderActorOpt: Option[ActorRef[EncodeActor.Command]] = None,
+            streamProcessOpt: Option[ActorRef[StreamProcess.Command]] = None,
             urlFromServer: Option[String] = None
           )(
-    implicit stashBuffer: StashBuffer[CaptureCommand],
-    timer: TimerScheduler[CaptureCommand]
-  ): Behavior[CaptureCommand] = {
+            implicit stashBuffer: StashBuffer[CaptureCommand],
+            timer: TimerScheduler[CaptureCommand]
+          ): Behavior[CaptureCommand] =
     Behaviors.receive[CaptureCommand]{ (ctx, msg) =>
       msg match {
         case StartCaptureSound =>
@@ -184,20 +185,27 @@ object CaptureManager {
           Behaviors.same
 
         case msg: GrabberStartSuccess =>
-          if(msg.imageType != MediaType.Server){
-            ctx.self ! StartEncode
-          }
-          else{
-            grabberMap.filter(_._1 != MediaType.Server).foreach(_._2 ! ImageCapture.ChangeState(needDraw = Some(false)))
-          }
-          val childName = s"${msg.imageType}_grabber"
-          val mediaGrabber = getImageCapture(ctx, msg.grabber, msg.imageType, Some(drawActor), childName)
-          grabberMap.put(msg.imageType, mediaGrabber)
-          Behaviors.same
+          val streamProcess =
+            msg.imageType match {
+              case MediaType.Server =>
+                //todo gc切换过程中可以使用一块布遮住
+                grabberMap.filter(_._1 != MediaType.Server).foreach(_._2 ! ImageCapture.ChangeState(needDraw = Some(false)))
+                val streamProcess = getStreamProcess(ctx, msg.grabber, encodeConfig, gc)
+                streamProcess
+
+              case mediaType =>
+                ctx.self ! StartEncode
+                val childName = s"${msg.imageType}_grabber"
+                val imageCapture = getImageCapture(ctx, msg.grabber, mediaType, Some(drawActor), childName)
+                grabberMap.put(msg.imageType, imageCapture)
+                null
+            }
+          val streamOpt = if(null == streamProcess) streamProcessOpt else Some(streamProcess)
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, streamOpt, urlFromServer)
 
         case msg: SoundStartSuccess =>
           val soundCapture = getSoundCapture(ctx, msg.line, encodeConfig.frameRate, encodeConfig.sampleRate, encodeConfig.channels, encodeConfig.sampleSizeInBit)
-          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, Some(soundCapture), recorderActorOpt, urlFromServer)
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, Some(soundCapture), recorderActorOpt, streamProcessOpt, urlFromServer)
 
         case StartEncode =>
           log.debug(s"push stream to $url2Server")
@@ -238,22 +246,24 @@ object CaptureManager {
           val recorderActor = getEncoderActor(ctx, encodeConfig, msg.recorder)
           grabberMap.filter(_._1 != MediaType.Server).foreach(_._2 ! ImageCapture.StartEncode(recorderActor))
           soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActor))
-          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, Some(recorderActor), urlFromServer)
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, Some(recorderActor), streamProcessOpt, urlFromServer)
 
-          //接收发来的url
-        case msg: Ready4Grab =>
+        //接收发来的url
+        case msg: Ready4GrabStream =>
           log.debug(s"got msg $msg")
-          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, Some(msg.url))
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt, Some(msg.url))
 
         case Close =>
           soundCaptureOpt.foreach(_ ! SoundCapture.StopSample)
-          grabberMap.foreach(_._2 ! ImageCapture.StopCamera)
+          grabberMap.foreach(_._2 ! ImageCapture.Close)
           drawActor ! StopDraw
-          recorderActorOpt.foreach(_ ! EncodeActor.StopEncode)
-          timer.startSingleTimer(STOP_KEY, KillSelf, 2.seconds)
+          recorderActorOpt.foreach(_ ! EncodeActor.Close)
+          streamProcessOpt.foreach(_ ! StreamProcess.Close)
+          timer.startSingleTimer(STOP_KEY, Terminate, 1.seconds)
           Behaviors.same
 
-        case KillSelf =>
+        case Terminate =>
+          log.debug(s"capture manager terminated.")
           Behaviors.stopped
 
         /*case msg: ChildDead[DrawCommand] =>
@@ -273,7 +283,7 @@ object CaptureManager {
           Behaviors.unhandled
       }
     }
-  }
+
 
   private def drawer(
                       gc: GraphicsContext,
@@ -316,7 +326,7 @@ object CaptureManager {
                        frameRate: Int = 30
                      ) = {
     ctx.child(childName).getOrElse{
-      val actor = ctx.spawn(ImageCapture.create(grabber, imageType,  frameRate, drawActor, needDraw = true, frameQueue), childName)
+      val actor = ctx.spawn(ImageCapture.create(grabber, imageType,  frameRate, drawActor, needDraw = true), childName)
       ctx.watchWith(actor, ChildDead(childName, actor))
       actor
     }.unsafeUpcast[ImageCapture.Command]
@@ -340,12 +350,28 @@ object CaptureManager {
   def getEncoderActor(ctx: ActorContext[CaptureCommand],
                       encodeConfig: EncodeConfig,
                       encoder: FFmpegFrameRecorder1,
-                      rtmpServer: Option[String] = None): ActorRef[EncodeActor.EncodeCmd] = {
+                      rtmpServer: Option[String] = None): ActorRef[EncodeActor.Command] = {
     val childName = s"encoderActor"
     ctx.child(childName).getOrElse{
       val actor = ctx.spawn(EncodeActor.create(ctx.self, encoder, encodeConfig, rtmpServer), childName)
       ctx.watchWith(actor, ChildDead(childName, actor))
       actor
-    }.unsafeUpcast[EncodeActor.EncodeCmd]
+    }.unsafeUpcast[EncodeActor.Command]
+  }
+
+  def getStreamProcess(
+                        ctx: ActorContext[CaptureCommand],
+                        grabber: FrameGrabber,
+                        encodeConfig: EncodeConfig,
+                        gc: GraphicsContext,
+                        needDraw: Boolean = true
+                      ): ActorRef[StreamProcess.Command] = {
+    val childName = s"streamProcessActor"
+    ctx.child(childName).getOrElse{
+      val actor = ctx.spawn(StreamProcess.create(grabber, encodeConfig, gc, needDraw), childName)
+      ctx.watchWith(actor, ChildDead(childName, actor))
+      actor
+    }.unsafeUpcast[StreamProcess.Command]
+
   }
 }

@@ -84,10 +84,12 @@ object RmManager {
     }
   }
 
-  def idle(homeController: Option[PageController] = None)(
-          implicit stashBuffer: StashBuffer[RmCommand],
-          timer: TimerScheduler[RmCommand]
-  ): Behavior[RmCommand] = {
+  def idle(
+            homeController: Option[PageController] = None
+          )(
+            implicit stashBuffer: StashBuffer[RmCommand],
+            timer: TimerScheduler[RmCommand]
+          ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: GetPageItem =>
@@ -114,16 +116,16 @@ object RmManager {
           Behaviors.unhandled
       }
     }
-  }
+
 
   def hostBehavior(
                     gc: GraphicsContext,
                     sender: Option[ActorRef[WsMsgFront]] = None,
                     captureManager: Option[ActorRef[CaptureManager.CaptureCommand]] = None
                   )(
-    implicit stashBuffer: StashBuffer[RmCommand],
-    timer: TimerScheduler[RmCommand]
-  ): Behavior[RmCommand] = {
+                    implicit stashBuffer: StashBuffer[RmCommand],
+                    timer: TimerScheduler[RmCommand]
+                  ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{(ctx, msg) =>
       msg match {
         case msg: HostWsEstablish =>
@@ -149,7 +151,7 @@ object RmManager {
           log.debug(s"got msg $msg")
 //          ctx.spawn(CaptureManager.create(), "captureManager")
           //todo 如果需要在建立websocket连接后再推流
-          captureManager.foreach(_ ! CaptureManager.Ready4Grab("rtmp://10.1.29.247/live/test1"))
+          captureManager.foreach(_ ! CaptureManager.Ready4GrabStream("rtmp://10.1.29.247/live/test1"))
           hostBehavior(gc, Some(msg.sender), captureManager)
 
         case Close =>
@@ -162,12 +164,13 @@ object RmManager {
           Behaviors.unhandled
       }
     }
-  }
 
-  def clientBehavior(sender: Option[ActorRef[WsMsgFront]] = None)(
-    implicit stashBuffer: StashBuffer[RmCommand],
-    timer: TimerScheduler[RmCommand]
-  ): Behavior[RmCommand] = {
+  def clientBehavior(
+                      sender: Option[ActorRef[WsMsgFront]] = None
+                    )(
+                      implicit stashBuffer: StashBuffer[RmCommand],
+                      timer: TimerScheduler[RmCommand]
+                    ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: GetSender =>
@@ -180,7 +183,7 @@ object RmManager {
 
       }
     }
-  }
+
 
   def buildWebsocket(
                     ctx: ActorContext[RmCommand],

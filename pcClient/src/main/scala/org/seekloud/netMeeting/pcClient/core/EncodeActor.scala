@@ -9,6 +9,9 @@ import org.bytedeco.javacv.{FFmpegFrameRecorder, FFmpegFrameRecorder1, Frame}
 import org.seekloud.netMeeting.pcClient.core.CaptureManager.EncodeConfig
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.duration._
+
+
 /**
   * @user: wanruolong
   * @date: 2019/12/3 21:31
@@ -20,40 +23,48 @@ object EncodeActor {
 
   var lastTs: Long = 0
 
-  sealed trait EncodeCmd
+  sealed trait Command
 
-  final case class SendFrame(frame:Frame) extends EncodeCmd
+  final case class SendFrame(frame:Frame) extends Command
 
-  final case class SendSample(samples: ShortBuffer) extends EncodeCmd
+  final case class SendSample(samples: ShortBuffer) extends Command
 
-  final case object StopEncode extends EncodeCmd
+  final case object Close extends Command
+
+  final case object Terminate extends Command
+
+  final case object TERMINATE_KEY
 
   object ENCODE_START_KEY
 
 
-  def create(parent: ActorRef[CaptureManager.CaptureCommand],
-             encoder: FFmpegFrameRecorder1,
-             encodeConfig: EncodeConfig,
-             rtmpServer: Option[String] = None,
-             file: Option[File] = None,
-             outputStream: Option[OutputStream] = None): Behavior[EncodeCmd] =
-    Behaviors.setup[EncodeCmd]{ ctx =>
-      Behaviors.withTimers[EncodeCmd]{implicit timer =>
+
+  def create(
+              parent: ActorRef[CaptureManager.CaptureCommand],
+              encoder: FFmpegFrameRecorder1,
+              encodeConfig: EncodeConfig,
+              rtmpServer: Option[String] = None,
+              file: Option[File] = None,
+              outputStream: Option[OutputStream] = None
+            ): Behavior[Command] =
+    Behaviors.setup[Command]{ ctx =>
+      Behaviors.withTimers[Command]{ implicit timer =>
         work(parent, encoder, encodeConfig, rtmpServer, file, outputStream)
       }
     }
 
-  def work(parent: ActorRef[CaptureManager.CaptureCommand],
-           encoder: FFmpegFrameRecorder1,
-           encoderConfig: EncodeConfig,
-           rtmpServer: Option[String] = None,
-           file: Option[File] = None,
-           outputStream: Option[OutputStream] = None,
-           startTime: Long = 0
-           )(
-          implicit timer: TimerScheduler[EncodeCmd]
-  ): Behavior[EncodeCmd] = {
-    Behaviors.receive[EncodeCmd]{ (ctx, msg) =>
+  def work(
+            parent: ActorRef[CaptureManager.CaptureCommand],
+            encoder: FFmpegFrameRecorder1,
+            encoderConfig: EncodeConfig,
+            rtmpServer: Option[String] = None,
+            file: Option[File] = None,
+            outputStream: Option[OutputStream] = None,
+            startTime: Long = 0
+          )(
+            implicit timer: TimerScheduler[Command]
+          ): Behavior[Command] =
+    Behaviors.receive[Command]{ (ctx, msg) =>
       msg match {
         case msg: SendFrame =>
           val ts = if(startTime == 0) System.nanoTime() else startTime
@@ -75,7 +86,7 @@ object EncodeActor {
                 log.error(s"encode image frame error: $ex")
                 if(ex.getMessage.startsWith("av_interleaved_write_frame() error")){
 //                  parent! CaptureActor.OnEncodeException
-                  ctx.self ! StopEncode
+                  ctx.self ! Close
                 }
             }
 
@@ -93,7 +104,7 @@ object EncodeActor {
                 }
           Behaviors.same
 
-        case StopEncode =>
+        case Close =>
           try {
             encoder.releaseUnsafe()
             log.info(s"release encode resources.")
@@ -101,14 +112,13 @@ object EncodeActor {
             case ex: Exception =>
               log.error(s"release encode error: $ex")
           }
-          Behaviors.stopped
+          timer.startSingleTimer(TERMINATE_KEY, Terminate, 100.millis)
+          Behaviors.same
 
         case x =>
           log.info(s"rec unknown msg: $x")
           Behaviors.unhandled
       }
     }
-  }
-
 
 }

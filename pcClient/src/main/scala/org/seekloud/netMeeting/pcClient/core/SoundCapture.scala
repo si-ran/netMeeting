@@ -8,7 +8,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import javax.sound.sampled.TargetDataLine
 import org.bytedeco.javacv.FFmpegFrameRecorder
 import org.slf4j.LoggerFactory
-import org.seekloud.netMeeting.pcClient.core.EncodeActor
 
 
 object SoundCapture {
@@ -29,9 +28,7 @@ object SoundCapture {
 
   final case object StopSample extends Command
 
-  //  final case class SoundStartEncode(encoder: FFmpegFrameRecorder1) extends Command
-  final case class SoundStartEncode(encoder: ActorRef[EncodeActor.EncodeCmd]) extends Command
-
+  final case class SoundStartEncode(encoder: ActorRef[EncodeActor.Command]) extends Command
 
   final case object StopEncode extends Command
 
@@ -57,7 +54,7 @@ object SoundCapture {
                       channels: Int,
                       sampleSize: Int,
                       audioBytes: Array[Byte],
-                      encoder: Option[ActorRef[EncodeActor.EncodeCmd]] = None,
+                      encoder: Option[ActorRef[EncodeActor.Command]] = None,
                       audioExecutor: Option[ScheduledThreadPoolExecutor] = None,
                       audioLoop: Option[ScheduledFuture[_]] = None,
                       encodeFlag: Boolean = false): Behavior[Command] =
@@ -100,7 +97,6 @@ object SoundCapture {
                 case ex:Exception=>
                   log.error(s"encode audio frame error: $ex")
               }
-
             }
           } catch {
             case ex: Exception =>
