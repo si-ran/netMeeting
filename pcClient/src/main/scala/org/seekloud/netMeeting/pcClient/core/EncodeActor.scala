@@ -68,7 +68,7 @@ object EncodeActor {
       msg match {
         case msg: SendFrame =>
           val ts = if(startTime == 0) System.nanoTime() else startTime
-          val videoTs = System.nanoTime() - ts
+//          val videoTs = System.nanoTime() - ts
 
             try{
               //              encoder.setTimestamp(startTime * ((1000/encoderConfig.frameRate)*1000).toLong)
@@ -78,8 +78,8 @@ object EncodeActor {
 //                println(s"${videoTs/1000} -> ${encoder.getTimestamp} = ${videoTs/1000-encoder.getTimestamp}=====:number${encoder.getFrameNumber}")
 //                encoder.setTimestamp(videoTs/1000)
 //              }
-
-              encoder.record(msg.frame)
+              if(msg.frame.image != null)
+                encoder.record(msg.frame)
 
             }catch{
               case ex:Exception=>
@@ -89,7 +89,6 @@ object EncodeActor {
                   ctx.self ! Close
                 }
             }
-
           work(parent, encoder, encoderConfig, rtmpServer, file, outputStream, ts)
 
         case msg:SendSample =>
@@ -101,7 +100,8 @@ object EncodeActor {
             }catch{
               case ex:Exception=>
                 log.error(s"encode audio frame error: $ex")
-                }
+                ctx.self ! Close
+            }
           Behaviors.same
 
         case Close =>
@@ -112,8 +112,8 @@ object EncodeActor {
             case ex: Exception =>
               log.error(s"release encode error: $ex")
           }
-          timer.startSingleTimer(TERMINATE_KEY, Terminate, 100.millis)
-          Behaviors.same
+//          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
+          Behaviors.stopped
 
         case x =>
           log.info(s"rec unknown msg: $x")

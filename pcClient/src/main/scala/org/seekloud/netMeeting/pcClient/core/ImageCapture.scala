@@ -92,7 +92,7 @@ object ImageCapture {
                 if (frame != null) {
                   if (frame.image != null) {
                     if(captureSetting.encodeFlag){
-                      recorder.foreach(_ ! EncodeActor.SendFrame(frame))
+                      recorder.foreach(_ ! EncodeActor.SendFrame(frame.clone()))
                     }
                     if(captureSetting.needDraw){
                       val image = imageConverter.convert(frame)
