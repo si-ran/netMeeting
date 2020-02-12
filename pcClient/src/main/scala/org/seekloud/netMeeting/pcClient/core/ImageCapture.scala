@@ -5,7 +5,7 @@ import java.util.concurrent.LinkedBlockingDeque
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import org.bytedeco.javacv._
-import org.seekloud.netMeeting.pcClient.core.CaptureManager.ImageType
+import org.seekloud.netMeeting.pcClient.core.CaptureManager.MediaType
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.pcClient.core.EncodeActor
 import org.seekloud.netMeeting.pcClient.utils.ImageConverter
@@ -23,7 +23,7 @@ object ImageCapture {
 
   sealed trait Command
 
-  final case object StartCamera extends Command
+  final case object StartGrab extends Command
 
   final case object GrabFrame extends Command
 
@@ -37,11 +37,15 @@ object ImageCapture {
                                needDraw: Option[Boolean] = None, frameQueue: Option[LinkedBlockingDeque[Frame]] = None,
                                drawActor: Option[ActorRef[CaptureManager.DrawCommand]] = None) extends Command
 
-
   final case object StopEncode extends Command
 
+  //playing sound
+  sealed trait SoundCommand
+
+  case object StartPlay extends SoundCommand
+
   def create(grabber: FrameGrabber,
-             imageType: ImageType.Value,
+             imageType: MediaType.Value,
              frameRate: Int,
              drawActor: Option[ActorRef[CaptureManager.DrawCommand]] = None,
              needDraw: Boolean = true,
@@ -50,7 +54,7 @@ object ImageCapture {
     Behaviors.setup[Command] { ctx =>
       log.debug(s"ImageCapture is staring...")
       val imageConverter = new ImageConverter
-      ctx.self ! StartCamera
+      ctx.self ! StartGrab
       val captureSetting = CaptureSetting()
       captureSetting.needDraw = needDraw
       working(grabber, frameRate, imageConverter, captureSetting, drawActor, mediaType=imageType, frameQueue=frameQueue)
@@ -62,24 +66,26 @@ object ImageCapture {
                       captureSetting: CaptureSetting,
                       drawActor: Option[ActorRef[CaptureManager.DrawCommand]] = None,
                       recorder: Option[ActorRef[EncodeActor.EncodeCmd]] = None,
-                      mediaType: ImageType.Value,
+                      mediaType: MediaType.Value,
                       frameQueue: Option[LinkedBlockingDeque[Frame]] = None
                      ): Behavior[Command] =
     Behaviors.receive[Command] { (ctx, msg) =>
       msg match {
-        case StartCamera =>
-          log.info(s"Media camera started.")
+        case StartGrab =>
+          log.info(s"Media image started.")
           ctx.self ! GrabFrame
           captureSetting.state = true
           working(grabber, frameRate, imageConverter, captureSetting, drawActor, recorder, mediaType, frameQueue)
 
         case SuspendCamera =>
-          log.info(s"Media camera suspend.")
+          log.info(s"Media image suspend.")
           captureSetting.state = false
           working(grabber, frameRate, imageConverter, captureSetting, drawActor, recorder, mediaType, frameQueue)
 
         case GrabFrame =>
           if(captureSetting.state) {
+//            if(mediaType == MediaType.Server)
+//              log.debug(s"grab frame")
             Try(grabber.grab()) match {
               case Success(frame) =>
                 if (frame != null) {
@@ -106,8 +112,11 @@ object ImageCapture {
                       frameQueue.foreach(_.clear())
                       frameQueue.foreach(_.offer(frame))
                     }
-                    ctx.self ! GrabFrame
                   }
+                  if(frame.samples != null) {
+                    //todo playing sound
+                  }
+                  ctx.self ! GrabFrame
                 }
 
               case Failure(ex) =>
@@ -148,6 +157,15 @@ object ImageCapture {
           Behaviors.unhandled
       }
     }
+
+  def soundPlayer(): Behavior[SoundCommand] = {
+    Behaviors.receive[SoundCommand] {(ctx, msg) =>
+      msg match {
+        case StartPlay =>
+          Behaviors.same
+      }
+    }
+  }
 
 
 

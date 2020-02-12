@@ -8,14 +8,16 @@ import javafx.scene.canvas.GraphicsContext
 import javafx.scene.image.Image
 import javax.sound.sampled.{AudioFormat, AudioSystem, DataLine, TargetDataLine}
 import org.bytedeco.ffmpeg.global.avcodec
-import org.bytedeco.javacv.{FFmpegFrameGrabber, Frame, FrameGrabber, OpenCVFrameGrabber}
+import org.bytedeco.javacv._
 import org.seekloud.netMeeting.pcClient.Boot
 import org.seekloud.netMeeting.pcClient.Boot.executor
 import org.seekloud.netMeeting.pcClient.core.RmManager.RmCommand
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import scala.collection.mutable
 
 /**
   * @user: wanruolong
@@ -25,8 +27,8 @@ import scala.util.{Failure, Success}
 object CaptureManager {
   val log = LoggerFactory.getLogger(this.getClass)
 
-  object ImageType extends Enumeration{
-    val Camera, Desktop = Value
+  object MediaType extends Enumeration{
+    val Camera, Desktop, Server = Value
   }
 
   case class MediaSettings(
@@ -70,13 +72,27 @@ object CaptureManager {
 
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends CaptureCommand
 
-  final case class StartCaptureImage(mediaType: ImageType.Value) extends CaptureCommand
+  final case class StartGrabberImage(mediaType: MediaType.Value) extends CaptureCommand
 
   final case object StartCaptureSound extends CaptureCommand
 
-  final case class CameraStartSuccess(grabber: FrameGrabber, imageType: ImageType.Value) extends CaptureCommand
+  final case object StartGrab extends CaptureCommand
+
+  final case class GrabberStartSuccess(grabber: FrameGrabber, imageType: MediaType.Value) extends CaptureCommand
 
   final case class SoundStartSuccess(line: TargetDataLine) extends CaptureCommand
+
+  final case object StartEncode extends CaptureCommand
+
+  final case class StartEncodeSuccess(recorder: FFmpegFrameRecorder1) extends CaptureCommand
+
+  final case class Ready4Grab(url: String) extends CaptureCommand
+
+  final case object Close extends CaptureCommand
+
+  final case object KillSelf extends CaptureCommand
+
+  case object STOP_KEY
 
   sealed trait DrawCommand
 
@@ -87,33 +103,35 @@ object CaptureManager {
   final case object StopDraw extends DrawCommand
 
 
-
-
   def create(
               rmManager: ActorRef[RmCommand],
+              url: String,
               gc: GraphicsContext
             ): Behavior[CaptureCommand] = {
     Behaviors.setup[CaptureCommand]{ ctx =>
       log.info("ImageCapture is starting")
       implicit val stashBuffer: StashBuffer[CaptureCommand] = StashBuffer[CaptureCommand](Int.MaxValue)
       Behaviors.withTimers[CaptureCommand]{ implicit timer =>
-        ctx.self ! StartCaptureImage(ImageType.Camera)
+        ctx.self ! StartGrabberImage(MediaType.Camera)
         ctx.self ! StartCaptureSound
         val imageMode = ImageMode()
         val encodeConfig = EncodeConfig()
         val drawActor = ctx.spawn(drawer(gc), "drawActor")
-        idle(gc, imageMode, encodeConfig, drawActor)
+        idle(url, gc, imageMode, encodeConfig, drawActor, new mutable.HashMap[MediaType.Value, ActorRef[ImageCapture.Command]]())
       }
     }
   }
 
   def idle(
-          gc: GraphicsContext,
-          imageMode: ImageMode,
-          encodeConfig: EncodeConfig,
-          drawActor: ActorRef[DrawCommand],
-          imageCapture: Option[ActorRef[ImageCapture.Command]] = None,
-          soundCapture: Option[ActorRef[SoundCapture.Command]] = None
+            url2Server: String,
+            gc: GraphicsContext,
+            imageMode: ImageMode,
+            encodeConfig: EncodeConfig,
+            drawActor: ActorRef[DrawCommand],
+            grabberMap: mutable.HashMap[MediaType.Value, ActorRef[ImageCapture.Command]],
+            soundCaptureOpt: Option[ActorRef[SoundCapture.Command]] = None,
+            recorderActorOpt: Option[ActorRef[EncodeActor.EncodeCmd]] = None,
+            urlFromServer: Option[String] = None
           )(
     implicit stashBuffer: StashBuffer[CaptureCommand],
     timer: TimerScheduler[CaptureCommand]
@@ -139,9 +157,12 @@ object CaptureManager {
           }
           Behaviors.same
 
-        case msg: StartCaptureImage =>
+        case msg: StartGrabberImage =>
           val imageGrabber = msg.mediaType match {
-            case ImageType.Camera => new OpenCVFrameGrabber(0)
+            case MediaType.Camera => new OpenCVFrameGrabber(0)
+            case MediaType.Server =>
+              log.debug(s"got msg $msg")
+              new FFmpegFrameGrabber(urlFromServer.get)
             case _ =>
               val grabber = new FFmpegFrameGrabber("desktop")
               grabber.setFormat("gdigrab")
@@ -155,22 +176,101 @@ object CaptureManager {
             //          log.debug(s"cameraGrabber-${0} started.")
             imageGrabber
           }.onComplete {
-            case Success(grabber) => ctx.self ! CameraStartSuccess(grabber, msg.mediaType)
+            case Success(grabber) => ctx.self ! GrabberStartSuccess(grabber, msg.mediaType)
             case Failure(ex) =>
               log.error("camera start failed")
               log.error(s"$ex")
           }
           Behaviors.same
 
-        case msg: CameraStartSuccess =>
-          val childName = s"${msg.imageType}Capture"
-          val imageCapture = getImageCapture(ctx, msg.grabber, msg.imageType, Some(drawActor), childName)
-          idle(gc, imageMode, encodeConfig, drawActor, Some(imageCapture), soundCapture)
+        case msg: GrabberStartSuccess =>
+          if(msg.imageType != MediaType.Server){
+            ctx.self ! StartEncode
+          }
+          else{
+            grabberMap.filter(_._1 != MediaType.Server).foreach(_._2 ! ImageCapture.ChangeState(needDraw = Some(false)))
+          }
+          val childName = s"${msg.imageType}_grabber"
+          val mediaGrabber = getImageCapture(ctx, msg.grabber, msg.imageType, Some(drawActor), childName)
+          grabberMap.put(msg.imageType, mediaGrabber)
+          Behaviors.same
 
         case msg: SoundStartSuccess =>
           val soundCapture = getSoundCapture(ctx, msg.line, encodeConfig.frameRate, encodeConfig.sampleRate, encodeConfig.channels, encodeConfig.sampleSizeInBit)
-          idle(gc, imageMode, encodeConfig, drawActor, imageCapture, Some(soundCapture))
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, Some(soundCapture), recorderActorOpt, urlFromServer)
 
+        case StartEncode =>
+          log.debug(s"push stream to $url2Server")
+          val recorder = new FFmpegFrameRecorder1(url2Server, encodeConfig.imgWidth, encodeConfig.imgHeight)
+          recorder.setVideoOption("tune", "zerolatency")
+          recorder.setVideoOption("preset", "ultrafast")
+          recorder.setVideoOption("crf", "23")
+          recorder.setFormat("flv")
+          recorder.setInterleaved(true)
+          recorder.setGopSize(60)
+          recorder.setMaxBFrames(0)
+
+          recorder.setVideoBitrate(encodeConfig.videoBitRate)
+          recorder.setVideoCodec(encodeConfig.videoCodec)
+          recorder.setFrameRate(encodeConfig.frameRate)
+          /*audio*/
+          recorder.setAudioOption("crf", "0")
+          recorder.setAudioQuality(0)
+          recorder.setAudioBitrate(192000)
+          recorder.setSampleRate(44100)
+          recorder.setAudioChannels(encodeConfig.channels)
+          recorder.setAudioCodec(encodeConfig.audioCodec)
+          Future {
+            log.debug(s" recorder is starting...")
+            recorder.start()
+            recorder
+          }.onComplete {
+            case Success(recorder) => ctx.self ! StartEncodeSuccess(recorder)
+            case Failure(ex) =>
+              log.error("recorder start failed")
+              log.error(s"$ex")
+          }
+          Behaviors.same
+
+        case msg: StartEncodeSuccess =>
+          //推流成功后开始拉流
+          ctx.self ! StartGrabberImage(MediaType.Server)
+          val recorderActor = getEncoderActor(ctx, encodeConfig, msg.recorder)
+          grabberMap.filter(_._1 != MediaType.Server).foreach(_._2 ! ImageCapture.StartEncode(recorderActor))
+          soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActor))
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, Some(recorderActor), urlFromServer)
+
+          //接收发来的url
+        case msg: Ready4Grab =>
+          log.debug(s"got msg $msg")
+          idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, Some(msg.url))
+
+        case Close =>
+          soundCaptureOpt.foreach(_ ! SoundCapture.StopSample)
+          grabberMap.foreach(_._2 ! ImageCapture.StopCamera)
+          drawActor ! StopDraw
+          recorderActorOpt.foreach(_ ! EncodeActor.StopEncode)
+          timer.startSingleTimer(STOP_KEY, KillSelf, 2.seconds)
+          Behaviors.same
+
+        case KillSelf =>
+          Behaviors.stopped
+
+        /*case msg: ChildDead[DrawCommand] =>
+          log.info(s"$msg")
+          Behaviors.same
+*/
+        case msg: ChildDead[ImageCapture.Command] =>
+          log.info(s"$msg")
+          Behaviors.same
+
+        case msg: ChildDead[SoundCapture.Command] =>
+          log.info(s"$msg")
+          Behaviors.same
+
+        case x =>
+          log.info(s"rev unknown msg $x")
+          Behaviors.unhandled
       }
     }
   }
@@ -209,7 +309,7 @@ object CaptureManager {
   def getImageCapture(
                        ctx: ActorContext[CaptureCommand],
                        grabber: FrameGrabber,
-                       imageType: ImageType.Value,
+                       imageType: MediaType.Value,
                        drawActor: Option[ActorRef[DrawCommand]],
                        childName: String,
                        frameQueue: Option[LinkedBlockingDeque[Frame]] = None,
@@ -235,5 +335,17 @@ object CaptureManager {
       ctx.watchWith(actor, ChildDead(childName, actor))
       actor
     }.unsafeUpcast[SoundCapture.Command]
+  }
+
+  def getEncoderActor(ctx: ActorContext[CaptureCommand],
+                      encodeConfig: EncodeConfig,
+                      encoder: FFmpegFrameRecorder1,
+                      rtmpServer: Option[String] = None): ActorRef[EncodeActor.EncodeCmd] = {
+    val childName = s"encoderActor"
+    ctx.child(childName).getOrElse{
+      val actor = ctx.spawn(EncodeActor.create(ctx.self, encoder, encodeConfig, rtmpServer), childName)
+      ctx.watchWith(actor, ChildDead(childName, actor))
+      actor
+    }.unsafeUpcast[EncodeActor.EncodeCmd]
   }
 }

@@ -1,8 +1,5 @@
 package org.seekloud.netMeeting.pcClient.core
 
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
-import org.slf4j.LoggerFactory
 import java.nio.{ByteBuffer, ByteOrder, ShortBuffer}
 import java.util.concurrent.{LinkedBlockingDeque, ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 
@@ -12,7 +9,6 @@ import javax.sound.sampled.TargetDataLine
 import org.bytedeco.javacv.FFmpegFrameRecorder
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.pcClient.core.EncodeActor
-import scala.collection.mutable
 
 
 object SoundCapture {

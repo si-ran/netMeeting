@@ -5,7 +5,7 @@ import java.nio.ShortBuffer
 
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import org.bytedeco.javacv.{FFmpegFrameRecorder, Frame}
+import org.bytedeco.javacv.{FFmpegFrameRecorder, FFmpegFrameRecorder1, Frame}
 import org.seekloud.netMeeting.pcClient.core.CaptureManager.EncodeConfig
 import org.slf4j.LoggerFactory
 
@@ -32,7 +32,7 @@ object EncodeActor {
 
 
   def create(parent: ActorRef[CaptureManager.CaptureCommand],
-             encoder: FFmpegFrameRecorder,
+             encoder: FFmpegFrameRecorder1,
              encodeConfig: EncodeConfig,
              rtmpServer: Option[String] = None,
              file: Option[File] = None,
@@ -44,7 +44,7 @@ object EncodeActor {
     }
 
   def work(parent: ActorRef[CaptureManager.CaptureCommand],
-           encoder: FFmpegFrameRecorder,
+           encoder: FFmpegFrameRecorder1,
            encoderConfig: EncodeConfig,
            rtmpServer: Option[String] = None,
            file: Option[File] = None,

@@ -20,6 +20,7 @@ import org.seekloud.netMeeting.pcClient.scene.HomeScene.icon
 
 object LivingStage{
   trait LivingStageListener{
+    def stop()
 
   }
 }
@@ -57,7 +58,7 @@ class LivingStage extends Application{
     primaryStage.initModality(Modality.APPLICATION_MODAL)
     primaryStage.show()
     primaryStage.setOnCloseRequest{event =>
-      //todo stop living
+      listener.stop()
     }
   }
 

@@ -33,6 +33,30 @@ class PageController(context: StageContext,
     }
   })
 
+  def setListener4CreatorStage() = {
+//    log.debug("set listener 4 creator")
+    this.creatorStage.setListener(new CreatorStageListener {
+      override def createNewMeeting(meetingType: MeetingType.Value): Unit = {
+        setLivingStage(new LivingStage)
+        setListener4LivingStage()
+        getLivingStage.showStage()
+        val gc = getLivingStage.getGC()
+        log.debug("got createNewMeeting command.")
+        val inputInfo = getCreatorStage.getInput()
+        rmManager ! RmManager.StartLive(gc, inputInfo.roomId, inputInfo.userId, inputInfo.url, meetingType)
+      }
+    })
+  }
+
+  def setListener4LivingStage() = {
+    this.livingStage.setListener(new LivingStageListener {
+      override def stop(): Unit = {
+        rmManager ! RmManager.Close
+      }
+    })
+
+  }
+
   def setCreatorStage(creatorStage: CreatorStage) = {
     this.creatorStage = creatorStage
   }
@@ -47,27 +71,6 @@ class PageController(context: StageContext,
 
   def getLivingStage: LivingStage = {
     this.livingStage
-  }
-
-
-  def setListener4CreatorStage() = {
-    log.debug("set listener 4 creator")
-    this.creatorStage.setListener(new CreatorStageListener {
-      override def createNewMeeting(): Unit = {
-        setLivingStage(new LivingStage)
-        getLivingStage.showStage()
-        val gc = getLivingStage.getGC()
-        log.debug("got createNewMeeting command.")
-        rmManager ! RmManager.StartLive(gc)
-      }
-    })
-  }
-
-  def setListener4LivingStage() = {
-    this.livingStage.setListener(new LivingStageListener {
-
-    })
-
   }
 
   def showHomeScene() = {
