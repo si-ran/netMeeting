@@ -49,6 +49,8 @@ object AppSettings {
   val httpInterface = appConfig.getString("http.interface")
   val httpPort = appConfig.getInt("http.port")
 
+  val srsServerUrl = appConfig.getString("server.host")
+
   val appId = appConfig.getString("appId")
   val secureKey = appConfig.getString("secureKey")
   val rtpToHost = appConfig.getString("rtpToHost")

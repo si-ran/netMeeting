@@ -13,10 +13,8 @@ object SharedProtocol {
 
   case class NewConnect(
                          roomId: Long,
-                         host: String,
-                         client: String,
-                         pushLiveId:String,
-                         pushLiveCode:String,
+                         userIdList:List[String],
+                         pushLiveCode:String="",
                          layout: Int = 1
                        )
 

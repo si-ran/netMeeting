@@ -35,18 +35,18 @@ object GrabberActor {
 
   case object TimerKey4Close
 
-  def create(roomId: Long, liveId: String, buf: InputStream, recorderRef: ActorRef[RecorderActor.Command]): Behavior[Command]= {
+  def create(roomId: Long, liveId: String, url: String, recorderRef: ActorRef[RecorderActor.Command]): Behavior[Command]= {
     Behaviors.setup[Command]{ ctx =>
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command] {
         implicit timer =>
           log.info(s"grabberActor start----")
-          init(roomId, liveId, buf, recorderRef)
+          init(roomId, liveId, url, recorderRef)
       }
     }
   }
 
-  def init(roomId: Long, liveId: String, buf: InputStream,
+  def init(roomId: Long, liveId: String, url: String,
            recorderRef:ActorRef[RecorderActor.Command]
           )(implicit timer: TimerScheduler[Command],
             stashBuffer: StashBuffer[Command]):Behavior[Command] = {
@@ -55,7 +55,7 @@ object GrabberActor {
       msg match {
         case t: Recorder =>
           log.info(s"${ctx.self} receive a msg $t")
-          val grabber = new FFmpegFrameGrabber(buf)
+          val grabber = new FFmpegFrameGrabber(url)
           try {
             grabber.start()
           } catch {
@@ -64,7 +64,7 @@ object GrabberActor {
           }
           log.info(s"$liveId grabber start successfully")
           ctx.self ! GrabFrameFirst
-          work(roomId, liveId, grabber, t.rec, buf)//fixme 为什么要传回recorderActor不使用创建时的
+          work(roomId, liveId, grabber, t.rec, url)
 
         case StopGrabber =>
           log.info(s"grabber $liveId stopped when init")
@@ -81,7 +81,7 @@ object GrabberActor {
             liveId: String,
             grabber: FFmpegFrameGrabber,
             recorder: ActorRef[RecorderActor.Command],
-            buf: InputStream
+            url: String
           )(implicit stashBuffer: StashBuffer[Command],
             timer: TimerScheduler[Command]): Behavior[Command] = {
     Behaviors.receive[Command] {(ctx, msg) =>
@@ -144,7 +144,6 @@ object GrabberActor {
             log.info(s"${ctx.self} stop ----")
             grabber.release()
             grabber.close()
-            buf.close()
           }catch {
             case e:Exception =>
               log.error(s"${ctx.self} close error:$e")

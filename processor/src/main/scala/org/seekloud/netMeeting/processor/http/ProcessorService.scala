@@ -23,7 +23,7 @@ trait ProcessorService extends ServiceUtils{
     entity(as[Either[Error, NewConnect]]) {
       case Right(req) =>
         log.info(s"post method $NewConnect")
-        roomManager ! RoomManager.NewConnection(req.roomId, req.host, req.client, req.pushLiveId, req.pushLiveCode,req.layout)
+        roomManager ! RoomManager.NewConnection(req.roomId, req.userIdList, req.pushLiveCode,req.layout)
         complete(NewConnectRsp())
       case Left(e) =>
         complete(parseJsonError)
