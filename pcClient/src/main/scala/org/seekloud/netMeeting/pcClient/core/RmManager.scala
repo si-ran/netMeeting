@@ -151,7 +151,7 @@ object RmManager {
           log.debug(s"got msg $msg")
 //          ctx.spawn(CaptureManager.create(), "captureManager")
           //todo 如果需要在建立websocket连接后再推流
-          captureManager.foreach(_ ! CaptureManager.Ready4GrabStream("rtmp://10.1.29.247/live/test1"))
+          captureManager.foreach(_ ! CaptureManager.Ready4GrabStream("rtmp://10.1.29.247:42069/live/test1"))
           hostBehavior(gc, Some(msg.sender), captureManager)
 
         case Close =>

@@ -91,7 +91,7 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
     userBox.setSpacing(10)
 
     val urlLabel = new Label(("url:"))
-    url.setText("rtmp://10.1.29.247/live/test1")
+    url.setText("rtmp://10.1.29.247:42069/live/test1")
     val urlBox = new HBox(urlLabel, url)
     urlBox.setSpacing(10)
 

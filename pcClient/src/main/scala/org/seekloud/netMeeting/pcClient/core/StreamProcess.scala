@@ -105,7 +105,7 @@ object StreamProcess {
             grabber
           }.onComplete {
             case Success(grab) =>
-              log.debug(s"grab srat success")
+              log.debug(s"grab start success")
               ctx.self ! GrabberStartSuccess(grab)
             case Failure(ex) =>
               log.error("camera start failed")
@@ -167,7 +167,7 @@ object StreamProcess {
       msg match {
         case StartGrab =>
           ctx.self ! GrabFrame
-          val (soundThreads, imageThreads) =
+          /*val (soundThreads, imageThreads) =
             if(sdlOpt.nonEmpty){
               parent ! CaptureManager.StartStreamProcessSuccess
               val soundThread = getSoundThread(sdlOpt.get)
@@ -178,6 +178,12 @@ object StreamProcess {
             } else (null, null)
           val (soundThreadOpt, imageThreadOpt) = if(null == soundThreads) (soundThread, imageThread) else (Some(soundThreads), Some(imageThreads))
           work(parent, url, grabber, converter, needDraw, gc, encodeConfig, sdlOpt, soundThreadOpt, imageThreadOpt)
+*/
+          val soundThread = getSoundThread(sdlOpt.get)
+          soundThread.start()
+          val imageThread = getImageThread(encodeConfig.frameRate.toDouble, converter, gc, encodeConfig)
+          imageThread.start()
+          work(parent, url, grabber, converter, needDraw, gc, encodeConfig, sdlOpt, Some(soundThread), Some(imageThread))
 
 
         case GrabFrame =>
@@ -207,9 +213,9 @@ object StreamProcess {
         case msg: StartSdlSuccess =>
           parent ! CaptureManager.StartStreamProcessSuccess
           val soundThread = getSoundThread(sdlOpt.get)
-            soundThread.start()
-            val imageThread = getImageThread(encodeConfig.frameRate.toDouble, converter, gc, encodeConfig)
-            imageThread.start()
+          soundThread.start()
+          val imageThread = getImageThread(encodeConfig.frameRate.toDouble, converter, gc, encodeConfig)
+          imageThread.start()
           work(parent, url, grabber, converter, needDraw, gc, encodeConfig, Some(msg.sdl), Some(soundThread), Some(imageThread))
 
         case Close =>
@@ -243,6 +249,7 @@ object StreamProcess {
 
   def getSoundThread(sdl: SourceDataLine): Thread = new Thread(){
     override def run(): Unit = {
+      log.debug(s"get sound thread.")
       val sdlCapacity = sdl.available()
       val size = 4096
       val dataBuf = ByteBuffer.allocate(size)
@@ -279,6 +286,7 @@ object StreamProcess {
                     ): Thread = new Thread(){
 //    val canvasFrame = new CanvasFrame("file")
     override def run(): Unit = {
+      log.debug(s"get image thread.")
       val timeIntervalBase = 1000/frameRate
       var speed = 1f
       try{

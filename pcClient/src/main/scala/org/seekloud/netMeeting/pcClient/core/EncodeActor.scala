@@ -87,13 +87,13 @@ object EncodeActor {
 //          recorder.setGopSize(60)
 //          recorder.setMaxBFrames(0)
 
-          recorder.setVideoBitrate(encodeConfig.videoBitRate)
+//          recorder.setVideoBitrate(encodeConfig.videoBitRate)
           recorder.setVideoCodec(encodeConfig.videoCodec)
           recorder.setFrameRate(encodeConfig.frameRate)
           /*audio*/
           recorder.setAudioOption("crf", "0")
           recorder.setAudioQuality(0)
-          recorder.setAudioBitrate(192000)
+//          recorder.setAudioBitrate(192000)
           recorder.setSampleRate(44100)
           recorder.setAudioChannels(encodeConfig.channels)
           recorder.setAudioCodec(encodeConfig.audioCodec)

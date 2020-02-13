@@ -110,7 +110,7 @@ object ImageCapture {
           Behaviors.same
 
         case msg: GrabberStartSuccess =>
-          log.debug(s"$mediaType grabber start success.")
+          log.debug(s"$mediaType grabber start success. frameRate: ${msg.grabber.getFrameRate}")
           parent ! CaptureManager.ImageCaptureStartSuccess
           ctx.self ! GrabFrame
           captureSetting.state = true
