@@ -997,7 +997,7 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
         picture.pts(picture.pts() + 1); // magic required by libx264
 
         /* if zero size, it means the image was buffered */
-        if(ts >0)
+        if(ts <=0)
             ts+=10;
 //        System.out.println("ts:" + ts);
         if (got_video_packet[0] != 0) {
@@ -1224,6 +1224,9 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
         synchronized (oc) {
             int ret;
             if (interleaved && avStream != null) {
+                if(avPacket.pts() < avPacket.dts()){
+                    avPacket.pts(avPacket.dts());
+                }
                 if ((ret = av_interleaved_write_frame(oc, avPacket)) < 0) {
                     throw new Exception("av_interleaved_write_frame() error " + ret + " while writing interleaved " + mediaTypeStr + " packet.");
                 }
