@@ -1,87 +1,49 @@
 package org.seekloud.netMeeting.processor
 
-import org.bytedeco.ffmpeg.global.avcodec
-import org.bytedeco.javacv.OpenCVFrameConverter.ToMat
-import org.bytedeco.javacv.{FFmpegFrameGrabber, FFmpegFrameRecorder, Frame, OpenCVFrameConverter}
-import org.bytedeco.opencv.opencv_core.{Mat, Rect, Scalar, Size}
-import org.bytedeco.opencv.global.{opencv_imgproc => OpenCVProc}
-import org.bytedeco.opencv.global.{opencv_core => OpenCVCore}
+import akka.actor.typed.{ActorRef, DispatcherSelector}
+import akka.actor.{ActorSystem, Scheduler}
+import akka.dispatch.MessageDispatcher
+import akka.event.{Logging, LoggingAdapter}
+import akka.stream.ActorMaterializer
+import akka.util.Timeout
+import org.seekloud.netMeeting.processor.core.{RoomManager, StreamPullActor, StreamPushActor}
+import akka.actor.typed._
+import akka.http.scaladsl.Http
+import scaladsl.adapter._
+
+import scala.language.postfixOps
+import org.seekloud.netMeeting.processor.http.HttpService
 
 /**
-  * @user: wanruolong
-  * @date: 2020/2/4 16:22
-  *
+  * User: cq
+  * Date: 2020/1/16
   */
-object Boot {
+object Boot extends HttpService {
+  import org.seekloud.netMeeting.processor.common.AppSettings._
 
-  val urlList = List[String]("rtmp://10.1.29.247/live/liveStream1", "rtmp://10.1.29.247/live/liveStream2", "rtmp://10.1.29.247/live/liveStream3", "rtmp://10.1.29.247/live/liveStream4")
+  import concurrent.duration._
 
-  val url = "rtmp://10.1.29.247/live/combined"
+  implicit val system:ActorSystem = ActorSystem("processor",config)
+  implicit val executor:MessageDispatcher = system.dispatchers.lookup("akka.actor.my-blocking-dispatcher")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val scheduler: Scheduler = system.scheduler
+  implicit val timeout: Timeout = Timeout(20 seconds) // for actor asks
+  trait Command
 
-  var grabberList = List[FFmpegFrameGrabber]()
+  val blockingDispatcher: DispatcherSelector = DispatcherSelector.fromConfig("akka.actor.my-blocking-dispatcher")
 
-  val chatNum = 4
+  val log: LoggingAdapter = Logging(system, getClass)
 
-  var frame1: Frame = _
-  var frame2: Frame = _
-  var frame3: Frame = _
-  var frame4: Frame = _
-//  var frameList = List[Frame](frame1, frame2, frame3, frame4)
+  val roomManager:ActorRef[RoomManager.Command] = system.spawn(RoomManager.create(),"roomManager")
 
+  val streamPushActor:ActorRef[Command]=system.spawn(StreamPushActor.create(),"streamPushActor")
 
-  //图片拼接
-  var width = 640
-  var height = 360
-  val bottomSize = new Size(width, height)
-  val topSize = new Size(width/2, height/2)
-  val toMat = new ToMat()
-  val resizeMat = new Mat()
-  val canvas = new Mat(bottomSize, OpenCVCore.CV_8UC3, new Scalar(0, 0, 0, 0))
-  val converter = new OpenCVFrameConverter.ToIplImage()
-  val position = List[(Int, Int)]((0, 0), (width/2, 0), (0, height/2), (width/2, height/2))
-
-  def imgCombination( frameList: List[Frame]) = {
-    (0 until frameList.length).foreach{ i =>
-      val layMat = toMat.convert(frameList(i))
-      OpenCVProc.resize(layMat, resizeMat, topSize)
-      val layMask = new Mat(topSize, OpenCVCore.CV_8UC1, new Scalar(1d))
-      val layRoi = canvas(new Rect(position(i)._1, position(i)._2, topSize.width(), topSize.height()))
-      resizeMat.copyTo(layRoi, layMask)
-    }
-    val convertFrame = converter.convert(canvas)
-    convertFrame
-  }
+  val streamPullActor:ActorRef[Command] = system.spawn(StreamPullActor.create(), "streamPullActor")
 
   def main(args: Array[String]): Unit = {
-//    val frameQueue = new LinkedBlockingDeque[Frame](4)
 
-    (0 until chatNum).foreach{i =>
-      val grabber = new FFmpegFrameGrabber(urlList(i))
-      grabber.start()
-      grabberList = grabber::grabberList
-    }
-
-    val recorder = new FFmpegFrameRecorder(url, width, height)
-    recorder.setFrameRate(30)
-    recorder.setFormat("flv")
-    recorder.setVideoBitrate(2000000)
-    recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
-    recorder.start()
-
-    while(true) {
-      (0 until chatNum).foreach{i =>
-        val frame = grabberList(i).grab()
-        i match {
-          case 0 => frame1 = frame
-          case 1 => frame2 = frame
-          case 2 => frame3 = frame
-          case 3 => frame4 = frame
-        }
-      }
-      var frameList = List[Frame](frame1, frame2, frame3, frame4)
-//      recorder.setTimestamp(frame1.timestamp)
-      recorder.record(imgCombination(frameList))
-    }
+    Http().bindAndHandle(routes, httpInterface, httpPort)
+    log.info(s"Listen to the $httpInterface:$httpPort")
+    log.info("Done")
   }
-
 }
