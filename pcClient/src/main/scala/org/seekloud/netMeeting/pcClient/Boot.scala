@@ -49,17 +49,13 @@ object Boot {
 
 
 class Boot extends javafx.application.Application {
-
   import Boot._
 
   private[this] val log = LoggerFactory.getLogger(this.getClass)
 
   override def start(primaryStage: Stage): Unit = {
-
     val file = new File("E:\\file\\camera.png").toURI.toString
     val icon = new Image(file)
-
-
 
     primaryStage.setMinHeight(720)
     primaryStage.setMinWidth(380)
@@ -71,29 +67,7 @@ class Boot extends javafx.application.Application {
     pageController.showHomeScene()
     rmManager ! RmManager.GetPageItem(Some(pageController))
 
-    /*val emojionemozilla = Font.loadFont(getClass.getResourceAsStream("/img/seguiemj.ttf"), 12) //表情浏览器？
-//    DeviceUtil.init
-
-    val context = new StageContext(primaryStage)
-
-    val rmManager = system.spawn(RmManager.create(context), "rmManager")
-
-    val loginController = new LoginController(context, rmManager)
-    val editController = new EditController(context,rmManager,primaryStage)
-
-    val homeScene = new HomeScene()
-    val homeSceneController = new HomeController(context, homeScene, loginController, editController, rmManager)
-    rmManager ! RmManager.GetHomeItems(homeScene, homeSceneController)
-    homeSceneController.showScene()
-
-    addToPlatform {
-      homeSceneController.loginByTemp()
-    }
-*/
-
-
     primaryStage.getIcons().add(icon)
-
     primaryStage.setOnCloseRequest(event => {
       //      rmManager ! StopSelf
       log.info("OnCloseRequest...")
