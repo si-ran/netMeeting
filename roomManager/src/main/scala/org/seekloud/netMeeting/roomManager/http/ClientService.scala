@@ -55,7 +55,7 @@ trait ClientService extends ServiceUtils with SessionBase {
     }
   }
 
-  val userRoute: Route = pathPrefix("client") {
+  val clientRoute: Route = pathPrefix("client") {
     signIn
   }
 

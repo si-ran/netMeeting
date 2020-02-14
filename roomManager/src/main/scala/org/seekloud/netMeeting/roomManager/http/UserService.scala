@@ -53,22 +53,21 @@ trait UserService extends ServiceUtils with SessionBase {
     entity(as[Either[Error, SignUpReq]]) {
       case Right(value) =>
         dealFutureResult(
-          try{
-            WebDAO.addUserInfo(
-              UserInfo(
-                user_name = value.account,
-                account = value.account,
-                password = value.password,
-                create_time = System.currentTimeMillis(),
-                rtmp_url = ""
-              )
-            ).map{ _ =>
-              complete(SignUpRsp())
-            }
-          }
-          catch{
-            case e: Exception =>
+          WebDAO.getUserInfoByAccount(value.account).flatMap{
+            case Some(_) =>
               Future(complete(SignUpRsp(20001, "用户已存在")))
+            case None =>
+              WebDAO.addUserInfo(
+                UserInfo(
+                  user_name = value.account,
+                  account = value.account,
+                  password = value.password,
+                  create_time = System.currentTimeMillis(),
+                  rtmp_url = ""
+                )
+              ).map{ _ =>
+                complete(SignUpRsp())
+              }
           }
         )
       case Left(error) =>

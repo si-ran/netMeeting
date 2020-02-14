@@ -31,7 +31,8 @@ import scala.concurrent.ExecutionContextExecutor
   */
 trait HttpService extends
   ResourceService with
-  UserService {
+  UserService with
+  ClientService {
 
   implicit val system: ActorSystem
 
@@ -49,7 +50,7 @@ trait HttpService extends
         pathEndOrSingleSlash{
           getFromResource("html/index.html")
         } ~
-        resourceRoutes ~ userRoute
+        resourceRoutes ~ userRoute ~ clientRoute
       }
     }
 

@@ -59,8 +59,8 @@ object SignUpPage extends Page {
       <div class="sign-up-top">用户注册</div>
       <div class="sign-up-contain">
         <input id="account" placeholder="输入用户名"></input>
-        <input id="password" placeholder="输入密码"></input>
-        <input id="password-twice" placeholder="确认密码"></input>
+        <input type="password" id="password" placeholder="输入密码"></input>
+        <input type="password" id="password-twice" placeholder="确认密码"></input>
       </div>
       <div class="sign-up-confirm">
         <div class="button" onclick={()=>signUp()}>注册</div>
