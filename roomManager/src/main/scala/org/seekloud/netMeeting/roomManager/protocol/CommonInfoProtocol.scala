@@ -12,8 +12,18 @@ object CommonInfoProtocol {
     val msg: String
   }
 
-  case class matchInfo(
+  case class TestRsp(
+    errorCode: Int = 0,
+    msg: String = "ok"
+  ) extends CommonRsp
 
+  //------
+  case class UserInfo(
+    user_name: String,
+    account: String,
+    password: String,
+    create_time: Long,
+    rtmp_url: String
   )
 
 }

@@ -32,9 +32,14 @@ object MainPage extends PageSwitcher {
         {new TestPage(id).render}
       </div>
 
+    case "signUp" :: Nil =>
+      <div>
+        {SignUpPage.render}
+      </div>
+
     case Nil =>
       <div>
-        {new TestPage("10001").render}
+        {SignUpPage.render}
       </div>
 
     case _ => <div>TODO</div>

@@ -68,6 +68,10 @@ object AppSettings {
 
   val dependenceConfig = config.getConfig("dependence")
   val RtmpUrlHeader = dependenceConfig.getString("rtmpUrlHeader")
+
+  val processorConfig = dependenceConfig.getConfig("processor")
+  val processorIp = processorConfig.getString("ip")
+  val processorPort = processorConfig.getString("port")
   
   val sessionConfig = {
     val sConf = config.getConfig("session")
