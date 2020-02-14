@@ -38,8 +38,8 @@ class HomeStage() extends Application{
   import HomeStage._
 
   val stage = new Stage()
-  val file = new File("E:\\file\\camera.png").toURI.toString
-  val icon = new Image(file)
+//  val file = new File("E:\\file\\camera.png").toURI.toString
+  val icon = new Image("/img/camera.png")
 
   private var listener: HomeStageListener = _
 

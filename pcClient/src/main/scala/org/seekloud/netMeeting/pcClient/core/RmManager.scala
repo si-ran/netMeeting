@@ -18,8 +18,8 @@ import org.seekloud.netMeeting.pcClient.Boot
 import org.seekloud.netMeeting.pcClient.Boot.{executor, materializer, system}
 import org.seekloud.netMeeting.pcClient.common.Routes
 import org.seekloud.netMeeting.pcClient.component.WarningDialog
-import org.seekloud.netMeeting.pcClient.oldscene.PageController
-import org.seekloud.netMeeting.pcClient.oldscene.CreatorStage.MeetingType
+import org.seekloud.netMeeting.pcClient.scene.PageController
+import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.slf4j.LoggerFactory
@@ -58,9 +58,11 @@ object RmManager {
 
   final case object BackHome extends RmCommand
 
-  final case class GetPageItem(homeController: Option[PageController]) extends RmCommand
+  final case class GetPageItem(pageController: Option[PageController]) extends RmCommand
 
   final case object Close extends RmCommand
+
+  final case object ShutDown extends RmCommand
 
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
 
@@ -87,7 +89,7 @@ object RmManager {
   }
 
   def idle(
-            homeController: Option[PageController] = None
+            pageController: Option[PageController] = None
           )(
             implicit stashBuffer: StashBuffer[RmCommand],
             timer: TimerScheduler[RmCommand]
@@ -96,7 +98,7 @@ object RmManager {
       msg match {
         case msg: GetPageItem =>
 //          log.debug("got msg get page item.")
-          idle(msg.homeController)
+          idle(msg.pageController)
 
         case msg: StartLive =>
           msg.meetingType match {

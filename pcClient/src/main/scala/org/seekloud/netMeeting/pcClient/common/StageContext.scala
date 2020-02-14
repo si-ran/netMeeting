@@ -11,6 +11,20 @@ import javafx.stage.Stage
   * Time: 11:26
   */
 
+object StageContext{
+  def closeClick(stage: Stage): Boolean = {
+
+    val alert = new Alert(AlertType.CONFIRMATION)
+    val x = if (stage.getWidth > 500) (stage.getX + (stage.getWidth - 500) / 2) else stage.getX
+    alert.setX(x)
+    alert.setY(stage.getY + stage.getHeight / 3)
+    alert.setTitle("退出")
+    alert.setHeaderText("")
+    alert.setContentText("确定要退出吗")
+    val result = alert.showAndWait()
+    if (result.get() == ButtonType.OK) true else false
+  }
+}
 
 class StageContext(stage: Stage) {
 
@@ -35,22 +49,6 @@ class StageContext(stage: Stage) {
       stage.setY(0)
     }
     stage.show()
-  }
-
-  def closeClick() = {
-
-    val alert = new Alert(AlertType.CONFIRMATION)
-    val x = if(stage.getWidth > 500) (stage.getX + (stage.getWidth - 500)/2) else stage.getX
-    alert.setX(x)
-    alert.setY(stage.getY + stage.getHeight/3)
-    alert.setTitle("退出")
-    alert.setHeaderText("")
-    alert.setContentText("确定要退出吗")
-    val result = alert.showAndWait()
-    if(result.get() == ButtonType.OK){
-      println("application closing...")
-      System.exit(0)
-    }
   }
 
 }

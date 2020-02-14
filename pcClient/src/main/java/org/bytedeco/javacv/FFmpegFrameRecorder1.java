@@ -1001,18 +1001,16 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
             ts+=10;
 //        System.out.println("ts:" + ts);
         if (got_video_packet[0] != 0) {
-            if (video_pkt.pts() != AV_NOPTS_VALUE) {
-//                if(lastTs >= ts){
-//                    video_pkt.pts(av_rescale_q(video_pkt.pts(), video_c.time_base(), video_st.time_base()));
-//                }
-//                else{
+            if (video_pkt.pts() != AV_NOPTS_VALUE && video_pkt.dts() != AV_NOPTS_VALUE) {
                 video_pkt.pts(ts);
-//                }
-
-            }
-            if (video_pkt.dts() != AV_NOPTS_VALUE) {
                 video_pkt.dts(ts);
             }
+            if(video_pkt.dts() > video_pkt.pts()){
+                video_pkt.pts(video_pkt.dts());
+            }
+/*            if (video_pkt.dts() != AV_NOPTS_VALUE) {
+                video_pkt.dts(ts);
+            }*/
             video_pkt.stream_index(video_st.index());
         } else {
             return false;

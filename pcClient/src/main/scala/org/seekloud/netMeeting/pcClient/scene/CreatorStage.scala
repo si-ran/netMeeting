@@ -38,8 +38,7 @@ import CreatorStage._
 
 class CreatorStage(meetingType: MeetingType.Value) extends Application{
   val stage = new Stage()
-  val file = new File("E:\\file\\camera.png").toURI.toString
-  val icon = new Image(file)
+  val icon = new Image("/img/camera.png")
 
   var listener: CreatorStageListener = _
 

@@ -42,8 +42,8 @@ class LivingStage extends Application{
 
   override def start(primaryStage: Stage): Unit = {
     val label = new Label("living")
-    val file = new File("E:\\file\\camera.png").toURI.toString
-    val icon = new Image(file)
+    val file = new File("/img/camera.png").toURI.toString
+    val icon = new Image("/img/camera.png")
     canvas.getGraphicsContext2D.drawImage(icon,140, 0, 360, 360)
     //    val pane = new Pane(canvas)
     val gridPane = new GridPane()
