@@ -3,7 +3,6 @@ package org.seekloud.netMeeting.pcClient.utils
 
 import java.io.File
 
-import org.seekloud.netMeeting.pcClient.Boot.executor
 import org.seekloud.netMeeting.pcClient.common.Routes
 import org.slf4j.LoggerFactory
 
