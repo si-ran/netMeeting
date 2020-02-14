@@ -15,7 +15,7 @@ import akka.stream.scaladsl.Flow
 import org.slf4j.LoggerFactory
 import io.circe._
 import io.circe.syntax._
-import org.seekloud.netMeeting.protocol.ptcl.WebProtocol.SignUpReq
+import org.seekloud.netMeeting.protocol.ptcl.WebProtocol._
 import org.seekloud.netMeeting.protocol.ptcl.CommonRsp
 import org.seekloud.netMeeting.roomManager.Boot.{executor, scheduler, timeout, userManager}
 import org.seekloud.netMeeting.roomManager.common.AppSettings
@@ -25,6 +25,7 @@ import org.seekloud.netMeeting.roomManager.protocol.CommonInfoProtocol.UserInfo
 import org.seekloud.netMeeting.roomManager.utils.{ProcessorClient, SecureUtil, ServiceUtils}
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 trait UserService extends ServiceUtils with SessionBase {
   private[this] val log = LoggerFactory.getLogger(this.getClass)
@@ -52,16 +53,22 @@ trait UserService extends ServiceUtils with SessionBase {
     entity(as[Either[Error, SignUpReq]]) {
       case Right(value) =>
         dealFutureResult(
-          WebDAO.addUserInfo(
-            UserInfo(
-              user_name = value.account,
-              account = value.account,
-              password = value.password,
-              create_time = System.currentTimeMillis(),
-              rtmp_url = ""
-            )
-          ).map{ _ =>
-            complete(CommonRsp())
+          try{
+            WebDAO.addUserInfo(
+              UserInfo(
+                user_name = value.account,
+                account = value.account,
+                password = value.password,
+                create_time = System.currentTimeMillis(),
+                rtmp_url = ""
+              )
+            ).map{ _ =>
+              complete(SignUpRsp())
+            }
+          }
+          catch{
+            case e: Exception =>
+              Future(complete(SignUpRsp(20001, "用户已存在")))
           }
         )
       case Left(error) =>

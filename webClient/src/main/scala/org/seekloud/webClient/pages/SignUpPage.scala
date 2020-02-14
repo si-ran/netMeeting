@@ -14,7 +14,7 @@ import mhtml.{Rx, Var, emptyHTML}
 import org.scalajs.dom.raw.Event
 import org.seekloud.netMeeting.protocol.ptcl.WebProtocol._
 import org.seekloud.webClient.common.{Page, Routes}
-import org.seekloud.webClient.components.WebSocketClient
+import org.seekloud.webClient.components.{PopWindow, WebSocketClient}
 import org.seekloud.webClient.utils.{Http, JsFunc, TimeTool}
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 
@@ -33,12 +33,23 @@ object SignUpPage extends Page {
   private def signUp(): Unit = {
     val account = dom.document.getElementById("account").asInstanceOf[Input].value
     val password = dom.document.getElementById("password").asInstanceOf[Input].value
-    val data = SignUpReq(account, password).asJson.noSpaces
-    Http.postJsonAndParse[SignUpRsp](Routes.User.signUp, data).map{
-      case Right(value) =>
-        println(s"signup success $value")
-      case Left(error) =>
-        println(s"signup error $error")
+    val passwordConfirm = dom.document.getElementById("password-twice").asInstanceOf[Input].value
+    if(password.equals(passwordConfirm)){
+      val data = SignUpReq(account, password).asJson.noSpaces
+      Http.postJsonAndParse[SignUpRsp](Routes.User.signUp, data).map{
+        case Right(value) =>
+          if(value.errCode == 0){
+            PopWindow.commonPop(s"注册成功")
+          }
+          else if(value.errCode == 20001){
+            PopWindow.commonPop(s"用户已存在")
+          }
+        case Left(error) =>
+          PopWindow.commonPop(s"注册失败： $error")
+      }
+    }
+    else{
+      PopWindow.commonPop("两次密码不同")
     }
   }
 

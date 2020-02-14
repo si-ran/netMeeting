@@ -12,3 +12,4 @@ create table user_info (
 );
 
 alter sequence user_info_uid_seq owned by user_info.uid;
+alter table user_info drop constraint user_info_pkey;

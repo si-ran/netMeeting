@@ -20,4 +20,8 @@ object WebDAO {
     db.run(tUserInfo += rUserInfo(-1, userInfo.account, userInfo.account, userInfo.password, "", "", userInfo.create_time, userInfo.rtmp_url))
   }
 
+  def getUserInfoByAccount(account: String) ={
+    db.run(tUserInfo.filter(_.account === account).result.headOption)
+  }
+
 }
