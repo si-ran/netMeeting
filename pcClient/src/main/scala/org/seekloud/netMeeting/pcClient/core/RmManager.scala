@@ -18,8 +18,8 @@ import org.seekloud.netMeeting.pcClient.Boot
 import org.seekloud.netMeeting.pcClient.Boot.{executor, materializer, system}
 import org.seekloud.netMeeting.pcClient.common.Routes
 import org.seekloud.netMeeting.pcClient.component.WarningDialog
-import org.seekloud.netMeeting.pcClient.scene.PageController
-import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
+import org.seekloud.netMeeting.pcClient.oldscene.PageController
+import org.seekloud.netMeeting.pcClient.oldscene.CreatorStage.MeetingType
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.slf4j.LoggerFactory

@@ -20,7 +20,7 @@ import javafx.scene.text.Font
 import javafx.stage.Stage
 import org.seekloud.netMeeting.pcClient.common.StageContext
 import org.seekloud.netMeeting.pcClient.core.RmManager
-import org.seekloud.netMeeting.pcClient.scene.{PageController, HomeScene}
+import org.seekloud.netMeeting.pcClient.oldscene.{PageController, HomeScene}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
