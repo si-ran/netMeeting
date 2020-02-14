@@ -111,7 +111,8 @@ object ImageCapture {
 
         case msg: GrabberStartSuccess =>
           log.debug(s"$mediaType grabber start success. frameRate: ${msg.grabber.getFrameRate}")
-          parent ! CaptureManager.ImageCaptureStartSuccess
+          val frameRate = msg.grabber.getFrameRate
+          parent ! CaptureManager.ImageCaptureStartSuccess(frameRate)
           ctx.self ! GrabFrame
           captureSetting.state = true
           switchBehavior(ctx, "work", work(parent, mediaType, msg.grabber, encodeConfig, imageConverter, captureSetting, drawActorOpt))
@@ -177,7 +178,7 @@ object ImageCapture {
             case ex: Exception =>
               log.warn(s"release image grabber failed: $ex")
           }
-          timer.startSingleTimer(TERMINATE_KEY, Terminate, 100.millis)
+          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
           Behaviors.same
 
         case Terminate =>

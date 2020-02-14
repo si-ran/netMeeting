@@ -50,7 +50,7 @@ object CaptureManager {
   case class EncodeConfig(
                            var imgWidth: Int = 640,
                            var imgHeight: Int = 360,
-                           var frameRate: Int = 30,
+                           var frameRate: Double = 30,
                            var sampleRate: Float = 44100.0f,
                            var sampleSizeInBit: Int = 16,
                            var channels: Int = 2,
@@ -80,7 +80,7 @@ object CaptureManager {
 
 //  final case class GrabberStartSuccess(grabber: FrameGrabber, imageType: MediaType.Value) extends CaptureCommand
 
-  final case object ImageCaptureStartSuccess extends CaptureCommand
+  final case class ImageCaptureStartSuccess(frameRate: Double) extends CaptureCommand
 
   final case class SoundStartSuccess(line: TargetDataLine) extends CaptureCommand
 
@@ -217,8 +217,9 @@ object CaptureManager {
           val soundCapture = getSoundCapture(ctx, msg.line, encodeConfig.frameRate, encodeConfig.sampleRate, encodeConfig.channels, encodeConfig.sampleSizeInBit)
           idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, Some(soundCapture), recorderActorOpt, streamProcessOpt, urlFromServer)
 
-        case ImageCaptureStartSuccess =>
+        case ImageCaptureStartSuccess(frameRate) =>
           val encodeActor = getEncoderActor(ctx, url2Server, encodeConfig)
+          encodeConfig.frameRate = frameRate
           idle(url2Server, gc, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt, urlFromServer)
 
         case StartEncodeSuccess =>
@@ -319,6 +320,7 @@ object CaptureManager {
     Behaviors.receive[DrawCommand] { (ctx, msg) =>
       msg match {
         case msg: DrawImage =>
+//          log.debug(s"got msg $msg")
           val sWidth = gc.getCanvas.getWidth
           val sHeight = gc.getCanvas.getHeight
           if (needImage) {
@@ -360,7 +362,7 @@ object CaptureManager {
 
   def getSoundCapture(ctx: ActorContext[CaptureCommand],
                       line: TargetDataLine,
-                      frameRate: Int,
+                      frameRate: Double,
                       sampleRate: Float,
                       channels: Int,
                       sampleSize: Int,

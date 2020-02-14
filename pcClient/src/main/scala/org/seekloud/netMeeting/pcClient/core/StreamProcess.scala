@@ -28,6 +28,13 @@ object StreamProcess {
   private val log = LoggerFactory.getLogger(this.getClass)
 
   @volatile var timestamp: Long = 0
+  @volatile var timerIntervalBase = 0L
+  var firstFlag = false
+  var imageFirstFlag = true
+  var imageFirstTs = 0L
+  var soundFirstFlag = true
+  var soundFirstTs = 0L
+
   val imageQueue = new java.util.concurrent.LinkedBlockingDeque[Frame](500)
   val soundQueue = new java.util.concurrent.LinkedBlockingDeque[Frame](500)
 
@@ -116,7 +123,7 @@ object StreamProcess {
         case msg: GrabberStartSuccess =>
           log.debug(s"got msg $msg")
           ctx.self ! StartGrab
-          switchBehavior(ctx, "work", work(parent, url, msg.grabber, converter, needDraw, gc, encodeConfig))
+          switchBehavior(ctx, "work", work(parent, url, msg.grabber, converter, needDraw, gc, encodeConfig, sdl))
 
         case StartSdl =>
           val BIG_ENDIAN = true
@@ -167,22 +174,11 @@ object StreamProcess {
       msg match {
         case StartGrab =>
           ctx.self ! GrabFrame
-          /*val (soundThreads, imageThreads) =
-            if(sdlOpt.nonEmpty){
-              parent ! CaptureManager.StartStreamProcessSuccess
-              val soundThread = getSoundThread(sdlOpt.get)
-              soundThread.start()
-              val imageThread = getImageThread(encodeConfig.frameRate.toDouble, converter, gc, encodeConfig)
-              imageThread.start()
-              (soundThread, imageThread)
-            } else (null, null)
-          val (soundThreadOpt, imageThreadOpt) = if(null == soundThreads) (soundThread, imageThread) else (Some(soundThreads), Some(imageThreads))
-          work(parent, url, grabber, converter, needDraw, gc, encodeConfig, sdlOpt, soundThreadOpt, imageThreadOpt)
-*/
           val soundThread = getSoundThread(sdlOpt.get)
           soundThread.start()
-          val imageThread = getImageThread(encodeConfig.frameRate.toDouble, converter, gc, encodeConfig)
+          val imageThread = getImageThread(encodeConfig.frameRate, converter, gc, encodeConfig)
           imageThread.start()
+          parent ! CaptureManager.StartStreamProcessSuccess
           work(parent, url, grabber, converter, needDraw, gc, encodeConfig, sdlOpt, Some(soundThread), Some(imageThread))
 
 
@@ -191,9 +187,16 @@ object StreamProcess {
             case Success(frame) =>
               if (null != frame) {
                 if (null != frame.image) {
+//                  println(s"image: ${frame.timestamp}")
+                  imageFirstTs = if(imageFirstTs == 0) frame.timestamp else imageFirstTs
+                  if(imageFirstTs != 0 && soundFirstTs != 0){
+                    timerIntervalBase = imageFirstTs - soundFirstTs
+                  }
                   imageQueue.offer(frame.clone())
                 }
                 if(null != frame.samples) {
+//                  println(s"sound ${frame.timestamp}")
+                  soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
                   soundQueue.offer(frame.clone())
                 }
                 if(imageQueue.size() > 50 && soundQueue.size() > 50){
@@ -209,14 +212,6 @@ object StreamProcess {
               log.info(s"stop grab stream")
           }
           Behaviors.same
-
-        case msg: StartSdlSuccess =>
-          parent ! CaptureManager.StartStreamProcessSuccess
-          val soundThread = getSoundThread(sdlOpt.get)
-          soundThread.start()
-          val imageThread = getImageThread(encodeConfig.frameRate.toDouble, converter, gc, encodeConfig)
-          imageThread.start()
-          work(parent, url, grabber, converter, needDraw, gc, encodeConfig, Some(msg.sdl), Some(soundThread), Some(imageThread))
 
         case Close =>
           try {
@@ -284,32 +279,36 @@ object StreamProcess {
                       gc: GraphicsContext,
                       encodeConfig: EncodeConfig
                     ): Thread = new Thread(){
-//    val canvasFrame = new CanvasFrame("file")
     override def run(): Unit = {
-      log.debug(s"get image thread.")
-      val timeIntervalBase = 1000/frameRate
+      log.debug(s"image thread started.")
+      var lastTs = 0L
+//      val timeIntervalBase = 1000/frameRate
       var speed = 1f
       try{
         while (true){
           val frame = imageQueue.poll()
           if(null != frame && null != frame.image){
-            //          println(s"frame.timestamp - timeIntervalBase: ${frame.timestamp}   $timestamp")
-            if(frame.timestamp - timestamp > 40000)
+//            println(s"timerIntervalBase:$timerIntervalBase")
+//            println(s"frame.timestamp - timeIntervalBase: ${frame.timestamp} - $timestamp = ${frame.timestamp-timestamp}")
+            if(frame.timestamp - timestamp > 40000 + timerIntervalBase)
               speed = 1.1f
-            if(frame.timestamp - timestamp > 80000)
+            if(frame.timestamp - timestamp > 80000 + timerIntervalBase)
               speed = 1.3f
-            if(timestamp - frame.timestamp > 40000)
+            if(timestamp - frame.timestamp > 40000 + timerIntervalBase)
               speed = 0.8f
-            if(timestamp - frame.timestamp > 80000)
+            if(timestamp - frame.timestamp > 80000 + timerIntervalBase)
               speed = 0.6f
             Boot.addToPlatform {
               gc.drawImage(converter.convert(frame), 0.0, 0.0, encodeConfig.imgWidth, encodeConfig.imgHeight)
             }
-            //          canvasFrame.showImage(frame)
+            lastTs = if(lastTs == 0) (frame.timestamp - 1000000/frameRate).toLong else lastTs
+            var timeInterval = ((frame.timestamp - lastTs) * speed/1000).toLong
+            timeInterval = if(timeInterval < 0) (1000/frameRate).toLong else timeInterval
+            lastTs = frame.timestamp
+//            println(s"sleep: $timeInterval")
+            //        println(timeInterval)
+            Thread.sleep(timeInterval)
           }
-          val timeInterval = (timeIntervalBase * speed).toLong
-          //        println(timeInterval)
-          Thread.sleep(timeInterval)
         }
       } catch {
         case e: InterruptedException =>

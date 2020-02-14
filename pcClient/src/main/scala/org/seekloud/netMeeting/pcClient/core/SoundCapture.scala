@@ -34,7 +34,7 @@ object SoundCapture {
 
 
   def create(line: TargetDataLine,
-             frameRate: Int,
+             frameRate: Double,
              sampleRate: Float,
              channels: Int,
              sampleSize: Int,
@@ -49,7 +49,7 @@ object SoundCapture {
 
 
   private def working(line: TargetDataLine,
-                      frameRate: Int,
+                      frameRate: Double,
                       sampleRate: Float,
                       channels: Int,
                       sampleSize: Int,

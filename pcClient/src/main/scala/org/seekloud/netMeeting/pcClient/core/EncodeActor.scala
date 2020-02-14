@@ -30,7 +30,7 @@ object EncodeActor {
 
   final case object StartEncode extends Command
 
-  final case class StartEncodeSuccess(recorder: FFmpegFrameRecorder) extends Command
+  final case class StartEncodeSuccess(recorder: FFmpegFrameRecorder1) extends Command
 
   final case class SendFrame(frame:Frame) extends Command
 
@@ -78,7 +78,7 @@ object EncodeActor {
       msg match {
         case StartEncode =>
           log.debug(s"push stream to $url")
-          val recorder = new FFmpegFrameRecorder(url, encodeConfig.imgWidth, encodeConfig.imgHeight, encodeConfig.channels)
+          val recorder = new FFmpegFrameRecorder1(url, encodeConfig.imgWidth, encodeConfig.imgHeight, encodeConfig.channels)
           recorder.setVideoOption("tune", "zerolatency")
           recorder.setVideoOption("preset", "ultrafast")
           recorder.setVideoOption("crf", "23")
@@ -135,7 +135,7 @@ object EncodeActor {
   def work(
             parent: ActorRef[CaptureManager.CaptureCommand],
             url: String,
-            encoder: FFmpegFrameRecorder,
+            encoder: FFmpegFrameRecorder1,
             encodeConfig: EncodeConfig,
           )(
             implicit timer: TimerScheduler[Command]

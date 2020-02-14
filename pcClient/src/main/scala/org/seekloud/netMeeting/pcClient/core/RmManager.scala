@@ -62,7 +62,9 @@ object RmManager {
 
   final case object Close extends RmCommand
 
-//host
+  private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
+
+  //host
   final case class HostWsEstablish(roomId: Long, userId: Long, pushUrl: String) extends RmCommand
 
   private[this] def switchBehavior(
@@ -281,8 +283,19 @@ object RmManager {
       case x =>
         log.info(s"rev unknown msg $x")
     }
-
   }
 
-
+  def getCaptureManager(
+                       ctx: ActorContext[RmCommand],
+                       url: String,
+                       gc: GraphicsContext
+                       ): ActorRef[CaptureManager.CaptureCommand] = {
+    val childName = "captureManager"
+    ctx.child(childName).getOrElse{
+      log.debug("new Capture Manager.")
+      val actor = ctx.spawn(CaptureManager.create(ctx.self, url, gc), childName)
+      ctx.watchWith(actor, ChildDead(childName, actor))
+      actor
+    }.unsafeUpcast[CaptureManager.CaptureCommand]
+  }
 }
