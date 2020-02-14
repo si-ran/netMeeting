@@ -1227,7 +1227,7 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
                 if(avPacket.pts() < avPacket.dts()){
                     avPacket.pts(avPacket.dts());
                 }
-                System.out.println("dts: " + avPacket.dts() + "==pts: " + avPacket.pts());
+//                System.out.println("dts: " + avPacket.dts() + "==pts: " + avPacket.pts());
                 if ((ret = av_interleaved_write_frame(oc, avPacket)) < 0) {
                     throw new Exception("av_interleaved_write_frame() error " + ret + " while writing interleaved " + mediaTypeStr + " packet.");
                 }
