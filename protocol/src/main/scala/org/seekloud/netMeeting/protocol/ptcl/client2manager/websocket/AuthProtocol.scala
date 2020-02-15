@@ -62,6 +62,17 @@ object AuthProtocol {
 
   case object NoAuthor extends WsMsgRm
 
+  /**
+    *
+    * client
+    *
+    **/
+  /*client发送*/
+  sealed trait WsMsgAudience extends WsMsgClient
+
+  /*room manager发送*/
+  sealed trait WsMsgRm2Audience extends WsMsgRm
+
 
   //由于没有鉴权，故可以直接推流到srs，推流后给后台发送创建房间的请求
   case class EstablishMeeting(
@@ -70,29 +81,43 @@ object AuthProtocol {
                                userId: Long
                              ) extends WsMsgHost
 
-  //TODO 踢出会议室
+  //申请加入会议
+  case class JoinReq(
+                      userId: Long,
+                      roomId: Long,
+                    ) extends WsMsgRm2Host with WsMsgAudience
+
+  case class JoinRsp(
+                      roomInfo: RoomInfo,
+                      errCode: Int = 0,
+                      acceptance: Boolean,
+                      msg: String = "ok"
+                    ) extends WsMsgHost with WsMsgRm2Audience
+
+
+  //踢出会议室
   case class KickOut(
                       roomId: Long,
                       userId: Long
-                    ) extends WsMsgHost
+                    ) extends WsMsgHost with WsMsgRm2Audience
 
   //TODO
   case class GiveHost2(
                         roomId: Long,
                         userId: Long
-                      ) extends WsMsgHost
+                      ) extends WsMsgHost with WsMsgRm2Audience
 
   //TODO 指定sb说话
   case class GiveMicrophone2(
                               roomId: Long,
                               userId: Long
-                            ) extends WsMsgHost
+                            ) extends WsMsgHost with WsMsgRm2Audience
 
   //TODO 邀请用户加入会议
   case class InviteReq(
                        roomId: Long,
                        userId: Long
-                     ) extends WsMsgHost
+                     ) extends WsMsgHost with WsMsgRm2Audience
 
   //TODO 控制用户的声音或画面
   case class MediaControl(
@@ -117,57 +142,20 @@ object AuthProtocol {
                              msg: String = "ok"
                            ) extends WsMsgRm2Host
 
-//  case class InviteRsp(
-//                      roomInfo: RoomInfo,
-//
-//                      ) extends WsMsgRm2Host
-
-  //TODO 向主持人发送申请说话的请求
-  case class SpeakReq4Host(
+  /**
+    * 申请说话
+    * */
+  case class SpeakReq(
                      roomId: Long,
                      userId: Long
-                     ) extends WsMsgRm2Host
-
-  /**
-    *
-    * 观众端
-    *
-    **/
-
-
-  /*client发送*/
-  sealed trait WsMsgAudience extends WsMsgClient
-
-  /*room manager发送*/
-  sealed trait WsMsgRm2Audience extends WsMsgRm
-
-
-  //申请加入会议
-  case class JoinReq(
-                      userId: Long,
-                      roomId: Long,
-                    ) extends WsMsgAudience
-
-
-  case class JoinRsp(
-                      roomInfo: RoomInfo,
-                      acceptance: Boolean,
-                      errCode: Int = 0,
-                      msg: String = "ok"
-                    ) extends WsMsgRm2Audience
-
-  //
-  case class SpeakReq(
-                     userId: Long,
-                     roomId: Long
-                     ) extends WsMsgAudience
+                     ) extends WsMsgRm2Host with WsMsgAudience
 
   case class SpeakRsp(
-                     userId: Long,
-                     roomId: Long,
-                     acceptance: Boolean,
-                     errCode: Int = 0,
-                     msg: String = "ok"
-                     ) extends WsMsgRm2Audience
+                       roomId: Long,
+                       userId: Long,  //申请人id
+                       acceptance: Boolean,
+                       errCode: Int = 0,
+                       msg: String = "ok"
+                     ) extends WsMsgHost with WsMsgRm2Audience
 }
 
