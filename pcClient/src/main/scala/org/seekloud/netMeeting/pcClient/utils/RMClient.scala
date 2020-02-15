@@ -1,9 +1,9 @@
-/*
 package org.seekloud.netMeeting.pcClient.utils
 
 import java.io.File
 
 import org.seekloud.netMeeting.pcClient.common.Routes
+import org.seekloud.netMeeting.pcClient.Boot.executor
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -13,16 +13,23 @@ import scala.concurrent.Future
   * User: Arrow
   * Date: 2019/7/16
   * Time: 11:33
-  */
+  * */
 object RMClient extends HttpUtil {
 
   import io.circe.generic.auto._
   import io.circe.parser.decode
+  import io.circe.syntax._
+
+  case class SignIn(username: String, password: String)
+
+  case class SignInByMail(email: String, password: String)
+
+  case class SignInRsp()
 
 
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  //注册
+  /*//注册
   def signUp(email: String, username: String, pwd: String): Future[Either[Throwable, SignUpRsp]] = {
 
     val methodName = "signUp"
@@ -38,7 +45,7 @@ object RMClient extends HttpUtil {
         Left(error)
     }
   }
-
+*/
   //用户名登录
   def signIn(userName: String, pwd: String): Future[Either[Throwable, SignInRsp]] = {
 
@@ -54,7 +61,6 @@ object RMClient extends HttpUtil {
         log.debug(s"signIn by userName error: $error")
         Left(error)
     }
-
   }
 
   //邮箱登录
@@ -75,7 +81,7 @@ object RMClient extends HttpUtil {
 
   }
 
-  def getTemporaryUser: Future[Either[Throwable, GetTemporaryUserRsp]] = {
+ /* def getTemporaryUser: Future[Either[Throwable, GetTemporaryUserRsp]] = {
 
     val methodName = "getTemporaryUser"
     val url = Routes.temporaryUser
@@ -280,7 +286,7 @@ object RMClient extends HttpUtil {
         Left(error)
     }
   }
-
+*/
 
 }
-*/
+

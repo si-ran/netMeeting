@@ -69,6 +69,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import static org.bytedeco.ffmpeg.global.avcodec.*;
 import static org.bytedeco.ffmpeg.global.avdevice.avdevice_register_all;
@@ -85,7 +86,7 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
     public static FFmpegFrameRecorder createDefault(File f, int w, int h)   throws Exception { return new FFmpegFrameRecorder(f, w, h); }
     public static FFmpegFrameRecorder createDefault(String f, int w, int h) throws Exception { return new FFmpegFrameRecorder(f, w, h); }
     private long ts = 0;
-    private long lastTs = 0;
+    private long lastTs = -100;
 
     private static Exception loadingException = null;
     public static void tryLoad() throws Exception {
@@ -1228,9 +1229,13 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
                     avPacket.pts(avPacket.dts());
                 }
 //                System.out.println("dts: " + avPacket.dts() + "==pts: " + avPacket.pts());
-                if ((ret = av_interleaved_write_frame(oc, avPacket)) < 0) {
-                    throw new Exception("av_interleaved_write_frame() error " + ret + " while writing interleaved " + mediaTypeStr + " packet.");
+                if(avPacket.pts() > lastTs){
+                    lastTs = avPacket.pts();
+                    if ((ret = av_interleaved_write_frame(oc, avPacket)) < 0) {
+                        throw new Exception("av_interleaved_write_frame() error " + ret + " while writing interleaved " + mediaTypeStr + " packet.");
+                    }
                 }
+
             } else {
                 System.out.println("av_write_frame:" + mediaTypeStr);
                 if ((ret = av_write_frame(oc, avPacket)) < 0) {
