@@ -41,6 +41,7 @@ object TestPullAndPush {
   val FilePath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/trailer.mkv"
   val OutPath1 = "rtmp://10.1.29.247:42069/live/10001"
   val OutPath2 = "rtmp://10.1.29.247:42069/live/10002"
+  val OutPath3 = "rtmp://10.1.29.247:42069/live/10003"
   val FileOutPath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
   var audioChannels = 2 //todo 待议
   var frameRate = 30
@@ -166,8 +167,9 @@ object TestPullAndPush {
     try{
       threadPool.execute(new PushPipeThread(FilePath,OutPath1))
       threadPool.execute(new PushPipeThread(FilePath,OutPath2))
+      threadPool.execute(new PushPipeThread(FilePath,OutPath3))
       Thread.sleep(3000)
-      newConnect(10001,List("10003","10001","10002"),"",1)
+      newConnect(10001,List("10004","10001","10002","10003"),"",1)
 //      threadPool.execute(new PullPipeThread())
     }finally {
       threadPool.shutdown()

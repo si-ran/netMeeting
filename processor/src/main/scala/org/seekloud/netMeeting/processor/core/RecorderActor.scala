@@ -16,6 +16,8 @@ import scala.concurrent.duration._
 import org.seekloud.netMeeting.processor.Boot.roomManager
 import org.seekloud.netMeeting.processor.test.TestPullAndPush.FileOutPath
 
+import scala.collection.mutable.ListBuffer
+
 
 /**
   * User: cq
@@ -111,7 +113,8 @@ object RecorderActor {
           if (ffFilter != null) {
             ffFilter.close()
           }
-          val ffFilterN = new FFmpegFrameFilter("[0:a][1:a] amix=inputs=2:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
+
+          val ffFilterN = new FFmpegFrameFilter(s"[0:a][1:a][2:a] amix=inputs=3:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
           ffFilterN.setAudioChannels(audioChannels)
           ffFilterN.setSampleFormat(sampleFormat)
           ffFilterN.setAudioInputs(userIdList.size-1)
@@ -130,7 +133,6 @@ object RecorderActor {
             init(roomId, userIdList, layout, recorder4ts, ffFilter, drawer,  ts4User, tsDiffer,  (640,  480))
 
         case NewFrame(userId, frame) =>
-          log.info("first")
           if(userId == userIdList(0)){  //todo 自己的画面暂时不做显示
             log.info("in self frame")
             Behaviors.same
@@ -191,18 +193,6 @@ object RecorderActor {
               case ex: Exception =>
                 log.debug(s"$liveId record sample error system: $ex")
             }
-
-//              if (liveId == host) {
-//                ffFilter.pushSamples(0, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
-//              } else if (liveId == client) {
-//                ffFilter.pushSamples(1, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
-//              } else {
-//                log.info(s"wrong liveId, couple got wrong audio")
-//              }
-//              val f = ffFilter.pullSamples().clone()
-//              if (f != null) {
-//                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
-//              }
           }
           Behaviors.same
 
@@ -248,71 +238,42 @@ object RecorderActor {
           val time = t.frame.timestamp
           var index = 0
           val size = frameList.length
+          val layout_x_y= createLayoutNum(size)
+          val width = canvasSize._1/layout_x_y(1)
+          val height = canvasSize._2/layout_x_y(0)
           convertList.map{
             convert =>
               if(frameList(index).liveId == t.liveId){
                 frameList(index).frame = t.frame
               }
               val img = convert.convert(frameList(index).frame)
-              graph.drawImage(img, index*canvasSize._1/size, index*canvasSize._2/size, canvasSize._1/size,canvasSize._2/size,null)
-              graph.drawString(s"用户${index+1}",index*canvasSize._1/size+50,index*canvasSize._2/size+50)
+              graph.drawImage(img, index%layout_x_y(1)*width, index/layout_x_y(1)*height, width,height,null)
+              graph.drawString(s"用户${index+1}",index%layout_x_y(1)*width+50,index/layout_x_y(1)*height+50)
               index+=1
           }
-//        case t: Image4Host =>
-//          val time = t.frame.timestamp
-//          val img = convert1.convert(t.frame)
-//          val clientImg = convert2.convert(clientFrame.frame)
-//          //          graph.clearRect(0, 0, canvasSize._1, canvasSize._2)
-//          layout match {
-//            case 0 =>
-//              graph.drawImage(img, 0, canvasSize._2 / 4, canvasSize._1 / 2, canvasSize._2 / 2, null)
-//              graph.drawString("主播", 24, 24)
-//              graph.drawImage(clientImg, canvasSize._1 / 2, canvasSize._2 / 4, canvasSize._1 / 2, canvasSize._2 / 2, null)
-//              graph.drawString("观众", 344, 24)
-//
-//            case 1 =>
-//              graph.drawImage(img, 0, 0, canvasSize._1, canvasSize._2, null)
-//              graph.drawString("主播", 24, 24)
-//              graph.drawImage(clientImg, canvasSize._1 / 4 * 3, 0, canvasSize._1 / 4, canvasSize._2 / 4, null)
-//              graph.drawString("观众", 584, 24)
-//
-//            case 2 =>
-//              graph.drawImage(clientImg, 0, 0, canvasSize._1, canvasSize._2, null)
-//              graph.drawString("观众", 24, 24)
-//              graph.drawImage(img, canvasSize._1 / 4 * 3, 0, canvasSize._1 / 4, canvasSize._2 / 4, null)
-//              graph.drawString("主播", 584, 24)
-//
-//          }
-          //          if (addTs) {
-          //            val serverTime = ChannelWorker.pullClient.getServerTimestamp()
-          //             val ts = TimeUtil.format(serverTime)
-          //             graph.drawString(ts, canvasSize._1 - 200, 40)
-          //          }
           val frame = convert.convert(canvas)
 //          println(frame)
           recorder4ts.record(frame.clone())
 //          log.info("recorded")
           //            lastTime.time = time
           Behaviors.same
-
-//        case t: Image4Client =>
-//          clientFrame.frame = t.frame
-//          Behaviors.same
-
-//        case m@NewRecord4Ts(recorder4ts) =>
-//          log.info(s"got msg: $m")
-//          draw(canvas, graph, lastTime, clientFrame, recorder4ts, convert1, convert2,convert, layout, bgImg, roomId, canvasSize)
-//
-//        case Close =>
-//          log.info(s"drawer stopped")
-//          recorder4ts.releaseUnsafe()
-//          Behaviors.stopped
-//
-//        case t: SetLayout =>
-//          log.info(s"got msg: $t")
-//          draw(canvas, graph, lastTime, clientFrame, recorder4ts, convert1, convert2,convert, t.layout, bgImg, roomId, canvasSize)
       }
     }
+  }
+
+  def createLayoutNum(size:Int) ={
+    val listbuffer =ListBuffer[Int](1,size)
+    var min = Math.abs(size - 1)
+    for(i<- 1 until size){
+      for(j<- 1 until size){
+        if (i*j == size && Math.abs(i-j) < min){
+          listbuffer(0) = i
+          listbuffer(1) = j
+          min = Math.abs(i-j)
+        }
+      }
+    }
+    listbuffer.toList
   }
 
 }
