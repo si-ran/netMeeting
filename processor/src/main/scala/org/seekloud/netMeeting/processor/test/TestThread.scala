@@ -52,9 +52,9 @@ object TestThread extends HttpUtil{
 
   }
 
-  def newConnect(roomId:Long,host:String,client:String,pushLiveId:String,liveCode:String,layout:Int):Future[Either[String,NewConnectRsp]] = {
+  def newConnect(roomId:Long,userIdList:List[String],liveCode:String,layout:Int):Future[Either[String,NewConnectRsp]] = {
     val url = processorBaseUrl + "/newConnect"
-    val jsonString = NewConnect(roomId,host,client,pushLiveId,liveCode, layout).asJson.noSpaces
+    val jsonString = NewConnect(roomId,userIdList,liveCode, layout).asJson.noSpaces
     postJsonRequestSend("post",url,List(),jsonString,timeOut = 60 * 1000,needLogRsp = false).map{
       case Right(v) =>
         decode[NewConnectRsp](v) match {
@@ -92,18 +92,20 @@ object TestThread extends HttpUtil{
     println(buf)
 
     try{
-      var ssrc4Host = 0
-      var ssrc4Client = 1
-      var ssrc4Push = 2
-      for(i <- 1000 until 1000+1){
-        ssrc4Client += 1
-        ssrc4Host += 1
-        ssrc4Push += 1
-        newConnect(i.toLong,s"$ssrc4Host",s"$ssrc4Client",s"$ssrc4Push","",1)
+
+      newConnect(1001,List("1003","1001","1002"),"",1)
+//      var ssrc4Host = 0
+//      var ssrc4Client = 1
+//      var ssrc4Push = 2
+//      for(i <- 1000 until 1000+1){
+//        ssrc4Client += 1
+//        ssrc4Host += 1
+//        ssrc4Push += 1
+//        newConnect(i.toLong,s"$ssrc4Host",s"$ssrc4Client",s"$ssrc4Push","",1)
         Thread.sleep(3000)
-        threadPool.execute(new ThreadTest(ssrc4Host,source1))
-        threadPool.execute(new ThreadTest(ssrc4Client,source2))
-      }
+//        threadPool.execute(new ThreadTest(ssrc4Host,source1))
+//        threadPool.execute(new ThreadTest(ssrc4Client,source2))
+//      }
     }finally {
       threadPool.shutdown()
     }

@@ -2,7 +2,7 @@ package org.seekloud.netMeeting.processor.core
 
 import java.awt.Graphics
 import java.awt.image.BufferedImage
-import java.io.OutputStream
+import java.io.{File, FileOutputStream, OutputStream}
 import java.nio.ShortBuffer
 
 import akka.actor.typed.{ActorRef, Behavior}
@@ -11,8 +11,10 @@ import org.bytedeco.ffmpeg.global.{avcodec, avutil}
 import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, Frame, Java2DFrameConverter}
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.processor.common.AppSettings._
+
 import scala.concurrent.duration._
 import org.seekloud.netMeeting.processor.Boot.roomManager
+import org.seekloud.netMeeting.processor.test.TestPullAndPush.FileOutPath
 
 
 /**
@@ -58,7 +60,7 @@ object RecorderActor {
 
   case class Ts4User(var time: Long = 0)
 
-  case class Image(val liveId:Long,var frame: Frame = null)
+  case class Image(val liveId:String,var frame: Frame = null)
 
   case class Ts4LastImage(var time: Long = -1)
 
@@ -75,6 +77,8 @@ object RecorderActor {
           log.info(s"recorderActor start----")
           avutil.av_log_set_level(-8)
           val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
+//          val outputStream = new FileOutputStream(new File(FileOutPath))
+//          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
           recorder4ts.setFrameRate(frameRate)
           recorder4ts.setVideoBitrate(bitRate)
           recorder4ts.setVideoCodec(avcodec.AV_CODEC_ID_H264)
@@ -110,32 +114,30 @@ object RecorderActor {
           val ffFilterN = new FFmpegFrameFilter("[0:a][1:a] amix=inputs=2:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
           ffFilterN.setAudioChannels(audioChannels)
           ffFilterN.setSampleFormat(sampleFormat)
-          ffFilterN.setAudioInputs(2)
+          ffFilterN.setAudioInputs(userIdList.size-1)
           ffFilterN.start()
           init(roomId, userIdList, layout, recorder4ts, ffFilterN, drawer, ts4User, tsDiffer, canvasSize)
 
-//        case UpdateRecorder(channel, sampleRate, f, width, height, liveId) =>
-//          if(liveId == host) {
-//            log.info(s"$roomId updateRecorder channel:$channel, sampleRate:$sampleRate, frameRate:$f, width:$width, height:$height")
-//            recorder4ts.setFrameRate(f)
-//            recorder4ts.setAudioChannels(channel)
-//            recorder4ts.setSampleRate(sampleRate)
-//            ffFilter.setAudioChannels(channel)
-//            ffFilter.setSampleRate(sampleRate)
-//            recorder4ts.setImageWidth(width)
-//            recorder4ts.setImageHeight(height)
-//            single(roomId,  host, client, layout, recorder4ts, ffFilter, drawer, ts4Host, ts4Client, out, tsDiffer,  (640,  480))
-//          }else{
-//            Behaviors.same
-//          }
+        case UpdateRecorder(channel, sampleRate, f, width, height, liveId) =>
+            log.info(s"$roomId updateRecorder channel:$channel, sampleRate:$sampleRate, frameRate:$f, width:$width, height:$height")
+            recorder4ts.setFrameRate(f)
+            recorder4ts.setAudioChannels(channel)
+            recorder4ts.setSampleRate(sampleRate)
+            ffFilter.setAudioChannels(channel)
+            ffFilter.setSampleRate(sampleRate)
+            recorder4ts.setImageWidth(width)
+            recorder4ts.setImageHeight(height)
+            init(roomId, userIdList, layout, recorder4ts, ffFilter, drawer,  ts4User, tsDiffer,  (640,  480))
 
         case NewFrame(userId, frame) =>
+          log.info("first")
           if(userId == userIdList(0)){  //todo 自己的画面暂时不做显示
+            log.info("in self frame")
             Behaviors.same
           }else{
             val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
-            val convertList = userIdList.map(id=>new Java2DFrameConverter).drop(0)
-            val frameList = userIdList.map(id => Image(id.toLong)).drop(0)
+            val convertList = userIdList.drop(1).map(id=>new Java2DFrameConverter)
+            val frameList = userIdList.drop(1).map(id => Image(id))
             val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameList, recorder4ts,
               convertList, new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 480)), s"drawer_$roomId")
             ctx.self ! NewFrame(userId, frame)
@@ -173,17 +175,23 @@ object RecorderActor {
         case NewFrame(liveId, frame) =>
           if (frame.image != null) {
             drawer ! Image4Mix(liveId,frame)
-//            if (liveId != userIdList(0)) {
-//              drawer ! NewFrame(liveId, frame)
-//            } else if (liveId == client) {
-//              drawer ! Image4Client(frame)
-//            } else {
-//              log.info(s"wrong, liveId, work got wrong img")
-//            }
           }
           if (frame.samples != null) {
-            //todo 对声音的处理
-//            try {
+            try {
+              for(i <- 1 until userIdList.length){
+                if(userIdList(i) == liveId){
+                  ffFilter.pushSamples(i-1, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
+                }
+              }
+              val f = ffFilter.pullSamples().clone()
+              if(f!=null){
+                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
+              }
+            } catch {
+              case ex: Exception =>
+                log.debug(s"$liveId record sample error system: $ex")
+            }
+
 //              if (liveId == host) {
 //                ffFilter.pushSamples(0, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
 //              } else if (liveId == client) {
@@ -195,10 +203,6 @@ object RecorderActor {
 //              if (f != null) {
 //                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
 //              }
-//            } catch {
-//              case ex: Exception =>
-//                log.debug(s"$liveId record sample error system: $ex")
-//            }
           }
           Behaviors.same
 
@@ -240,6 +244,7 @@ object RecorderActor {
     Behaviors.setup[VideoCommand] { ctx =>
       Behaviors.receiveMessage[VideoCommand] {
         case t:Image4Mix =>
+//          log.info("get message Image4Mix")
           val time = t.frame.timestamp
           var index = 0
           val size = frameList.length
@@ -250,7 +255,7 @@ object RecorderActor {
               }
               val img = convert.convert(frameList(index).frame)
               graph.drawImage(img, index*canvasSize._1/size, index*canvasSize._2/size, canvasSize._1/size,canvasSize._2/size,null)
-              graph.drawString(s"用户$index",index*canvasSize._1/size,index*canvasSize._2/size)
+              graph.drawString(s"用户${index+1}",index*canvasSize._1/size+50,index*canvasSize._2/size+50)
               index+=1
           }
 //        case t: Image4Host =>
@@ -284,7 +289,9 @@ object RecorderActor {
           //             graph.drawString(ts, canvasSize._1 - 200, 40)
           //          }
           val frame = convert.convert(canvas)
+//          println(frame)
           recorder4ts.record(frame.clone())
+//          log.info("recorded")
           //            lastTime.time = time
           Behaviors.same
 
