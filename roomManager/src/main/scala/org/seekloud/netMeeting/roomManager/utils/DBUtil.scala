@@ -18,8 +18,8 @@ package org.seekloud.netMeeting.roomManager.utils
 
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
-import slick.jdbc.H2Profile.api._
-//import slick.jdbc.PostgresProfile.api._
+//import slick.jdbc.H2Profile.api._
+import slick.jdbc.PostgresProfile.api._
 
 /**
  * User: Taoz
@@ -34,14 +34,15 @@ object DBUtil {
 
   private def createDataSource() = {
 
-    val dataSource = new org.h2.jdbcx.JdbcDataSource
+//    val dataSource = new org.h2.jdbcx.JdbcDataSource
+    val dataSource = new org.postgresql.ds.PGSimpleDataSource()
 
     //val dataSource = new MysqlDataSource()
 
     log.info(s"connect to db: $slickUrl")
-    dataSource.setUrl(slickUrl)
-    dataSource.setUser(slickUser)
-    dataSource.setPassword(slickPassword)
+    dataSource.setUrl("jdbc:postgresql://10.1.29.248:5432/netmeeting")
+    dataSource.setUser("bubble")
+    dataSource.setPassword("bubble1qaz@WSX")
 
     val hikariDS = new HikariDataSource()
     hikariDS.setDataSource(dataSource)

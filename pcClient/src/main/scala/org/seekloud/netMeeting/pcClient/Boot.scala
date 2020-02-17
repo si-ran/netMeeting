@@ -16,19 +16,18 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import javafx.application.Platform
 import javafx.scene.image.Image
-import javafx.scene.text.Font
 import javafx.stage.Stage
-import org.seekloud.netMeeting.pcClient.common.StageContext
 import org.seekloud.netMeeting.pcClient.core.RmManager
-import org.seekloud.netMeeting.pcClient.scene.{PageController, HomeScene}
+import org.seekloud.netMeeting.pcClient.scene.{LoginScene, PageController}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
+//import scala.language.postfixOps
 
 object Boot {
 
   import org.seekloud.netMeeting.pcClient.common.AppSettings._
+  private[this] val log = LoggerFactory.getLogger(this.getClass)
 
   implicit val system: ActorSystem = ActorSystem("netMeeting", config)
   implicit val executor: MessageDispatcher = system.dispatchers.lookup("akka.actor.my-blocking-dispatcher")
@@ -40,68 +39,33 @@ object Boot {
 
   //  val netImageProcessor: ActorRef[NetImageProcessor.Command] = system.spawn(NetImageProcessor.create(), "netImageProcessor")
 
-
   def addToPlatform(fun: => Unit): Unit = {
     Platform.runLater(() => fun)
   }
 
 }
 
-
 class Boot extends javafx.application.Application {
-
   import Boot._
 
-  private[this] val log = LoggerFactory.getLogger(this.getClass)
-
   override def start(primaryStage: Stage): Unit = {
-
-    val file = new File("E:\\file\\camera.png").toURI.toString
-    val icon = new Image(file)
-
-
-
-    primaryStage.setMinHeight(720)
-    primaryStage.setMinWidth(380)
-
+    val icon = new Image("/img/camera.png")
     val rmManager = system.spawn(RmManager.create(), "rmManager")
-    val homeScene = new HomeScene()
-    val context = new StageContext(primaryStage)
-    val pageController = new PageController(context, homeScene, rmManager)
-    pageController.showHomeScene()
+
+    val loginScene = new LoginScene(primaryStage)
+    val pageController = new PageController(loginScene, rmManager)
     rmManager ! RmManager.GetPageItem(Some(pageController))
 
-    /*val emojionemozilla = Font.loadFont(getClass.getResourceAsStream("/img/seguiemj.ttf"), 12) //表情浏览器？
-//    DeviceUtil.init
-
-    val context = new StageContext(primaryStage)
-
-    val rmManager = system.spawn(RmManager.create(context), "rmManager")
-
-    val loginController = new LoginController(context, rmManager)
-    val editController = new EditController(context,rmManager,primaryStage)
-
-    val homeScene = new HomeScene()
-    val homeSceneController = new HomeController(context, homeScene, loginController, editController, rmManager)
-    rmManager ! RmManager.GetHomeItems(homeScene, homeSceneController)
-    homeSceneController.showScene()
-
-    addToPlatform {
-      homeSceneController.loginByTemp()
-    }
-*/
-
-
+    val scene = loginScene.getScene
+    primaryStage.setAlwaysOnTop(true)
+    primaryStage.setResizable(false)
+    primaryStage.setScene(scene)
     primaryStage.getIcons().add(icon)
-
-    primaryStage.setOnCloseRequest(event => {
-      //      rmManager ! StopSelf
-      log.info("OnCloseRequest...")
-      event.consume()
-      context.closeClick()
-    })
-
+    primaryStage.show()
+    primaryStage.setOnCloseRequest{event =>
+      println("closing...")
+      System.exit(0)
+    }
   }
-
 }
 

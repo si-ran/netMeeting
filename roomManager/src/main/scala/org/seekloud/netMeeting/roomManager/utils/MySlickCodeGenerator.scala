@@ -31,13 +31,15 @@ object MySlickCodeGenerator {
 
   import concurrent.ExecutionContext.Implicits.global
 
-  val slickDriver = "slick.jdbc.H2Profile"
-  val jdbcDriver = "org.h2.Driver"
-  val url = "jdbc:h2:file:D:/project/bubble/DATA/bubble"
+  val slickDriver = "slick.jdbc.PostgresProfile"
+  val jdbcDriver = "org.postgresql.Driver"
+//  val slickDriver = "slick.jdbc.H2Profile"
+//  val jdbcDriver = "org.h2.Driver"
+  val url = "jdbc:postgresql://10.1.29.248:5432/netmeeting"
   val outputFolder = "target/gencode/genTablesPsql"
-  val pkg = "org.seekloud.bubble.models"
+  val pkg = "org.seekloud.netMeeting.models"
   val user = "bubble"
-  val password = "bubble"
+  val password = "bubble1qaz@WSX"
 
 
   //val dbDriver = MySQLDriver

@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import org.slf4j.LoggerFactory
-import org.seekloud.netMeeting.protocol.ptcl.ChatEvent._
+import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
@@ -120,7 +120,7 @@ object UserManager {
     Flow[Message].map{
       case BinaryMessage.Strict(bm) =>
         val buffer = new MiddleBufferInJvm(bm.asByteBuffer)
-        bytesDecode[MeetingClientEvent](buffer) match {
+        bytesDecode[WsMsgClient](buffer) match {
           case Right(req) =>
             UserActor.WsMessage(req)
           case Left(e) =>
@@ -128,10 +128,10 @@ object UserManager {
             UserActor.WsMessage(EmptyFrontEvent)
         }
       case TextMessage.Strict(tm) =>
-        log.info(s"$tm , ws get TextMessage")
+        log.info(s"$tm , ws get TextMessage and no deal")
         tm match{
-          case text =>
-            UserActor.WsMessage(TestFrontEvent(text))
+          case _ =>
+            UserActor.WsMessage(EmptyFrontEvent)
         }
       case _ =>
         log.info(s"errorMessage")

@@ -3,7 +3,7 @@ package org.seekloud.netMeeting.roomManager.models
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object SlickTables extends {
-  val profile = slick.jdbc.H2Profile
+  val profile = slick.jdbc.PostgresProfile
 } with SlickTables
 
 /** Slick data model trait for extension, choice of backend or usage in the cake pattern. (Make sure to initialize this late.) */
@@ -15,60 +15,48 @@ trait SlickTables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = tMatchInfo.schema
+  lazy val schema: profile.SchemaDescription = tUserInfo.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
-  /** Entity class storing rows of table tMatchInfo
-   *  @param id Database column ID SqlType(BIGINT), AutoInc, PrimaryKey
-   *  @param srcVideoName Database column SRC_VIDEO_NAME SqlType(VARCHAR), Length(1024,true)
-   *  @param tstVideoName Database column TST_VIDEO_NAME SqlType(VARCHAR), Length(1024,true)
-   *  @param similarity Database column SIMILARITY SqlType(DOUBLE)
-   *  @param success Database column SUCCESS SqlType(BOOLEAN), Default(false)
-   *  @param createTime Database column CREATE_TIME SqlType(BIGINT)
-   *  @param wrongCode Database column WRONG_CODE SqlType(BIGINT)
-   *  @param wrongMessage Database column WRONG_MESSAGE SqlType(VARCHAR), Length(256,true), Default()
-   *  @param submitTime Database column SUBMIT_TIME SqlType(BIGINT), Default(-1)
-   *  @param finishTime Database column FINISH_TIME SqlType(BIGINT), Default(-1)
-   *  @param waitTime Database column WAIT_TIME SqlType(BIGINT), Default(-1)
-   *  @param runningTime Database column RUNNING_TIME SqlType(BIGINT), Default(-1) */
-  case class rMatchInfo(id: Long, srcVideoName: String, tstVideoName: String, similarity: Double, success: Boolean = false, createTime: Long, wrongCode: Long, wrongMessage: String = "", submitTime: Long = -1L, finishTime: Long = -1L, waitTime: Long = -1L, runningTime: Long = -1L)
-  /** GetResult implicit for fetching rMatchInfo objects using plain SQL queries */
-  implicit def GetResultrMatchInfo(implicit e0: GR[Long], e1: GR[String], e2: GR[Double], e3: GR[Boolean]): GR[rMatchInfo] = GR{
+  /** Entity class storing rows of table tUserInfo
+   *  @param uid Database column uid SqlType(bigserial), AutoInc, PrimaryKey
+   *  @param userName Database column user_name SqlType(varchar), Length(100,true)
+   *  @param account Database column account SqlType(varchar), Length(100,true)
+   *  @param password Database column password SqlType(varchar), Length(100,true)
+   *  @param headImg Database column head_img SqlType(varchar), Length(256,true), Default()
+   *  @param coverImg Database column cover_img SqlType(varchar), Length(256,true), Default()
+   *  @param createTime Database column create_time SqlType(int8)
+   *  @param rtmpUrl Database column rtmp_url SqlType(varchar), Length(100,true) */
+  case class rUserInfo(uid: Long, userName: String, account: String, password: String, headImg: String = "", coverImg: String = "", createTime: Long, rtmpUrl: String)
+  /** GetResult implicit for fetching rUserInfo objects using plain SQL queries */
+  implicit def GetResultrUserInfo(implicit e0: GR[Long], e1: GR[String]): GR[rUserInfo] = GR{
     prs => import prs._
-    rMatchInfo.tupled((<<[Long], <<[String], <<[String], <<[Double], <<[Boolean], <<[Long], <<[Long], <<[String], <<[Long], <<[Long], <<[Long], <<[Long]))
+    rUserInfo.tupled((<<[Long], <<[String], <<[String], <<[String], <<[String], <<[String], <<[Long], <<[String]))
   }
-  /** Table description of table MATCH_INFO. Objects of this class serve as prototypes for rows in queries. */
-  class tMatchInfo(_tableTag: Tag) extends profile.api.Table[rMatchInfo](_tableTag, Some("PUBLIC"), "MATCH_INFO") {
-    def * = (id, srcVideoName, tstVideoName, similarity, success, createTime, wrongCode, wrongMessage, submitTime, finishTime, waitTime, runningTime) <> (rMatchInfo.tupled, rMatchInfo.unapply)
+  /** Table description of table user_info. Objects of this class serve as prototypes for rows in queries. */
+  class tUserInfo(_tableTag: Tag) extends profile.api.Table[rUserInfo](_tableTag, "user_info") {
+    def * = (uid, userName, account, password, headImg, coverImg, createTime, rtmpUrl) <> (rUserInfo.tupled, rUserInfo.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(id), Rep.Some(srcVideoName), Rep.Some(tstVideoName), Rep.Some(similarity), Rep.Some(success), Rep.Some(createTime), Rep.Some(wrongCode), Rep.Some(wrongMessage), Rep.Some(submitTime), Rep.Some(finishTime), Rep.Some(waitTime), Rep.Some(runningTime))).shaped.<>({r=>import r._; _1.map(_=> rMatchInfo.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get, _12.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(uid), Rep.Some(userName), Rep.Some(account), Rep.Some(password), Rep.Some(headImg), Rep.Some(coverImg), Rep.Some(createTime), Rep.Some(rtmpUrl))).shaped.<>({r=>import r._; _1.map(_=> rUserInfo.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
-    /** Database column ID SqlType(BIGINT), AutoInc, PrimaryKey */
-    val id: Rep[Long] = column[Long]("ID", O.AutoInc, O.PrimaryKey)
-    /** Database column SRC_VIDEO_NAME SqlType(VARCHAR), Length(1024,true) */
-    val srcVideoName: Rep[String] = column[String]("SRC_VIDEO_NAME", O.Length(1024,varying=true))
-    /** Database column TST_VIDEO_NAME SqlType(VARCHAR), Length(1024,true) */
-    val tstVideoName: Rep[String] = column[String]("TST_VIDEO_NAME", O.Length(1024,varying=true))
-    /** Database column SIMILARITY SqlType(DOUBLE) */
-    val similarity: Rep[Double] = column[Double]("SIMILARITY")
-    /** Database column SUCCESS SqlType(BOOLEAN), Default(false) */
-    val success: Rep[Boolean] = column[Boolean]("SUCCESS", O.Default(false))
-    /** Database column CREATE_TIME SqlType(BIGINT) */
-    val createTime: Rep[Long] = column[Long]("CREATE_TIME")
-    /** Database column WRONG_CODE SqlType(BIGINT) */
-    val wrongCode: Rep[Long] = column[Long]("WRONG_CODE")
-    /** Database column WRONG_MESSAGE SqlType(VARCHAR), Length(256,true), Default() */
-    val wrongMessage: Rep[String] = column[String]("WRONG_MESSAGE", O.Length(256,varying=true), O.Default(""))
-    /** Database column SUBMIT_TIME SqlType(BIGINT), Default(-1) */
-    val submitTime: Rep[Long] = column[Long]("SUBMIT_TIME", O.Default(-1L))
-    /** Database column FINISH_TIME SqlType(BIGINT), Default(-1) */
-    val finishTime: Rep[Long] = column[Long]("FINISH_TIME", O.Default(-1L))
-    /** Database column WAIT_TIME SqlType(BIGINT), Default(-1) */
-    val waitTime: Rep[Long] = column[Long]("WAIT_TIME", O.Default(-1L))
-    /** Database column RUNNING_TIME SqlType(BIGINT), Default(-1) */
-    val runningTime: Rep[Long] = column[Long]("RUNNING_TIME", O.Default(-1L))
+    /** Database column uid SqlType(bigserial), AutoInc, PrimaryKey */
+    val uid: Rep[Long] = column[Long]("uid", O.AutoInc, O.PrimaryKey)
+    /** Database column user_name SqlType(varchar), Length(100,true) */
+    val userName: Rep[String] = column[String]("user_name", O.Length(100,varying=true))
+    /** Database column account SqlType(varchar), Length(100,true) */
+    val account: Rep[String] = column[String]("account", O.Length(100,varying=true))
+    /** Database column password SqlType(varchar), Length(100,true) */
+    val password: Rep[String] = column[String]("password", O.Length(100,varying=true))
+    /** Database column head_img SqlType(varchar), Length(256,true), Default() */
+    val headImg: Rep[String] = column[String]("head_img", O.Length(256,varying=true), O.Default(""))
+    /** Database column cover_img SqlType(varchar), Length(256,true), Default() */
+    val coverImg: Rep[String] = column[String]("cover_img", O.Length(256,varying=true), O.Default(""))
+    /** Database column create_time SqlType(int8) */
+    val createTime: Rep[Long] = column[Long]("create_time")
+    /** Database column rtmp_url SqlType(varchar), Length(100,true) */
+    val rtmpUrl: Rep[String] = column[String]("rtmp_url", O.Length(100,varying=true))
   }
-  /** Collection-like TableQuery object for table tMatchInfo */
-  lazy val tMatchInfo = new TableQuery(tag => new tMatchInfo(tag))
+  /** Collection-like TableQuery object for table tUserInfo */
+  lazy val tUserInfo = new TableQuery(tag => new tUserInfo(tag))
 }

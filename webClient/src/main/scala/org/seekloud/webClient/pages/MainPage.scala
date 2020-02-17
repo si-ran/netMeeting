@@ -4,6 +4,7 @@ import mhtml.{Cancelable, Rx, Var, mount}
 import org.scalajs.dom
 import org.scalajs.dom.Event
 import org.seekloud.webClient.common.PageSwitcher
+import org.seekloud.webClient.components.PopWindow
 
 import scala.xml.Elem
 
@@ -32,9 +33,14 @@ object MainPage extends PageSwitcher {
         {new TestPage(id).render}
       </div>
 
+    case "signUp" :: Nil =>
+      <div>
+        {SignUpPage.render}
+      </div>
+
     case Nil =>
       <div>
-        {new TestPage("10001").render}
+        {SignUpPage.render}
       </div>
 
     case _ => <div>TODO</div>
@@ -45,6 +51,7 @@ object MainPage extends PageSwitcher {
     switchPageByHash()
     val page =
       <div>
+        {PopWindow.showPop}
         {currentPage}
       </div>
     mount(dom.document.body, page)

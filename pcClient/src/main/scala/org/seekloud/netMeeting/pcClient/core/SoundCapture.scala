@@ -1,8 +1,5 @@
 package org.seekloud.netMeeting.pcClient.core
 
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
-import org.slf4j.LoggerFactory
 import java.nio.{ByteBuffer, ByteOrder, ShortBuffer}
 import java.util.concurrent.{LinkedBlockingDeque, ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 
@@ -11,8 +8,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import javax.sound.sampled.TargetDataLine
 import org.bytedeco.javacv.FFmpegFrameRecorder
 import org.slf4j.LoggerFactory
-import org.seekloud.netMeeting.pcClient.core.EncodeActor
-import scala.collection.mutable
 
 
 object SoundCapture {
@@ -33,15 +28,13 @@ object SoundCapture {
 
   final case object StopSample extends Command
 
-  //  final case class SoundStartEncode(encoder: FFmpegFrameRecorder1) extends Command
-  final case class SoundStartEncode(encoder: ActorRef[EncodeActor.EncodeCmd]) extends Command
-
+  final case class SoundStartEncode(encoder: ActorRef[EncodeActor.Command]) extends Command
 
   final case object StopEncode extends Command
 
 
   def create(line: TargetDataLine,
-             frameRate: Int,
+             frameRate: Double,
              sampleRate: Float,
              channels: Int,
              sampleSize: Int,
@@ -56,12 +49,12 @@ object SoundCapture {
 
 
   private def working(line: TargetDataLine,
-                      frameRate: Int,
+                      frameRate: Double,
                       sampleRate: Float,
                       channels: Int,
                       sampleSize: Int,
                       audioBytes: Array[Byte],
-                      encoder: Option[ActorRef[EncodeActor.EncodeCmd]] = None,
+                      encoder: Option[ActorRef[EncodeActor.Command]] = None,
                       audioExecutor: Option[ScheduledThreadPoolExecutor] = None,
                       audioLoop: Option[ScheduledFuture[_]] = None,
                       encodeFlag: Boolean = false): Behavior[Command] =
@@ -104,7 +97,6 @@ object SoundCapture {
                 case ex:Exception=>
                   log.error(s"encode audio frame error: $ex")
               }
-
             }
           } catch {
             case ex: Exception =>

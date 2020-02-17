@@ -9,9 +9,10 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.typed.scaladsl.{ActorSink, ActorSource}
 import org.seekloud.byteobject.MiddleBufferInJvm
 import org.seekloud.byteobject.ByteObject._
-import org.seekloud.netMeeting.protocol.ptcl.ChatEvent._
+import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
+import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.seekloud.netMeeting.roomManager.Boot._
-import org.seekloud.netMeeting.roomManager.core.RoomManager.{RMCreateRoom, RMJoinRoom}
+import org.seekloud.netMeeting.roomManager.core.RoomManager._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
@@ -43,25 +44,25 @@ object UserActor {
 
   final case class TextFailure(e: Throwable) extends Command
 
-  final case class WsMessage(msg: MeetingClientEvent) extends Command
+  final case class WsMessage(msg: WsMsgFront) extends Command
 
-  final case class UserJoin(frontActor: ActorRef[WsMsg]) extends Command
+  final case class UserJoin(frontActor: ActorRef[WsMsgManager]) extends Command
 
-  final case class UserDisconnect(frontActor: ActorRef[WsMsg]) extends Command
+  final case class UserDisconnect(frontActor: ActorRef[WsMsgManager]) extends Command
 
   final case class RoomCreateRsp(roomId: Long, errCode: Int) extends Command
 
   final case class RoomJoinRsp(roomId: Long, errCode: Int) extends Command
 
-  def flow(selfActor: ActorRef[Command]): Flow[WsMessage, WsMsg, NotUsed] ={
+  def flow(selfActor: ActorRef[Command]): Flow[WsMessage, WsMsgManager, NotUsed] ={
     val in: Sink[WsMessage, NotUsed] = Flow[WsMessage].to(ActorSink.actorRef[Command](selfActor, TextGet, TextFailure))
-    val out: Source[WsMsg, Unit] = ActorSource.actorRef[WsMsg](
+    val out: Source[WsMsgManager, Unit] = ActorSource.actorRef[WsMsgManager](
       completionMatcher = {
-        case WsComplete ⇒
+        case CompleteMsgRm ⇒
           log.info("complete")
       },
       failureMatcher = {
-        case WsFailure ⇒
+        case FailMsgRm(_) ⇒
           val a = new Throwable("fail")
           a
       },
@@ -83,7 +84,7 @@ object UserActor {
     stashBuffer.unstashAll(ctx, behavior)
   }
 
-  private def busy(id: Long, frontActor: ActorRef[WsMsg])(
+  private def busy(id: Long, frontActor: ActorRef[WsMsgManager])(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
     timer: TimerScheduler[Command]
@@ -99,6 +100,7 @@ object UserActor {
             switchBehavior(ctx, "live", live(id, roomId, frontActor))
           }
           else{
+            dispatchTo(frontActor, TextMsg("无法创建房间"))
             switchBehavior(ctx, "wait", wait(id, frontActor))
           }
 
@@ -107,6 +109,7 @@ object UserActor {
             switchBehavior(ctx, "live", live(id, roomId, frontActor))
           }
           else{
+            dispatchTo(frontActor, JoinRsp(RoomInfo(-1, Nil, -1), acceptance = false))
             switchBehavior(ctx, "wait", wait(id, frontActor))
           }
 
@@ -141,7 +144,7 @@ object UserActor {
 
   private def wait(
     userId: Long,
-    frontActor: ActorRef[WsMsg]
+    frontActor: ActorRef[WsMsgManager]
   )(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
@@ -151,21 +154,20 @@ object UserActor {
       msg match {
         case WsMessage(frontEvent) =>
           frontEvent match {
-            case Ping =>
-              log.debug("ping")
+            case PingPackage =>
               Behaviors.same
 
-            case RoomCreate =>
-              roomManager ! RMCreateRoom(userId, frontActor, ctx.self)
+            case EstablishMeeting(url, roomId, `userId`) =>
+              roomManager ! RMCreateRoom(url, roomId, userId, frontActor, ctx.self)
               switchBehavior(ctx, "busy", busy(userId, frontActor))
 
-            case RoomJoin(roomId) =>
-              roomManager ! RMJoinRoom(roomId, userId, frontActor, ctx.self)
+            case JoinReq(uId, roomId) =>
+              roomManager ! RMJoinRoom(roomId, uId, frontActor, ctx.self)
               switchBehavior(ctx, "busy", busy(userId, frontActor))
 
             case e =>
               log.info(s"wait ws unknown msg $e")
-              dispatchTo(frontActor, WsCommon(msg = "等待状态，不接受此ws消息"))
+              dispatchTo(frontActor, TextMsg(msg = "等待状态，不接受此ws消息"))
               Behaviors.same
           }
 
@@ -174,7 +176,7 @@ object UserActor {
           Behaviors.stopped
 
         case TextGet => //前端连接中断
-          frontActor ! WsComplete
+          frontActor ! CompleteMsgRm
           ctx.unwatch(frontActor)
           Behaviors.stopped
 
@@ -188,7 +190,7 @@ object UserActor {
   private def live(
     userId: Long,
     roomId: Long,
-    frontActor: ActorRef[WsMsg],
+    frontActor: ActorRef[WsMsgManager],
   )(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
@@ -198,23 +200,26 @@ object UserActor {
       msg match {
         case WsMessage(frontEvent) =>
           frontEvent match {
-            case Ping =>
+            case PingPackage =>
+              Behaviors.same
+
+            case SpeakReq(uId, rId) =>
+              roomManager ! RMClientSpeakReq(uId, rId)
               Behaviors.same
 
             case e =>
               log.info(s"live ws unknown msg $e")
-              dispatchTo(frontActor, WsCommon(msg = "直播状态，不接受此ws消息"))
+              dispatchTo(frontActor, TextMsg(msg = "直播状态，不接受此ws消息"))
               Behaviors.same
           }
 
         case UserDisconnect(actor) => //frontActor中断
-          println("dis")
           ctx.unwatch(actor)
           Behaviors.stopped
 
         case TextGet => //前端连接中断
-          println("get dis")
-          frontActor ! WsComplete
+          frontActor ! CompleteMsgRm
+          roomManager ! RMUserExit(userId, roomId)
           ctx.unwatch(frontActor)
           Behaviors.stopped
 
@@ -225,7 +230,7 @@ object UserActor {
     }
   }
 
-  private def dispatchTo(subscriber: ActorRef[WsMsg], msg: MeetingBackendEvent)(implicit sendBuffer: MiddleBufferInJvm) = {
+  private def dispatchTo(subscriber: ActorRef[WsMsgManager], msg: WsMsgRm)(implicit sendBuffer: MiddleBufferInJvm) = {
     subscriber ! Wrap(msg.fillMiddleBuffer(sendBuffer).result())
   }
 

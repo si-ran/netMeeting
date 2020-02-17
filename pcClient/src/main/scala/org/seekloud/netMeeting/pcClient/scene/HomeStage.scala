@@ -2,6 +2,7 @@ package org.seekloud.netMeeting.pcClient.scene
 
 import java.io.File
 
+import javafx.application.Application
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.geometry.{Insets, Pos}
 import javafx.scene.canvas.Canvas
@@ -11,7 +12,11 @@ import javafx.scene.input.MouseEvent
 import javafx.scene.layout._
 import javafx.scene.text.TextAlignment
 import javafx.scene.{Cursor, Scene}
+import javafx.stage.Stage
+import org.seekloud.netMeeting.pcClient.Boot.addToPlatform
 import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
+import org.seekloud.netMeeting.pcClient.common.StageContext._
+import org.slf4j.LoggerFactory
 
 /**
   * @user: wanruolong
@@ -19,20 +24,24 @@ import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
   *
   */
 
-object HomeScene{
-  val file = new File("E:\\file\\camera.png").toURI.toString
-  val icon = new Image(file)
-
-  trait HomeSceneListener{
+object HomeStage{
+  val log = LoggerFactory.getLogger(this.getClass)
+  trait HomeStageListener{
     def createNewIssue(meetingType: MeetingType.Value)
+
+    def close()
   }
 
 }
 
-class HomeScene() {
-  import HomeScene._
+class HomeStage() extends Application{
+  import HomeStage._
 
-  private var listener: HomeSceneListener = _
+  val stage = new Stage()
+//  val file = new File("E:\\file\\camera.png").toURI.toString
+  val icon = new Image("/img/camera.png")
+
+  private var listener: HomeStageListener = _
 
   val label1 = new Label("新会议")
   val startMeeting = new Canvas(88, 88)
@@ -65,13 +74,38 @@ class HomeScene() {
   anchorPane.setLayoutX((scene.getWidth-216)/2)
   anchorPane.setLayoutY((scene.getHeight-118)/2)
 
-  def setListener(listener: HomeSceneListener): Unit = {
+  def setListener(listener: HomeStageListener): Unit = {
     this.listener = listener
   }
 
+  override def start(primaryStage: Stage): Unit = {
+    primaryStage.setScene(this.scene)
+    primaryStage.setMinHeight(720)
+    primaryStage.setMinWidth(380)
+    primaryStage.getIcons().add(icon)
+    primaryStage.show()
 
-  def getScene() = {
-    this.scene
+    primaryStage.setOnCloseRequest(event => {
+      //      rmManager ! StopSelf
+      log.debug("OnCloseRequest...")
+      event.consume()
+      if(closeClick(primaryStage)){
+        this.listener.close()
+        addToPlatform{
+          log.info("application closing...")
+          Thread.sleep(1000)
+          System.exit(0)
+        }
+      }
+    })
+  }
+
+  def showStage() = {
+    start(stage)
+  }
+
+  def close() = {
+    stage.close()
   }
 
   startMeeting.addEventFilter(MouseEvent.MOUSE_PRESSED, (event: MouseEvent) => {

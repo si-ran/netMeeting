@@ -10,7 +10,6 @@ import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.layout.{GridPane, Pane}
 import javafx.stage.{Modality, Stage}
-import org.seekloud.netMeeting.pcClient.scene.HomeScene.icon
 
 /**
   * @user: wanruolong
@@ -20,6 +19,7 @@ import org.seekloud.netMeeting.pcClient.scene.HomeScene.icon
 
 object LivingStage{
   trait LivingStageListener{
+    def stop()
 
   }
 }
@@ -30,7 +30,7 @@ class LivingStage extends Application{
 
   private var listener: LivingStageListener = _
 
-  private val canvas = new Canvas( 640, 360)
+  private val canvas = new Canvas(640, 360)
 
   def setListener(listener: LivingStageListener) = {
     this.listener = listener
@@ -42,10 +42,10 @@ class LivingStage extends Application{
 
   override def start(primaryStage: Stage): Unit = {
     val label = new Label("living")
-    val file = new File("E:\\file\\1.jpg").toURI.toString
-    val image = new Image(file)
+    val file = new File("/img/camera.png").toURI.toString
+    val icon = new Image("/img/camera.png")
     canvas.getGraphicsContext2D.drawImage(icon,140, 0, 360, 360)
-//    val pane = new Pane(canvas)
+    //    val pane = new Pane(canvas)
     val gridPane = new GridPane()
     gridPane.add(canvas, 0, 0)
     gridPane.setAlignment(Pos.CENTER)
@@ -57,7 +57,7 @@ class LivingStage extends Application{
     primaryStage.initModality(Modality.APPLICATION_MODAL)
     primaryStage.show()
     primaryStage.setOnCloseRequest{event =>
-      //todo stop living
+      listener.stop()
     }
   }
 

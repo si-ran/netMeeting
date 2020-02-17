@@ -15,6 +15,8 @@ object Routes {
 
     def wsJoinUrl(id: String) = base + s"/websocketJoin?id=$id"
 
+    val signUp = base + s"/signUp"
+
   }
 
 

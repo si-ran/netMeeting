@@ -1,0 +1,34 @@
+.signUp-page{
+    margin: 100px 30%;
+}
+.signUp-page>.sign-up-top{
+    text-align: center;
+    padding: 0 0 10px 0;
+    margin: 0 0 40px 0;
+    border-bottom: solid 3px gray;
+    color: #666666;
+}
+.signUp-page>.sign-up-contain{
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+}
+.signUp-page>.sign-up-contain input{
+    width: 240px;
+    height: 24px;
+    margin: 0 0 20px 0;
+    border-radius: 5px;
+}
+.signUp-page>.sign-up-confirm{
+    padding: 40px 0 40px 0;
+    border-bottom: solid 1px gray;
+}
+.signUp-page>.sign-up-confirm .button{
+    width: 120px;
+    margin: auto;
+    padding: 3px 0;
+    text-align: center;
+    cursor: pointer;
+    background-color: #d0d0d0;
+    border-radius: 10px;
+}

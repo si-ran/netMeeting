@@ -8,17 +8,16 @@ import org.scalajs.dom.html.{Div, Input}
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr
 import org.scalajs.dom
-import org.scalajs.dom.raw.Event
 
 import scala.xml.Elem
 import io.circe.generic.auto._
 import io.circe.syntax._
 import mhtml.{Rx, Var, emptyHTML}
-import org.scalajs.dom.raw.{Event, MessageEvent}
+import org.scalajs.dom.raw.Event
 import org.seekloud.webClient.common.{Page, Routes}
 import org.seekloud.webClient.components.WebSocketClient
 import org.seekloud.webClient.utils.{Http, JsFunc, TimeTool}
-import org.seekloud.netMeeting.protocol.ptcl.ChatEvent._
+import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -49,13 +48,10 @@ class TestPage(id: String) extends Page{
     e
   }
 
-  private def wsMessageHandler(e: MeetingBackendEvent) = {
+  private def wsMessageHandler(e: WsMsgManager) = {
     e match {
       case event =>
         println(event)
-      case ChatMessage2Front(fromId, msg) =>
-        println(msg)
-        textList.update(t => s"$fromId: $msg" :: t)
       case unknown =>
         println(s"recv unknown msg:$unknown")
     }
@@ -67,9 +63,9 @@ class TestPage(id: String) extends Page{
     dom.window.setTimeout(()=>init(), 0)
     <div class="all-top video-match-page">
       <div class="button-list">
-        <button onclick={(e: Event)=>wsClient.sendByteMsg(RoomCreate)}>创建</button>
-        <button onclick={(e: Event)=>wsClient.sendByteMsg(RoomJoin(10001))}>加入10001</button>
-        <button onclick={(e: Event)=>wsClient.sendByteMsg(RoomJoin(10002))}>加入10002</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(EstablishMeeting("url", id.toLong, id.toLong))}>创建房间{id}</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10001))}>加入10001</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10002))}>加入10002</button>
       </div>
       <div class="text-list">
         {textList.map{ list => list.map{ li =>

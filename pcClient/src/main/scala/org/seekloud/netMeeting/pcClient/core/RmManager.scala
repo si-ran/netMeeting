@@ -19,6 +19,7 @@ import org.seekloud.netMeeting.pcClient.Boot.{executor, materializer, system}
 import org.seekloud.netMeeting.pcClient.common.Routes
 import org.seekloud.netMeeting.pcClient.component.WarningDialog
 import org.seekloud.netMeeting.pcClient.scene.PageController
+import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.slf4j.LoggerFactory
@@ -47,7 +48,7 @@ object RmManager {
 
   sealed trait RmCommand
 
-  final case class StartLive(gc: GraphicsContext) extends RmCommand
+  final case class StartLive(gc: GraphicsContext, roomId: Long, userId: Long, url: String, meetingType: MeetingType.Value) extends RmCommand
 
   final case object StartJoin extends RmCommand
 
@@ -57,10 +58,16 @@ object RmManager {
 
   final case object BackHome extends RmCommand
 
-  final case class GetPageItem(homeController: Option[PageController]) extends RmCommand
+  final case class GetPageItem(pageController: Option[PageController]) extends RmCommand
 
-//host
-  final case class HostWsEstablish(roomId: Long, userId: Long) extends RmCommand
+  final case object Close extends RmCommand
+
+  final case object ShutDown extends RmCommand
+
+  private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
+
+  //host
+  final case class HostWsEstablish(roomId: Long, userId: Long, pushUrl: String) extends RmCommand
 
   private[this] def switchBehavior(
                                    ctx: ActorContext[RmCommand],
@@ -81,21 +88,31 @@ object RmManager {
     }
   }
 
-  def idle(homeController: Option[PageController] = None)(
-          implicit stashBuffer: StashBuffer[RmCommand],
-          timer: TimerScheduler[RmCommand]
-  ): Behavior[RmCommand] = {
+  def idle(
+            pageController: Option[PageController] = None
+          )(
+            implicit stashBuffer: StashBuffer[RmCommand],
+            timer: TimerScheduler[RmCommand]
+          ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: GetPageItem =>
-          log.debug("got msg get page item.")
-          idle(msg.homeController)
+//          log.debug("got msg get page item.")
+          idle(msg.pageController)
 
         case msg: StartLive =>
-          ctx.self ! HostWsEstablish(10010, 10011)
-          switchBehavior(ctx, "hostBehavior", hostBehavior(msg.gc))
+          msg.meetingType match {
+            case MeetingType.CREATE =>
+              roomInfo = Some(RoomInfo(msg.roomId, List[Long](), msg.userId))
+              ctx.self ! HostWsEstablish(msg.roomId, msg.userId, msg.url)
+              switchBehavior(ctx, "hostBehavior", hostBehavior(msg.gc))
 
-        case StartJoin =>
+            case MeetingType.JOIN =>
+              switchBehavior(ctx, "clientBehavior", clientBehavior())
+          }
+
+        case Close =>
+          log.info("close in idle.")
           Behaviors.same
 
         case x =>
@@ -103,16 +120,16 @@ object RmManager {
           Behaviors.unhandled
       }
     }
-  }
+
 
   def hostBehavior(
                     gc: GraphicsContext,
                     sender: Option[ActorRef[WsMsgFront]] = None,
                     captureManager: Option[ActorRef[CaptureManager.CaptureCommand]] = None
                   )(
-    implicit stashBuffer: StashBuffer[RmCommand],
-    timer: TimerScheduler[RmCommand]
-  ): Behavior[RmCommand] = {
+                    implicit stashBuffer: StashBuffer[RmCommand],
+                    timer: TimerScheduler[RmCommand]
+                  ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{(ctx, msg) =>
       msg match {
         case msg: HostWsEstablish =>
@@ -129,29 +146,35 @@ object RmManager {
             }
           }
           //todo start push stream
-          val captureManager = ctx.spawn(CaptureManager.create(ctx.self, gc), "captureManager")
+          val captureManager = ctx.spawn(CaptureManager.create(ctx.self, msg.pushUrl, gc), "captureManager")
           val url = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, url, successFunc(), failureFunc())
           hostBehavior(gc, sender, Some(captureManager))
 
         case msg: GetSender =>
           log.debug(s"got msg $msg")
-
 //          ctx.spawn(CaptureManager.create(), "captureManager")
           //todo 如果需要在建立websocket连接后再推流
+          captureManager.foreach(_ ! CaptureManager.Ready4GrabStream("rtmp://10.1.29.247:42069/live/test1"))
           hostBehavior(gc, Some(msg.sender), captureManager)
+
+        case Close =>
+          log.info("close in hostBehavior.")
+          captureManager.foreach(_ ! CaptureManager.Close)
+          switchBehavior(ctx, "idle", idle())
 
         case x =>
           log.info(s"got unknown msg in hostBehavior $x")
           Behaviors.unhandled
       }
     }
-  }
 
-  def clientBehavior(sender: Option[ActorRef[WsMsgFront]] = None)(
-    implicit stashBuffer: StashBuffer[RmCommand],
-    timer: TimerScheduler[RmCommand]
-  ): Behavior[RmCommand] = {
+  def clientBehavior(
+                      sender: Option[ActorRef[WsMsgFront]] = None
+                    )(
+                      implicit stashBuffer: StashBuffer[RmCommand],
+                      timer: TimerScheduler[RmCommand]
+                    ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: GetSender =>
@@ -164,7 +187,7 @@ object RmManager {
 
       }
     }
-  }
+
 
   def buildWebsocket(
                     ctx: ActorContext[RmCommand],
@@ -258,9 +281,23 @@ object RmManager {
   def wsMessageHandler(data: WsMsgRm, rmManager: ActorContext[RmCommand]) = {
     data match {
       case msg: HeatBeat =>
-    }
 
+      case x =>
+        log.info(s"rev unknown msg $x")
+    }
   }
 
-
+  def getCaptureManager(
+                       ctx: ActorContext[RmCommand],
+                       url: String,
+                       gc: GraphicsContext
+                       ): ActorRef[CaptureManager.CaptureCommand] = {
+    val childName = "captureManager"
+    ctx.child(childName).getOrElse{
+      log.debug("new Capture Manager.")
+      val actor = ctx.spawn(CaptureManager.create(ctx.self, url, gc), childName)
+      ctx.watchWith(actor, ChildDead(childName, actor))
+      actor
+    }.unsafeUpcast[CaptureManager.CaptureCommand]
+  }
 }

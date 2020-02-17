@@ -15,16 +15,17 @@ import akka.stream.scaladsl.Flow
 import org.slf4j.LoggerFactory
 import io.circe._
 import io.circe.syntax._
+import org.seekloud.netMeeting.protocol.ptcl.WebProtocol._
+import org.seekloud.netMeeting.protocol.ptcl.CommonRsp
 import org.seekloud.netMeeting.roomManager.Boot.{executor, scheduler, timeout, userManager}
 import org.seekloud.netMeeting.roomManager.common.AppSettings
 import org.seekloud.netMeeting.roomManager.core.UserManager
-import org.seekloud.netMeeting.roomManager.utils.{SecureUtil, ServiceUtils}
+import org.seekloud.netMeeting.roomManager.models.dao.WebDAO
+import org.seekloud.netMeeting.roomManager.protocol.CommonInfoProtocol.UserInfo
+import org.seekloud.netMeeting.roomManager.utils.{ProcessorClient, SecureUtil, ServiceUtils}
 
 import scala.concurrent.Future
-import java.io.File
-
-import org.seekloud.netMeeting.roomManager.core.UserManager
-import org.seekloud.netMeeting.roomManager.utils.ServiceUtils
+import scala.util.{Failure, Success}
 
 trait UserService extends ServiceUtils with SessionBase {
   private[this] val log = LoggerFactory.getLogger(this.getClass)
@@ -40,8 +41,43 @@ trait UserService extends ServiceUtils with SessionBase {
     }
   }
 
+  private val test: Route = path("test"){
+    parameter(
+      'id.as[Long].?
+    ) { id =>
+          complete("ok")
+    }
+  }
+
+  private val signUp: Route = (path("signUp") & post){
+    entity(as[Either[Error, SignUpReq]]) {
+      case Right(value) =>
+        dealFutureResult(
+          WebDAO.getUserInfoByAccount(value.account).flatMap{
+            case Some(_) =>
+              Future(complete(SignUpRsp(20001, "用户已存在")))
+            case None =>
+              WebDAO.addUserInfo(
+                UserInfo(
+                  user_name = value.account,
+                  account = value.account,
+                  password = value.password,
+                  create_time = System.currentTimeMillis(),
+                  rtmp_url = ""
+                )
+              ).map{ _ =>
+                complete(SignUpRsp())
+              }
+          }
+        )
+      case Left(error) =>
+        log.debug("decode error")
+        complete("error")
+    }
+  }
+
   val userRoute: Route = pathPrefix("user") {
-    websocketJoin
+    websocketJoin ~ signUp ~ test
   }
 
 

@@ -69,6 +69,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import static org.bytedeco.ffmpeg.global.avcodec.*;
 import static org.bytedeco.ffmpeg.global.avdevice.avdevice_register_all;
@@ -85,7 +86,7 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
     public static FFmpegFrameRecorder createDefault(File f, int w, int h)   throws Exception { return new FFmpegFrameRecorder(f, w, h); }
     public static FFmpegFrameRecorder createDefault(String f, int w, int h) throws Exception { return new FFmpegFrameRecorder(f, w, h); }
     private long ts = 0;
-    private long lastTs = 0;
+    private long lastTs = -100;
 
     private static Exception loadingException = null;
     public static void tryLoad() throws Exception {
@@ -997,22 +998,20 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
         picture.pts(picture.pts() + 1); // magic required by libx264
 
         /* if zero size, it means the image was buffered */
-        if(ts >0)
+        if(ts > 0)
             ts+=10;
 //        System.out.println("ts:" + ts);
         if (got_video_packet[0] != 0) {
-            if (video_pkt.pts() != AV_NOPTS_VALUE) {
-//                if(lastTs >= ts){
-//                    video_pkt.pts(av_rescale_q(video_pkt.pts(), video_c.time_base(), video_st.time_base()));
-//                }
-//                else{
+            if (video_pkt.pts() != AV_NOPTS_VALUE && video_pkt.dts() != AV_NOPTS_VALUE) {
                 video_pkt.pts(ts);
-//                }
-
-            }
-            if (video_pkt.dts() != AV_NOPTS_VALUE) {
                 video_pkt.dts(ts);
             }
+            if(video_pkt.dts() > video_pkt.pts()){
+                video_pkt.pts(video_pkt.dts());
+            }
+/*            if (video_pkt.dts() != AV_NOPTS_VALUE) {
+                video_pkt.dts(ts);
+            }*/
             video_pkt.stream_index(video_st.index());
         } else {
             return false;
@@ -1226,9 +1225,17 @@ public class FFmpegFrameRecorder1 extends FrameRecorder {
         synchronized (oc) {
             int ret;
             if (interleaved && avStream != null) {
-                if ((ret = av_interleaved_write_frame(oc, avPacket)) < 0) {
-                    throw new Exception("av_interleaved_write_frame() error " + ret + " while writing interleaved " + mediaTypeStr + " packet.");
+                if(avPacket.pts() < avPacket.dts()){
+                    avPacket.pts(avPacket.dts());
                 }
+//                System.out.println("dts: " + avPacket.dts() + "==pts: " + avPacket.pts());
+                if(avPacket.pts() > lastTs){
+                    lastTs = avPacket.pts();
+                    if ((ret = av_interleaved_write_frame(oc, avPacket)) < 0) {
+                        throw new Exception("av_interleaved_write_frame() error " + ret + " while writing interleaved " + mediaTypeStr + " packet.");
+                    }
+                }
+
             } else {
                 System.out.println("av_write_frame:" + mediaTypeStr);
                 if ((ret = av_write_frame(oc, avPacket)) < 0) {
