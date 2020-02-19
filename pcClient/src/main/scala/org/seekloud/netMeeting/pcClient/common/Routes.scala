@@ -17,7 +17,7 @@ object Routes {
 
   val userUrl: String = baseUrl + "/user"
   val signInByMail: String = userUrl + "/signInByMail"
-  val signUp: String = userUrl + "/signUp"
+  val signUp: String = "www.baidu.com"
   val signIn: String = userUrl + "/signIn"
   val getRoomList: String = userUrl + "/getRoomList"
   val searchRoom: String = userUrl + "/searchRoom"
@@ -42,7 +42,13 @@ object Routes {
 
   val hostNotLive = 100024
 
-  def getWsUrl(id: Long) = s"ws://10.1.29.247:42061/netMeeting/user/websocketJoin?id=$id"
+  val streamBase = "rtmp://10.1.29.247:42069/live"
+
+  def getWsUrl(id: Long) = s"$wsBase/websocketJoin?id=$id"
+
+  def getPushUrl(userId: Long) = s"$streamBase/$userId"
+
+  def getPullUrl(roomId: Long, userId: Long) = s"$streamBase/${roomId}_$userId"
 
   def linkRoomManager(userId: Long, token: String, roomId: Long): String = wsBase + "/setupWebSocket" + s"?userId=$userId&token=$token&roomId=$roomId"
 

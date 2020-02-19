@@ -40,30 +40,39 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
   val stage = new Stage()
   val icon = new Image("/img/camera.png")
 
+  final var userId: Long = _
+
+  def this(meetingType: MeetingType.Value, userId: Long) = {
+    this(meetingType: MeetingType.Value)
+    this.userId = userId
+  }
+
   var listener: CreatorStageListener = _
 
-  val roomId = new TextField()
-  val userId = new TextField()
+  val roomIdText = new TextField()
+  val userIdText = new TextField()
   val url = new TextField()
 
-  roomId.textProperty().addListener(new ChangeListener[String] {
+  userIdText.setEditable(false)
+
+  roomIdText.textProperty().addListener(new ChangeListener[String] {
     override def changed(observable: ObservableValue[_ <: String], oldValue: String, newValue: String): Unit = {
       if(!newValue.matches("\\d*")){
-        roomId.setText(newValue.replaceAll("[^\\d]", ""))
+        roomIdText.setText(newValue.replaceAll("[^\\d]", ""))
       }
       if(newValue.length > 10){
-        roomId.setText(oldValue)
+        roomIdText.setText(oldValue)
       }
     }
   })
 
-  userId.textProperty().addListener(new ChangeListener[String] {
+  userIdText.textProperty().addListener(new ChangeListener[String] {
     override def changed(observable: ObservableValue[_ <: String], oldValue: String, newValue: String): Unit = {
       if(!newValue.matches("\\d*")){
-        userId.setText(newValue.replaceAll("[^\\d]", ""))
+        userIdText.setText(newValue.replaceAll("[^\\d]", ""))
       }
       if(newValue.length > 10){
-        userId.setText(oldValue)
+        userIdText.setText(oldValue)
       }
     }
   })
@@ -73,20 +82,20 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
   }
 
   def getInput(): InputInfo = {
-    if(roomId.getText == "" || userId.getText == "" || url.getText == "")
+    if(roomIdText.getText == "" || userIdText.getText == "" || url.getText == "")
       throw new Exception("info is not complete")
-    InputInfo(roomId.getText().toLong, userId.getText().toLong, url.getText())
+    InputInfo(roomIdText.getText().toLong, userIdText.getText().toLong, url.getText())
   }
 
   override def start(primaryStage: Stage): Unit = {
     val roomLabel = new Label("roomId:")
-    roomId.setText("12345")
-    val roomBox = new HBox(roomLabel, roomId)
+    roomIdText.setText("12345")
+    val roomBox = new HBox(roomLabel, roomIdText)
     roomBox.setSpacing(10)
 
     val userLabel = new Label(("userId:"))
-    userId.setText("12345")
-    val userBox = new HBox(userLabel, userId)
+    userIdText.setText(s"$userId")
+    val userBox = new HBox(userLabel, userIdText)
     userBox.setSpacing(10)
 
     val urlLabel = new Label(("url:"))

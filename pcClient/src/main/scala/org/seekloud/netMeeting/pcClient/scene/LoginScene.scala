@@ -1,6 +1,8 @@
 package org.seekloud.netMeeting.pcClient.scene
 
+import java.awt.Desktop
 import java.io.File
+import java.net.URI
 
 import javafx.application.Application
 import javafx.geometry.Pos
@@ -9,6 +11,7 @@ import javafx.scene.image.Image
 import javafx.scene.layout.{AnchorPane, HBox, VBox}
 import javafx.scene.{Group, Scene}
 import javafx.stage.Stage
+import org.seekloud.netMeeting.pcClient.common.Routes
 
 /**
   * @user: wanruolong
@@ -18,7 +21,7 @@ import javafx.stage.Stage
 
 object LoginScene{
   trait LoginStageListener{
-    def login()
+    def login(username: String, password: String)
   }
 }
 
@@ -36,18 +39,31 @@ class LoginScene(stage: Stage) {
   val userText = new TextField()
   val passwordText = new PasswordField()
   val loginButton = new Button("登录")
+  val logUpButton = new Button("注册")
   val nameBox = new HBox(labelUsername, userText)
   nameBox.setAlignment(Pos.CENTER)
   val passwordBox = new HBox(labelPassword, passwordText)
   passwordBox.setAlignment(Pos.CENTER)
   passwordBox.setSpacing(5)
-  val buttonBox = new HBox(loginButton)
+  val buttonBox = new HBox(loginButton, logUpButton)
+  buttonBox.setSpacing(30)
   buttonBox.setAlignment(Pos.CENTER)
 
   loginButton.setDefaultButton(true)
   loginButton.setOnAction { event =>
-    println("button clicked")
-    listener.login()
+//    println("button clicked")
+    val username = userText.getText()
+    val password = passwordText.getText()
+    listener.login(username, password)
+  }
+
+  logUpButton.setOnAction{ event =>
+    val url = Routes.signUp
+    val desktop = Desktop.getDesktop
+    if (Desktop.isDesktopSupported() && desktop.isSupported(Desktop.Action.BROWSE)) {
+      val uri = new URI(url)
+      desktop.browse(uri)
+    }
   }
 
   val inputBox = new VBox(nameBox, passwordBox)

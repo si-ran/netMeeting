@@ -54,6 +54,8 @@ object StreamProcess {
 
   final case object Close extends Command
 
+  final case object Restart extends Command
+
   final case object Terminate extends Command
 
   final case object TERMINATE_KEY
@@ -208,10 +210,22 @@ object StreamProcess {
               }
 
             case Failure(ex) =>
+              ctx.self ! Restart
               log.error(s"grab error: $ex")
               log.info(s"stop grab stream")
           }
           Behaviors.same
+
+        case Restart =>
+          log.debug("pull stream restart.")
+          try {
+            grabber.release()
+          } catch {
+            case ex: Exception =>
+              log.warn(s"release stream resources failed: $ex")
+          }
+          ctx.self ! InitGrabber
+          switchBehavior(ctx, "init", init(parent, url, converter, needDraw, gc, encodeConfig))
 
         case Close =>
           try {

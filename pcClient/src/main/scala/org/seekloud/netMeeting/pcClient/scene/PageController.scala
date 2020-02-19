@@ -1,14 +1,15 @@
 package org.seekloud.netMeeting.pcClient.scene
 
 import akka.actor.typed.ActorRef
-import org.seekloud.netMeeting.pcClient.Boot
-import org.seekloud.netMeeting.pcClient.common.StageContext
+import org.seekloud.netMeeting.pcClient.Boot.{addToPlatform, executor}
+import org.seekloud.netMeeting.pcClient.common.Routes
 import org.seekloud.netMeeting.pcClient.core.RmManager
 import org.seekloud.netMeeting.pcClient.core.RmManager.RmCommand
 import org.seekloud.netMeeting.pcClient.scene.CreatorStage.{CreatorStageListener, MeetingType}
 import org.seekloud.netMeeting.pcClient.scene.HomeStage.HomeStageListener
 import org.seekloud.netMeeting.pcClient.scene.LivingStage.LivingStageListener
 import org.seekloud.netMeeting.pcClient.scene.LoginScene.LoginStageListener
+import org.seekloud.netMeeting.pcClient.utils.RMClient
 import org.slf4j.LoggerFactory
 
 /**
@@ -30,19 +31,29 @@ class PageController(
   private var livingStage: LivingStage = _
 
   loginStage.setListener(new LoginStageListener {
-    override def login(): Unit = {
+    override def login(username: String, password: String): Unit = {
       //todo login 2 room manager.
-      loginStage.close()
-      homeStage = new HomeStage
-      homeStage.showStage()
-      setListener4HomeStage()
+      RMClient.signIn(username, password).map{
+        case Right(signInRsp) =>
+          log.debug(s"sign in success.")
+          addToPlatform{
+            loginStage.close()
+            val userId = 10010
+//            homeStage = new HomeStage(signInRsp.data.get.userId)
+            homeStage = new HomeStage(userId)
+            homeStage.showStage()
+            setListener4HomeStage()
+          }
+        case Left(error) =>
+          log.error(s"sign in error, ${error.getMessage}")
+      }
     }
   })
 
   def setListener4HomeStage() = {
     this.homeStage.setListener(new HomeStageListener {
       override def createNewIssue(meetingType: MeetingType.Value): Unit = {
-        setCreatorStage(new CreatorStage(meetingType))
+        setCreatorStage(new CreatorStage(meetingType, homeStage.getUserId))
         getCreatorStage.showStage()
         setListener4CreatorStage()
       }
@@ -61,10 +72,10 @@ class PageController(
         setLivingStage(new LivingStage)
         setListener4LivingStage()
         getLivingStage.showStage()
-        val gc = getLivingStage.getGC()
-        log.debug("got createNewMeeting command.")
+        val gc4Self = getLivingStage.getGc4Self()
+        val gc4Pull = getLivingStage.getGc4Pull()
         val inputInfo = getCreatorStage.getInput()
-        rmManager ! RmManager.StartLive(gc, inputInfo.roomId, inputInfo.userId, inputInfo.url, meetingType)
+        rmManager ! RmManager.StartLive(gc4Self, gc4Pull, inputInfo.roomId, inputInfo.userId, meetingType)
       }
     })
   }

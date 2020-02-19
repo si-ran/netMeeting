@@ -38,6 +38,8 @@ object EncodeActor {
 
   final case object Close extends Command
 
+  final case object Restart extends Command
+
   final case object Terminate extends Command
 
   final case object TERMINATE_KEY
@@ -138,7 +140,8 @@ object EncodeActor {
             encoder: FFmpegFrameRecorder1,
             encodeConfig: EncodeConfig,
           )(
-            implicit timer: TimerScheduler[Command]
+            implicit stashBuffer: StashBuffer[Command],
+            timer: TimerScheduler[Command]
           ): Behavior[Command] =
     Behaviors.receive[Command]{ (ctx, msg) =>
       msg match {
@@ -158,11 +161,10 @@ object EncodeActor {
 
             }catch{
               case ex:Exception=>
-                log.error(s"encode image frame error: $ex")
                 if(ex.getMessage.startsWith("av_interleaved_write_frame() error")){
-//                  parent! CaptureActor.OnEncodeException
-                  ctx.self ! Close
+                  ctx.self ! Restart
                 }
+                log.error(s"encode image frame error: $ex")
             }
           Behaviors.same
 
@@ -189,6 +191,18 @@ object EncodeActor {
           }
           timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
           Behaviors.same
+
+        case Restart =>
+          log.debug("restart encoder")
+          try {
+            encoder.releaseUnsafe()
+            ctx.self ! StartEncode
+            log.info(s"release encode resources.")
+          } catch {
+            case ex: Exception =>
+              log.error(s"release encode error: $ex")
+          }
+          switchBehavior(ctx, "init", init(parent, url, encodeConfig))
 
         case Terminate =>
           Behaviors.stopped

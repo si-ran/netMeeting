@@ -75,11 +75,16 @@ object AuthProtocol {
 
 
   //由于没有鉴权，故可以直接推流到srs，推流后给后台发送创建房间的请求
-  case class EstablishMeeting(
+  case class EstablishMeetingReq(
                                url: String,
                                roomId: Long,
                                userId: Long
                              ) extends WsMsgHost
+
+  case class EstablishMeetingRsp(
+                                  errorCode: Int = 0,
+                                  msg: String = "ok"
+                                ) extends WsMsgRm2Host
 
   //申请加入会议
   case class JoinReq(

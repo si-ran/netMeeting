@@ -36,11 +36,15 @@ object RmManager {
 
   private val log = LoggerFactory.getLogger(this.getClass)
 
-  var roomInfo: Option[RoomInfo] = None
+  var roomId: Option[Long] = None
 
   var userId: Option[Long] = None
 
+  var pullUrl: String = ""
+
   var identity: Identity.Value = Identity.Host
+
+  var pushUrl: String = ""
 
   object Identity extends Enumeration {
     val Host, Client = Value
@@ -48,7 +52,7 @@ object RmManager {
 
   sealed trait RmCommand
 
-  final case class StartLive(gc: GraphicsContext, roomId: Long, userId: Long, url: String, meetingType: MeetingType.Value) extends RmCommand
+  final case class StartLive(gc4Self: GraphicsContext, gc4Pull: GraphicsContext, roomId: Long, userId: Long, meetingType: MeetingType.Value) extends RmCommand
 
   final case object StartJoin extends RmCommand
 
@@ -66,8 +70,17 @@ object RmManager {
 
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
 
-  //host
-  final case class HostWsEstablish(roomId: Long, userId: Long, pushUrl: String) extends RmCommand
+  /**
+    * host
+    */
+  final case class HostWsEstablish(pushUrl: String) extends RmCommand
+
+  final case class EstablishMeetingRsp(errorCode: Int = 0, msg: String = "ok") extends RmCommand
+
+  /**
+    * client
+    */
+  final case class ClientJoin() extends RmCommand
 
   private[this] def switchBehavior(
                                    ctx: ActorContext[RmCommand],
@@ -101,13 +114,19 @@ object RmManager {
           idle(msg.pageController)
 
         case msg: StartLive =>
+          roomId = Some(msg.roomId)
+          userId = Some(msg.userId)
+          pushUrl = Routes.getPushUrl(msg.userId)
+          log.debug(s"push stream 2 $pushUrl")
+          pullUrl = Routes.getPullUrl(msg.roomId, msg.userId)
+          log.debug(s"pull stream from $pullUrl")
           msg.meetingType match {
             case MeetingType.CREATE =>
-              roomInfo = Some(RoomInfo(msg.roomId, List[Long](), msg.userId))
-              ctx.self ! HostWsEstablish(msg.roomId, msg.userId, msg.url)
-              switchBehavior(ctx, "hostBehavior", hostBehavior(msg.gc))
+              ctx.self ! HostWsEstablish(pushUrl)
+              switchBehavior(ctx, "hostBehavior", hostBehavior(msg.gc4Self, msg.gc4Pull))
 
             case MeetingType.JOIN =>
+              ctx.self ! ClientJoin()
               switchBehavior(ctx, "clientBehavior", clientBehavior())
           }
 
@@ -123,7 +142,8 @@ object RmManager {
 
 
   def hostBehavior(
-                    gc: GraphicsContext,
+                    gc4Self: GraphicsContext,
+                    gc4Pull: GraphicsContext,
                     sender: Option[ActorRef[WsMsgFront]] = None,
                     captureManager: Option[ActorRef[CaptureManager.CaptureCommand]] = None
                   )(
@@ -134,9 +154,9 @@ object RmManager {
       msg match {
         case msg: HostWsEstablish =>
           log.debug(s"got msg $msg")
-          roomInfo = Some(RoomInfo(msg.roomId, List[Long](), msg.userId))
-          userId = Some(msg.userId)
-          assert(roomInfo.nonEmpty && userId.nonEmpty)
+//          roomId = Some(msg.roomId)
+//          userId = Some(msg.userId)
+          assert(roomId.nonEmpty && userId.nonEmpty)
           def successFunc(): Unit = {
 
           }
@@ -146,17 +166,23 @@ object RmManager {
             }
           }
           //todo start push stream
-          val captureManager = ctx.spawn(CaptureManager.create(ctx.self, msg.pushUrl, gc), "captureManager")
+          val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           val url = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, url, successFunc(), failureFunc())
-          hostBehavior(gc, sender, Some(captureManager))
+          hostBehavior(gc4Self, gc4Pull, sender, Some(captureManager))
 
         case msg: GetSender =>
           log.debug(s"got msg $msg")
-//          ctx.spawn(CaptureManager.create(), "captureManager")
-          //todo 如果需要在建立websocket连接后再推流
-          captureManager.foreach(_ ! CaptureManager.Ready4GrabStream("rtmp://10.1.29.247:42069/live/test1"))
-          hostBehavior(gc, Some(msg.sender), captureManager)
+          msg.sender ! EstablishMeetingReq(pushUrl, roomId.get, userId.get)
+          //debug
+          ctx.self ! EstablishMeetingRsp()
+          hostBehavior(gc4Self, gc4Pull, Some(msg.sender), captureManager)
+
+        case msg: EstablishMeetingRsp =>
+          if(msg.errorCode == 0){
+            captureManager.foreach(_ ! CaptureManager.StartEncode)
+          }
+          Behaviors.same
 
         case Close =>
           log.info("close in hostBehavior.")
@@ -288,14 +314,16 @@ object RmManager {
   }
 
   def getCaptureManager(
-                       ctx: ActorContext[RmCommand],
-                       url: String,
-                       gc: GraphicsContext
+                         ctx: ActorContext[RmCommand],
+                         pushUrl: String,
+                         pullUrl: String,
+                         gc4Self: GraphicsContext,
+                         gc4Pull: GraphicsContext
                        ): ActorRef[CaptureManager.CaptureCommand] = {
     val childName = "captureManager"
     ctx.child(childName).getOrElse{
       log.debug("new Capture Manager.")
-      val actor = ctx.spawn(CaptureManager.create(ctx.self, url, gc), childName)
+      val actor = ctx.spawn(CaptureManager.create(ctx.self, pushUrl, pullUrl, gc4Self, gc4Pull), childName)
       ctx.watchWith(actor, ChildDead(childName, actor))
       actor
     }.unsafeUpcast[CaptureManager.CaptureCommand]
