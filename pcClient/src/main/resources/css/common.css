@@ -128,7 +128,7 @@
     -fx-border-radius: 8;
 }
 
-.hostScene-rightArea-liveBtn {
+.host {
     -fx-graphic: url("../img/liveOffBtn.png");
     -fx-background-color: 	#00000000;
     -fx-border-color: 	#00000000;
@@ -136,23 +136,36 @@
 
 }
 
-.hostScene-rightArea-liveBtn:selected {
+.host:selected {
     -fx-graphic: url("../img/liveOnBtn.png");
     -fx-background-color: 	#00000000;
     -fx-border-color: 	#00000000;
     -fx-cursor: hand;
 }
 
-.hostScene-rightArea-recordBtn {
-    -fx-graphic: url("../img/recordOffBtn.png");
+.camera {
+    -fx-graphic: url("../img/imageOffBtn.png");
     -fx-background-color: 	#00000000;
     -fx-border-color: 	#00000000;
     -fx-cursor: hand;
-
 }
 
-.hostScene-rightArea-recordBtn:selected {
-    -fx-graphic: url("../img/recordOnBtn.png");
+.camera:selected {
+    -fx-graphic: url("../img/imageOnBtn.png");
+    -fx-background-color: 	#00000000;
+    -fx-border-color: 	#00000000;
+    -fx-cursor: hand;
+}
+
+.microphone {
+    -fx-graphic: url("../img/soundOffBtn.png");
+    -fx-background-color: 	#00000000;
+    -fx-border-color: 	#00000000;
+    -fx-cursor: hand;
+}
+
+.microphone:selected {
+    -fx-graphic: url("../img/soundOnBtn.png");
     -fx-background-color: 	#00000000;
     -fx-border-color: 	#00000000;
     -fx-cursor: hand;

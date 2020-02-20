@@ -7,12 +7,12 @@ import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.geometry.{Insets, Pos}
 import javafx.scene.canvas.Canvas
 import javafx.scene.control.{Button, Label}
-import javafx.scene.image.Image
+import javafx.scene.image.{Image, ImageView}
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout._
 import javafx.scene.text.TextAlignment
-import javafx.scene.{Cursor, Scene}
-import javafx.stage.Stage
+import javafx.scene.{Cursor, Group, Scene}
+import javafx.stage.{Stage, StageStyle}
 import org.seekloud.netMeeting.pcClient.Boot.addToPlatform
 import org.seekloud.netMeeting.pcClient.scene.CreatorStage.MeetingType
 import org.seekloud.netMeeting.pcClient.common.StageContext._
@@ -34,14 +34,17 @@ object HomeStage{
 
 }
 
-class HomeStage() extends Application{
+class HomeStage(userId: Long) extends Application{
   import HomeStage._
 
   val stage = new Stage()
-//  val file = new File("E:\\file\\camera.png").toURI.toString
   val icon = new Image("/img/camera.png")
 
+  def getUserId = userId
+
   private var listener: HomeStageListener = _
+
+//  stage.initStyle(StageStyle.UTILITY)
 
   val label1 = new Label("新会议")
   val startMeeting = new Canvas(88, 88)
@@ -65,8 +68,15 @@ class HomeStage() extends Application{
   gridPane.add(hBox1, 0, 0)
   val anchorPane = new AnchorPane(gridPane)
 
-  val pane = new Pane(anchorPane)
-  val scene = new Scene(pane, 380, 720)
+//  val pane = new BorderPane(anchorPane)
+  val group = new Group()
+  val imageView = new ImageView(new Image("/img/bg.png"))
+//  group.getChildren.addAll(imageView, anchorPane)
+  group.getChildren.add(anchorPane)
+
+  val scene = new Scene(group, 380, 720)
+/*  val bg = new BackgroundImage(new Image("/img/bg.png", scene.getWidth, scene.getHeight, false, true, true), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)
+  pane.setBackground(new Background(bg))*/
 
   startMeeting.setCursor(Cursor.HAND)
   joinMeeting.setCursor(Cursor.HAND)
