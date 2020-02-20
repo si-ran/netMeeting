@@ -53,9 +53,17 @@ class PageController(
   def setListener4HomeStage() = {
     this.homeStage.setListener(new HomeStageListener {
       override def createNewIssue(meetingType: MeetingType.Value): Unit = {
-        setCreatorStage(new CreatorStage(meetingType, homeStage.getUserId))
+        val userId = homeStage.getUserId
+        setCreatorStage(new CreatorStage(meetingType, userId))
+        if(meetingType == MeetingType.CREATE){
+          val roomId = userId
+          getCreatorStage.setRoomId(roomId)
+          val url = Routes.getPushUrl(userId)
+          getCreatorStage.setUrl(url)
+        }
         getCreatorStage.showStage()
         setListener4CreatorStage()
+
       }
 
       override def close(): Unit = {

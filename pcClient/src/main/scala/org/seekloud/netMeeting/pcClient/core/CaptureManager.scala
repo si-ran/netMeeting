@@ -78,21 +78,19 @@ object CaptureManager {
 
   final case object StartGrab extends CaptureCommand
 
-//  final case class GrabberStartSuccess(grabber: FrameGrabber, imageType: MediaType.Value) extends CaptureCommand
-
   final case class ImageCaptureStartSuccess(frameRate: Double) extends CaptureCommand
 
   final case class SoundStartSuccess(line: TargetDataLine) extends CaptureCommand
 
   final case object StartEncode extends CaptureCommand
 
-//  final case class StartEncodeSuccess(recorder: FFmpegFrameRecorder1) extends CaptureCommand
-
   final case object StartEncodeSuccess extends CaptureCommand
 
   final case object StartStreamProcessSuccess extends CaptureCommand
 
-  final case class Ready4GrabStream(url: String) extends CaptureCommand
+  final case class ChangeEncodeFlag(imageFlag: Option[Boolean] = None, soundFlag: Option[Boolean] = None) extends CaptureCommand
+
+//  final case class Ready4GrabStream(url: String) extends CaptureCommand
 
   final case object Close extends CaptureCommand
 
@@ -200,6 +198,10 @@ object CaptureManager {
 //          grabberMap.foreach(_._2 ! ImageCapture.ChangeState(needDraw = Some(false)))
           Behaviors.same
 
+        case msg: ChangeEncodeFlag =>
+          recorderActorOpt.foreach(_ ! EncodeActor.ChangeFlag(msg.imageFlag, msg.soundFlag))
+          Behaviors.same
+
         //接收到ws消息后
         case StartEncode =>
           log.debug(s"got msg $msg")
@@ -220,7 +222,7 @@ object CaptureManager {
           drawActor ! StopDraw
           recorderActorOpt.foreach(_ ! EncodeActor.Close)
           streamProcessOpt.foreach(_ ! StreamProcess.Close)
-          timer.startSingleTimer(STOP_KEY, Terminate, 1.seconds)
+//          timer.startSingleTimer(STOP_KEY, Terminate, 1.seconds)
           Behaviors.same
 
         case Terminate =>

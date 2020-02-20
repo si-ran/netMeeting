@@ -51,9 +51,13 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
 
   val roomIdText = new TextField()
   val userIdText = new TextField()
-  val url = new TextField()
+  val urlText = new TextField()
 
   userIdText.setEditable(false)
+  if(meetingType == MeetingType.CREATE) {
+    roomIdText.setEditable(false)
+    urlText.setEditable(false)
+  }
 
   roomIdText.textProperty().addListener(new ChangeListener[String] {
     override def changed(observable: ObservableValue[_ <: String], oldValue: String, newValue: String): Unit = {
@@ -77,19 +81,26 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
     }
   })
 
+  def setRoomId(roomId: Long) = {
+    roomIdText.setText("" + roomId)
+  }
+
+  def setUrl(url: String) = {
+    urlText.setText(url)
+  }
+
   def setListener(listener: CreatorStageListener) = {
     this.listener = listener
   }
 
   def getInput(): InputInfo = {
-    if(roomIdText.getText == "" || userIdText.getText == "" || url.getText == "")
+    if(roomIdText.getText == "" || userIdText.getText == "" || urlText.getText == "")
       throw new Exception("info is not complete")
-    InputInfo(roomIdText.getText().toLong, userIdText.getText().toLong, url.getText())
+    InputInfo(roomIdText.getText().toLong, userIdText.getText().toLong, urlText.getText())
   }
 
   override def start(primaryStage: Stage): Unit = {
     val roomLabel = new Label("roomId:")
-    roomIdText.setText("12345")
     val roomBox = new HBox(roomLabel, roomIdText)
     roomBox.setSpacing(10)
 
@@ -99,13 +110,13 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
     userBox.setSpacing(10)
 
     val urlLabel = new Label(("url:"))
-    url.setText("rtmp://10.1.29.247:42069/live/test1")
-    val urlBox = new HBox(urlLabel, url)
+    val urlBox = new HBox(urlLabel, urlText)
     urlBox.setSpacing(10)
 
     val confirmButton = new Button("确定")
-    //    confirmButton.setStyle("-fx-background-color: A8D1E4")
+    confirmButton.setDefaultButton(true)
     val cancelButton = new Button("取消")
+    cancelButton.setCancelButton(true)
     val buttonBox = new HBox(confirmButton, cancelButton)
     buttonBox.setSpacing(40)
     buttonBox.setAlignment(Pos.CENTER)

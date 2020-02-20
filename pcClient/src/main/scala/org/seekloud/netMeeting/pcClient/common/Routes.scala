@@ -16,9 +16,10 @@ object Routes {
 
 
   val userUrl: String = baseUrl + "/user"
+  val clientUrl: String = baseUrl + "/client"
   val signInByMail: String = userUrl + "/signInByMail"
   val signUp: String = "www.baidu.com"
-  val signIn: String = userUrl + "/signIn"
+  val signIn: String = clientUrl + "/signIn"
   val getRoomList: String = userUrl + "/getRoomList"
   val searchRoom: String = userUrl + "/searchRoom"
   val temporaryUser: String = userUrl + "/temporaryUser"

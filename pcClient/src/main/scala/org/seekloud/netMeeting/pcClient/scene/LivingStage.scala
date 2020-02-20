@@ -8,6 +8,7 @@ import javafx.scene.{Group, Scene}
 import javafx.scene.canvas.{Canvas, GraphicsContext}
 import javafx.scene.control.Label
 import javafx.scene.image.Image
+import javafx.scene.input.MouseEvent
 import javafx.scene.layout.{GridPane, HBox, Pane, VBox}
 import javafx.stage.{Modality, Stage}
 import org.seekloud.netMeeting.pcClient.component.AnchorControl
@@ -31,8 +32,12 @@ class LivingStage extends Application{
 
   private val group = new Group()
 
-  private val scene = new Scene(group, 640, 360)
+  var isHost: Boolean = false
 
+  private val scene = new Scene(group)
+  scene.getStylesheets.add(
+    this.getClass.getClassLoader.getResource("css/common.css").toExternalForm
+  )
 
   private var listener: LivingStageListener = _
 
@@ -50,6 +55,42 @@ class LivingStage extends Application{
   val anchorPane3 = anchorControl3.getAnchorPane()
   val anchorPane4 = anchorControl4.getAnchorPane()
 
+//  val anchorPaneList = List[AnchorControl]
+
+  scene.addEventFilter(MouseEvent.MOUSE_MOVED, (event: MouseEvent) => {
+    if(event.getX < (canvas4Pull.getWidth/2 + 400) && event.getX > 400 && event.getY < canvas4Pull.getHeight/2){
+      if(group.getChildren.size() > 1){
+        group.getChildren.remove(1, group.getChildren.size())
+      }
+      group.getChildren.add(anchorPane1)
+    } else if(event.getX >= (canvas4Pull.getWidth/2 + 400) && event.getY < canvas4Pull.getHeight/2) {
+      if(group.getChildren.size() > 1){
+        group.getChildren.remove(1, group.getChildren.size())
+      }
+      group.getChildren.add(anchorPane2)
+    } else if(event.getX < (canvas4Pull.getWidth/2 + 400) && event.getX > 400 && event.getY >= canvas4Pull.getHeight/2) {
+      if(group.getChildren.size() > 1){
+        group.getChildren.remove(1, group.getChildren.size())
+      }
+      group.getChildren.add(anchorPane3)
+    } else if(event.getX >= (canvas4Pull.getWidth/2 + 400) && event.getY >= canvas4Pull.getHeight/2) {
+      if(group.getChildren.size() > 1){
+        group.getChildren.remove(1, group.getChildren.size())
+      }
+      group.getChildren.add(anchorPane4)
+    } else {
+      if(group.getChildren.size() > 1){
+        group.getChildren.remove(1, group.getChildren.size())
+      }
+    }
+  })
+
+  scene.addEventFilter(MouseEvent.MOUSE_EXITED, (_: MouseEvent) => {
+    if(group.getChildren.size() > 1) {
+      group.getChildren.remove(1, group.getChildren.size())
+    }
+  })
+
 
   def setListener(listener: LivingStageListener) = {
     this.listener = listener
@@ -62,12 +103,14 @@ class LivingStage extends Application{
   override def start(primaryStage: Stage): Unit = {
     val label = new Label("living")
     val icon = new Image("/img/camera.png")
-    canvas4Self.getGraphicsContext2D.drawImage(icon,140, 0, 360, 360)
+    val icon1 = new Image("/img/camera.png")
+    canvas4Self.getGraphicsContext2D.drawImage(icon,(400-225)/2, 0, 225, 225)
+    canvas4Pull.getGraphicsContext2D.drawImage(icon1,140, 0, 360, 360)
     //    val pane = new Pane(canvas)
     val canvasVBox = new VBox(canvas4Self)
     canvasVBox.setAlignment(Pos.CENTER)
     val hBox = new HBox(canvasVBox, canvas4Pull)
-    group.getChildren.addAll(hBox, anchorPane1, anchorPane2, anchorPane3, anchorPane4)
+    group.getChildren.addAll(hBox)
 
     primaryStage.setScene(scene)
     primaryStage.setTitle("netMeeting")

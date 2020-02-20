@@ -45,6 +45,8 @@ object ImageCapture {
 
   final case object TERMINATE_KEY
 
+  final case object RELEASE_GRABBER_KEY
+
   private[this] def switchBehavior(
                                     ctx: ActorContext[Command],
                                     behaviorName: String,
@@ -79,7 +81,8 @@ object ImageCapture {
                     encodeConfig: EncodeConfig,
                     imageConverter: ImageConverter,
                     captureSetting: CaptureSetting,
-                    drawActorOpt: Option[ActorRef[CaptureManager.DrawCommand]] = None
+                    drawActorOpt: Option[ActorRef[CaptureManager.DrawCommand]] = None,
+                    grabber: Option[FrameGrabber] = None
                   )(
                     implicit stashBuffer: StashBuffer[Command],
                     timer: TimerScheduler[Command]
@@ -107,7 +110,7 @@ object ImageCapture {
               log.error("camera start failed")
               log.error(s"$ex")
           }
-          Behaviors.same
+          init(parent, mediaType, encodeConfig, imageConverter, captureSetting, drawActorOpt, Some(imageGrabber))
 
         case msg: GrabberStartSuccess =>
           log.debug(s"$mediaType grabber start success. frameRate: ${msg.grabber.getFrameRate}")
@@ -119,7 +122,20 @@ object ImageCapture {
 
         case Close =>
           log.warn(s"close in init.")
-          Behaviors.stopped
+          if(grabber.isEmpty){
+            timer.startSingleTimer(RELEASE_GRABBER_KEY, Close, 10.millis)
+            Behaviors.same
+          }
+          else{
+            try{
+              grabber.foreach(_.close())
+            } catch {
+              case e: Exception =>
+                log.warn(s"grabber stopped failed.")
+            }
+            Behaviors.stopped
+          }
+
 
         case x =>
           log.warn(s"rec unknown msg in init: $x")

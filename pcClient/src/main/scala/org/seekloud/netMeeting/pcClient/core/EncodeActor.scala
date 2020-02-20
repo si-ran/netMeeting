@@ -1,13 +1,14 @@
 package org.seekloud.netMeeting.pcClient.core
 
-import java.io.{File, OutputStream}
 import java.nio.ShortBuffer
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import org.bytedeco.javacv.{FFmpegFrameRecorder, FFmpegFrameRecorder1, Frame}
+import javafx.scene.image.Image
+import org.bytedeco.javacv._
 import org.seekloud.netMeeting.pcClient.core.CaptureManager.EncodeConfig
 import org.seekloud.netMeeting.pcClient.Boot.executor
+import org.seekloud.netMeeting.pcClient.utils.{FrameUtils}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -26,6 +27,18 @@ object EncodeActor {
 
   var lastTs: Long = 0
 
+//  val file = new File("pcClient/src/main/resources/img/camera.png")
+//  val bufferedImage = ImageIO.read(file)
+//  val converter = new Java2DFrameConverter
+  val image = new Image("/img/background.jpg")
+
+  val frame = FrameUtils.convert(image)
+
+  case class EncodeFlag(
+                       var imageFlag: Boolean = false,
+                       var soundFlag: Boolean = true
+                       )
+
   sealed trait Command
 
   final case object StartEncode extends Command
@@ -35,6 +48,8 @@ object EncodeActor {
   final case class SendFrame(frame:Frame) extends Command
 
   final case class SendSample(samples: ShortBuffer) extends Command
+
+  final case class ChangeFlag(imageFlag: Option[Boolean] = None, soundFlag: Option[Boolean] = None) extends Command
 
   final case object Close extends Command
 
@@ -64,7 +79,8 @@ object EncodeActor {
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command]{ implicit timer =>
         ctx.self ! StartEncode
-        init(parent, url, encodeConfig)
+        val encodeFlag = EncodeFlag()
+        init(parent, url, encodeConfig, encodeFlag)
       }
     }
 
@@ -72,6 +88,7 @@ object EncodeActor {
             parent: ActorRef[CaptureManager.CaptureCommand],
             url: String,
             encodeConfig: EncodeConfig,
+            encodeFlag: EncodeFlag
           )(
             implicit stashBuffer: StashBuffer[Command],
             timer: TimerScheduler[Command]
@@ -122,7 +139,12 @@ object EncodeActor {
         case msg: StartEncodeSuccess =>
           log.debug(s"recorder start success.")
           parent ! CaptureManager.StartEncodeSuccess
-          switchBehavior(ctx, "work", work(parent, url, msg.recorder, encodeConfig))
+          switchBehavior(ctx, "work", work(parent, url, msg.recorder, encodeConfig, encodeFlag))
+
+        case msg: ChangeFlag =>
+          if(msg.imageFlag.isDefined) encodeFlag.imageFlag = msg.imageFlag.get
+          if(msg.soundFlag.isDefined) encodeFlag.soundFlag = msg.soundFlag.get
+          Behaviors.same
 
         case Close =>
           log.warn(s"close in init")
@@ -139,6 +161,7 @@ object EncodeActor {
             url: String,
             encoder: FFmpegFrameRecorder1,
             encodeConfig: EncodeConfig,
+            encodeFlag: EncodeFlag
           )(
             implicit stashBuffer: StashBuffer[Command],
             timer: TimerScheduler[Command]
@@ -156,8 +179,13 @@ object EncodeActor {
 //                println(s"${videoTs/1000} -> ${encoder.getTimestamp} = ${videoTs/1000-encoder.getTimestamp}=====:number${encoder.getFrameNumber}")
 //                encoder.setTimestamp(videoTs/1000)
 //              }
-              if(msg.frame.image != null)
-                encoder.record(msg.frame)
+              if(msg.frame.image != null){
+                if(encodeFlag.imageFlag) {
+                  encoder.record(msg.frame)
+                } else{
+                  encoder.record(frame.clone())
+                }
+              }
 
             }catch{
               case ex:Exception=>
@@ -173,12 +201,23 @@ object EncodeActor {
               val cur = System.currentTimeMillis()
 //              println(s"time_interval: ${cur-lastTs}")
               lastTs = cur
-              encoder.recordSamples(encodeConfig.sampleRate.toInt, encodeConfig.channels, msg.samples)
+              if(encodeFlag.soundFlag) {
+                encoder.recordSamples(encodeConfig.sampleRate.toInt, encodeConfig.channels, msg.samples)
+              } else{
+                val capacity = msg.samples.capacity()
+                val samples = ShortBuffer.allocate(capacity)
+                encoder.recordSamples(encodeConfig.sampleRate.toInt, encodeConfig.channels, samples)
+              }
             }catch{
               case ex:Exception=>
                 log.error(s"encode audio frame error: $ex")
                 ctx.self ! Close
             }
+          Behaviors.same
+
+        case msg: ChangeFlag =>
+          if(msg.imageFlag.isDefined) encodeFlag.imageFlag = msg.imageFlag.get
+          if(msg.soundFlag.isDefined) encodeFlag.soundFlag = msg.soundFlag.get
           Behaviors.same
 
         case Close =>
@@ -202,7 +241,7 @@ object EncodeActor {
             case ex: Exception =>
               log.error(s"release encode error: $ex")
           }
-          switchBehavior(ctx, "init", init(parent, url, encodeConfig))
+          switchBehavior(ctx, "init", init(parent, url, encodeConfig, encodeFlag))
 
         case Terminate =>
           Behaviors.stopped

@@ -165,10 +165,14 @@ object RmManager {
               WarningDialog.initWarningDialog("连接失败！")
             }
           }
-          //todo start push stream
+
+          //for debug
+          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
+          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
+
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
-          val url = Routes.getWsUrl(userId.get)
-          buildWebsocket(ctx, url, successFunc(), failureFunc())
+          val wsUrl = Routes.getWsUrl(userId.get)
+          buildWebsocket(ctx, wsUrl, successFunc(), failureFunc())
           hostBehavior(gc4Self, gc4Pull, sender, Some(captureManager))
 
         case msg: GetSender =>
@@ -307,6 +311,10 @@ object RmManager {
   def wsMessageHandler(data: WsMsgRm, rmManager: ActorContext[RmCommand]) = {
     data match {
       case msg: HeatBeat =>
+        log.debug(s"got msg $msg")
+
+      case TextMsg(msg) =>
+        log.debug(s"rev ws msg: $msg")
 
       case x =>
         log.info(s"rev unknown msg $x")
