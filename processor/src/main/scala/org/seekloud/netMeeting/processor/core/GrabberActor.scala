@@ -4,9 +4,11 @@ import java.io.InputStream
 
 import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import org.bytedeco.javacv.{FFmpegFrameGrabber}
+import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.slf4j.LoggerFactory
+
 import scala.concurrent.duration._
+import scala.util.{Success, Try}
 
 
 /**
@@ -55,10 +57,13 @@ object GrabberActor {
       msg match {
         case t: Recorder =>
           log.info(s"${ctx.self} receive a msg $t")
+          log.info(url)
           val grabber = new FFmpegFrameGrabber(url)
-          try {
+          Try {
             grabber.start()
-          } catch {
+          } match {
+            case Success(value) =>
+              log.info("start success grab")
             case e: Exception =>
               log.info(s"exception occured in creant grabber")
           }

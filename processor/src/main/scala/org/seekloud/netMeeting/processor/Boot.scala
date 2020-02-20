@@ -6,7 +6,7 @@ import akka.dispatch.MessageDispatcher
 import akka.event.{Logging, LoggingAdapter}
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
-import org.seekloud.netMeeting.processor.core.{RoomManager, StreamPullActor, StreamPushActor}
+import org.seekloud.netMeeting.processor.core.{RoomManager}
 import akka.actor.typed._
 import akka.http.scaladsl.Http
 import scaladsl.adapter._
@@ -36,9 +36,9 @@ object Boot extends HttpService {
 
   val roomManager:ActorRef[RoomManager.Command] = system.spawn(RoomManager.create(),"roomManager")
 
-  val streamPushActor:ActorRef[Command]=system.spawn(StreamPushActor.create(),"streamPushActor")
-
-  val streamPullActor:ActorRef[Command] = system.spawn(StreamPullActor.create(), "streamPullActor")
+//  val streamPushActor:ActorRef[Command]=system.spawn(StreamPushActor.create(),"streamPushActor")
+//
+//  val streamPullActor:ActorRef[Command] = system.spawn(StreamPullActor.create(), "streamPullActor")
 
   def main(args: Array[String]): Unit = {
 
