@@ -9,6 +9,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
 import org.bytedeco.ffmpeg.global.{avcodec, avutil}
 import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, Frame, Java2DFrameConverter}
+import org.seekloud.netMeeting.processor.Boot.executor
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.processor.common.AppSettings._
 
@@ -16,7 +17,9 @@ import scala.concurrent.duration._
 import org.seekloud.netMeeting.processor.Boot.roomManager
 import org.seekloud.netMeeting.processor.test.TestPullAndPush.FileOutPath
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.Future
 
 
 /**
@@ -53,6 +56,8 @@ object RecorderActor {
   case class TimeOut(msg: String) extends Command
 
   case class Image4Mix(liveId:String, frame: Frame) extends VideoCommand
+
+  case class ImageDraw(liveId:String,frame:Frame) extends VideoCommand
 
   case class SetLayout(layout: Int) extends VideoCommand
 
@@ -113,8 +118,7 @@ object RecorderActor {
           if (ffFilter != null) {
             ffFilter.close()
           }
-
-          val ffFilterN = new FFmpegFrameFilter(s"[0:a][1:a][2:a] amix=inputs=3:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
+          val ffFilterN = new FFmpegFrameFilter(s"[0:a][1:a] amix=inputs=2:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
           ffFilterN.setAudioChannels(audioChannels)
           ffFilterN.setSampleFormat(sampleFormat)
           ffFilterN.setAudioInputs(userIdList.size-1)
@@ -139,9 +143,13 @@ object RecorderActor {
           }else{
             val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
             val convertList = userIdList.drop(1).map(id=>new Java2DFrameConverter)
-            val frameList = userIdList.drop(1).map(id => Image(id))
-            val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameList, recorder4ts,
-              convertList, new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 480)), s"drawer_$roomId")
+            val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
+            userIdList.drop(1).foreach{
+              id => frameMapQueue.put(id,mutable.Queue[Frame]())
+            }
+//            val frameList = userIdList.drop(1).map(id => Image(id))
+            val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,
+              convertList, new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 480), userIdList), s"drawer_$roomId")
             ctx.self ! NewFrame(userId, frame)
             work(roomId,userIdList,layout,recorder4ts,ffFilter, drawer,ts4User,tsDiffer,canvasSize)
           }
@@ -176,7 +184,11 @@ object RecorderActor {
       msg match {
         case NewFrame(liveId, frame) =>
           if (frame.image != null) {
-            drawer ! Image4Mix(liveId,frame)
+            if(liveId == userIdList(1)){
+              drawer ! ImageDraw(liveId,frame)
+            }else{
+              drawer ! Image4Mix(liveId,frame)
+            }
           }
           if (frame.samples != null) {
             try {
@@ -228,34 +240,35 @@ object RecorderActor {
     }
   }
 
-  def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameList:List[Image],
+  def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,mutable.Queue[Frame]],
            recorder4ts: FFmpegFrameRecorder, convertList: List[Java2DFrameConverter],convert:Java2DFrameConverter,
-           layout: Int = 0, bgImg: String, roomId: Long, canvasSize: (Int, Int)): Behavior[VideoCommand] = {
+           layout: Int = 0, bgImg: String, roomId: Long, canvasSize: (Int, Int),
+           userIdList:List[String]): Behavior[VideoCommand] = {
     Behaviors.setup[VideoCommand] { ctx =>
       Behaviors.receiveMessage[VideoCommand] {
         case t:Image4Mix =>
-//          log.info("get message Image4Mix")
-          val time = t.frame.timestamp
-          var index = 0
-          val size = frameList.length
+          frameMapQueue.get(t.liveId).foreach(_+= t.frame)
+          Behaviors.same
+        case f:ImageDraw =>
+          val time = f.frame.timestamp
+          val size = frameMapQueue.size
           val layout_x_y= createLayoutNum(size)
           val width = canvasSize._1/layout_x_y(1)
           val height = canvasSize._2/layout_x_y(0)
-          convertList.map{
-            convert =>
-              if(frameList(index).liveId == t.liveId){
-                frameList(index).frame = t.frame
-              }
-              val img = convert.convert(frameList(index).frame)
-              graph.drawImage(img, index%layout_x_y(1)*width, index/layout_x_y(1)*height, width,height,null)
-              graph.drawString(s"用户${index+1}",index%layout_x_y(1)*width+50,index/layout_x_y(1)*height+50)
-              index+=1
+          frameMapQueue.get(f.liveId).foreach(_+=f.frame)
+          for(i <- 1 until userIdList.length){
+            val queue = frameMapQueue.get(userIdList(i)).get
+            var img:BufferedImage=null
+            if(queue.nonEmpty){
+              img = convertList(i-1).convert(queue.dequeue())
+            }
+            graph.drawImage(img, (i-1)%layout_x_y(1)*width, (i-1)/layout_x_y(1)*height, width,height,null)
+            graph.drawString(s"用户${i}",(i-1)%layout_x_y(1)*width+50,(i-1)/layout_x_y(1)*height+50)
           }
           val frame = convert.convert(canvas)
-//          println(frame)
+          //          println(frame)
           recorder4ts.record(frame.clone())
-//          log.info("recorded")
-          //            lastTime.time = time
+          //          log.info("recorded")
           Behaviors.same
       }
     }

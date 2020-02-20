@@ -38,7 +38,10 @@ object TestPullAndPush {
                         sampleRate: Int
                       )
 
-  val FilePath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/trailer.mkv"
+  val FilePath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/trailer.mkv"
+  val FilePath2 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/mov_bbb.mp4"
+  val FilePath3 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/big_buck_bunny.mp4"
+
   val OutPath1 = "rtmp://10.1.29.247:42069/live/10001"
   val OutPath2 = "rtmp://10.1.29.247:42069/live/10002"
   val OutPath3 = "rtmp://10.1.29.247:42069/live/10003"
@@ -141,6 +144,7 @@ object TestPullAndPush {
   }
 
   val processorBaseUrl = "http://127.0.0.1:30388/netMeeting/processor"
+//  val processorBaseUrl = "http://10.1.29.247:42068/netMeeting/processor"
   private val log = LoggerFactory.getLogger(this.getClass)
 
   def newConnect(roomId:Long,userIdList:List[String],liveCode:String,layout:Int):Future[Either[String,NewConnectRsp]] = {
@@ -165,11 +169,11 @@ object TestPullAndPush {
   def main(args: Array[String]): Unit = {
     val threadPool:ExecutorService = Executors.newFixedThreadPool(60)
     try{
-      threadPool.execute(new PushPipeThread(FilePath,OutPath1))
-      threadPool.execute(new PushPipeThread(FilePath,OutPath2))
-      threadPool.execute(new PushPipeThread(FilePath,OutPath3))
-      Thread.sleep(3000)
-      newConnect(10001,List("10004","10001","10002","10003"),"",1)
+//      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
+//      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
+//      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
+//      Thread.sleep(3000)
+      newConnect(10001,List("10003","10001","10002"),"",1)
 //      threadPool.execute(new PullPipeThread())
     }finally {
       threadPool.shutdown()

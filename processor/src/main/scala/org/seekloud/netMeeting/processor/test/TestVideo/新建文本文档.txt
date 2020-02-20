@@ -1,0 +1,5 @@
+ffmpeg -stream_loop -1 -re -i trailer.mkv -f flv rtmp://10.1.29.247:42069/live/10001
+
+ffmpeg -re  -stream_loop -1 -i trailer.mkv -vcodec copy -acodec copy -f flv -y rtmp://10.1.29.247:42069/live/10002
+
+ffplay -i rtmp://10.1.29.247:42069/live/10001
