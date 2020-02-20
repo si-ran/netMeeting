@@ -69,7 +69,6 @@ object Dependencies {
       Dependencies.ehcache,
       Dependencies.byteobject,
       Dependencies.mail,
-      Dependencies.h2Database
     )
 
 

@@ -4,6 +4,7 @@ import java.io.File
 
 import org.seekloud.netMeeting.pcClient.common.Routes
 import org.seekloud.netMeeting.pcClient.Boot.executor
+import org.seekloud.netMeeting.protocol.ptcl.ClientProtocol.{SignInReq, SignInRsp}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -20,12 +21,8 @@ object RMClient extends HttpUtil {
   import io.circe.parser.decode
   import io.circe.syntax._
 
-  case class SignIn(username: String, password: String)
 
   case class SignInByMail(email: String, password: String)
-
-  case class SignInRsp()
-
 
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -52,7 +49,7 @@ object RMClient extends HttpUtil {
     val methodName = "signIn"
     val url = Routes.signIn
 
-    val data = SignIn(userName, pwd).asJson.noSpaces
+    val data = SignInReq(userName, pwd).asJson.noSpaces
     log.debug(s"signIn by userName post data:$data")
     postJsonRequestSend(methodName, url, Nil, data, needLogRsp = false).map {
       case Right(jsonStr) =>
