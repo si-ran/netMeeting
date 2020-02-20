@@ -63,7 +63,7 @@ class TestPage(id: String) extends Page{
     dom.window.setTimeout(()=>init(), 0)
     <div class="all-top video-match-page">
       <div class="button-list">
-        <button onclick={(e: Event)=>wsClient.sendByteMsg(EstablishMeeting("url", id.toLong, id.toLong))}>创建房间{id}</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(EstablishMeetingReq("url", id.toLong, id.toLong))}>创建房间{id}</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10001))}>加入10001</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10002))}>加入10002</button>
       </div>

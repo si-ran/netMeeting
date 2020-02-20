@@ -106,7 +106,7 @@ object RoomActor {
     timer: TimerScheduler[Command]
   ): Behavior[Command] ={
     Behaviors.setup[Command]{ ctx =>
-      dispatchTo(hostFrontActor, TextMsg("房间已经建立"))
+      dispatchTo(hostFrontActor, EstablishMeetingRsp())
       Behaviors.receive[Command]{(ctx, msg) =>
         msg match {
           case RAUserJoin(userId, userFrontActor) =>
