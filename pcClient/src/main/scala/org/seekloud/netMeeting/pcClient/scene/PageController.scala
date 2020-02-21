@@ -10,6 +10,7 @@ import org.seekloud.netMeeting.pcClient.scene.HomeStage.HomeStageListener
 import org.seekloud.netMeeting.pcClient.scene.LivingStage.LivingStageListener
 import org.seekloud.netMeeting.pcClient.scene.LoginScene.LoginStageListener
 import org.seekloud.netMeeting.pcClient.utils.RMClient
+import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.slf4j.LoggerFactory
 
 /**
@@ -54,14 +55,14 @@ class PageController(
     this.homeStage.setListener(new HomeStageListener {
       override def createNewIssue(meetingType: MeetingType.Value): Unit = {
         val userId = homeStage.getUserId
-        setCreatorStage(new CreatorStage(meetingType, userId))
+        creatorStage = new CreatorStage(meetingType, userId)
         if(meetingType == MeetingType.CREATE){
           val roomId = userId
-          getCreatorStage.setRoomId(roomId)
+          creatorStage.setRoomId(roomId)
           val url = Routes.getPushUrl(userId)
-          getCreatorStage.setUrl(url)
+          creatorStage.setUrl(url)
         }
-        getCreatorStage.showStage()
+        creatorStage.showStage()
         setListener4CreatorStage()
 
       }
@@ -76,13 +77,19 @@ class PageController(
   def setListener4CreatorStage() = {
     //    log.debug("set listener 4 creator")
     this.creatorStage.setListener(new CreatorStageListener {
-      override def createNewMeeting(meetingType: MeetingType.Value): Unit = {
-        setLivingStage(new LivingStage)
+      override def newMeeting(meetingType: MeetingType.Value): Unit = {
+        val userId = homeStage.getUserId
+        livingStage = new LivingStage(userId)
+        if(meetingType == MeetingType.CREATE) {
+          val roomId = userId
+          val roomInfo = RoomInfo(roomId, List[Long](roomId), userId)
+          livingStage.updateRoomInfo(roomInfo)
+        }
         setListener4LivingStage()
-        getLivingStage.showStage()
-        val gc4Self = getLivingStage.getGc4Self()
-        val gc4Pull = getLivingStage.getGc4Pull()
-        val inputInfo = getCreatorStage.getInput()
+        livingStage.showStage()
+        val gc4Self = livingStage.getGc4Self()
+        val gc4Pull = livingStage.getGc4Pull()
+        val inputInfo = creatorStage.getInput()
         rmManager ! RmManager.StartLive(gc4Self, gc4Pull, inputInfo.roomId, inputInfo.userId, meetingType)
       }
     })
@@ -93,6 +100,16 @@ class PageController(
       override def stop(): Unit = {
         rmManager ! RmManager.Close
       }
+
+      override def giveHost2(userId: Long): Unit = {
+        livingStage.setHost(false)
+      }
+
+      override def giveMicrophone2(userId: Long): Unit = {}
+
+      override def invite(userId: Long, roomId: Long): Unit = {}
+
+      override def mediaControl(userId: Long, needImage: Boolean = true, needSound: Boolean = true): Unit = {}
     })
 
   }
@@ -111,5 +128,9 @@ class PageController(
 
   def getLivingStage: LivingStage = {
     this.livingStage
+  }
+
+  def setRoomInfo(roomInfo: RoomInfo) = {
+    livingStage.updateRoomInfo(roomInfo)
   }
 }

@@ -30,7 +30,7 @@ object CreatorStage{
                       )
 
   trait CreatorStageListener {
-    def createNewMeeting(meetingType: MeetingType.Value)
+    def newMeeting(meetingType: MeetingType.Value)
   }
 }
 
@@ -138,7 +138,7 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
     //    anchorPane.setLayoutX()
 
     confirmButton.setOnAction { _ =>
-      listener.createNewMeeting(this.meetingType)
+      listener.newMeeting(this.meetingType)
       primaryStage.close()
     }
 
