@@ -82,7 +82,7 @@ class PageController(
         livingStage = new LivingStage(userId)
         if(meetingType == MeetingType.CREATE) {
           val roomId = userId
-          val roomInfo = RoomInfo(roomId, List[Long](roomId), userId)
+          val roomInfo = RoomInfo(roomId, List[Long](userId), userId)
           livingStage.updateRoomInfo(roomInfo)
         }
         setListener4LivingStage()

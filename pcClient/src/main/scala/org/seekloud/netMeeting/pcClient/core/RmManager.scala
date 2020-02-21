@@ -74,7 +74,7 @@ object RmManager {
 
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
 
-  private case class UpdateRoomInf(roomInfo: RoomInfo) extends RmCommand
+  private case class UpdateRoomInfos(roomInfo: RoomInfo) extends RmCommand
 
   /**
     * host
@@ -188,7 +188,7 @@ object RmManager {
           log.debug(s"got msg $msg")
           msg.sender ! EstablishMeetingReq(pushUrl, roomId.get, userId.get)
           //debug
-          ctx.self ! EstablishNewMeetingRsp()
+//          ctx.self ! EstablishNewMeetingRsp()
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
         case msg: EstablishNewMeetingRsp =>
@@ -197,7 +197,7 @@ object RmManager {
           }
           Behaviors.same
 
-        case msg: UpdateRoomInfo =>
+        case msg: UpdateRoomInfos =>
           pageController.foreach(_.setRoomInfo(msg.roomInfo))
           Behaviors.same
 
@@ -255,7 +255,7 @@ object RmManager {
               Behaviors.same
           }
 
-        case msg: UpdateRoomInfo =>
+        case msg: UpdateRoomInfos =>
           pageController.foreach(_.setRoomInfo(msg.roomInfo))
           Behaviors.same
 
@@ -369,9 +369,10 @@ object RmManager {
                       ) = {
     data match {
       case msg: HeatBeat =>
-        log.debug(s"got msg $msg")
+        log.debug(s"ws got msg $msg")
 
       case msg: EstablishMeetingRsp =>
+        log.debug(s"ws got msg $msg")
         if(meetingType == MeetingType.CREATE)
           rmManager ! EstablishNewMeetingRsp()
 
@@ -384,8 +385,10 @@ object RmManager {
         }
 
       case msg: UpdateRoomInfo =>
-
-
+        if(msg.errCode == 0)
+          rmManager ! UpdateRoomInfos(msg.roomInfo)
+        else
+          log.info(s"update roomInfo error: ${msg.errCode}  ${msg.msg}")
 
       case TextMsg(msg) =>
         log.debug(s"rev ws msg: $msg")

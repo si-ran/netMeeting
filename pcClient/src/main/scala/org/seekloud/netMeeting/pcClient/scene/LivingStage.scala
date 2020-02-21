@@ -111,17 +111,26 @@ class LivingStage(userId: Long) extends Application{
 
   def updateRoomInfo(roomInfo: RoomInfo) = {
 
+    anchorPaneList.foreach(_.setVisible(false))
+
     val isHost = if(userId == roomInfo.hostId) true else false
     setHost(isHost)
     this.roomInfo = roomInfo
     anchorControl4Self.host.setSelected(isHost)
+    val indexOfHost = roomInfo.userId.indexWhere(_ == roomInfo.hostId)
     if(isHost) {
-      anchorPane1.setVisible(true)
-      anchorPane2.setVisible(true)
-      anchorPane3.setVisible(true)
-      anchorPane4.setVisible(true)
+      (0 until roomInfo.userId.length-1).foreach{i =>
+        if(i < indexOfHost) {
+          anchorPaneList(i).setVisible(true)
+        } else if(i > indexOfHost) {
+          anchorPaneList(i-1).setVisible(true)
+        }
+      }
+//      anchorPane1.setVisible(true)
+//      anchorPane2.setVisible(true)
+//      anchorPane3.setVisible(true)
+//      anchorPane4.setVisible(true)
     } else {
-      val indexOfHost = roomInfo.userId.indexWhere(_ == roomInfo.hostId)
       if(indexOfHost == -1) {
         log.warn(s"hostId is not in userList")
       } else {
