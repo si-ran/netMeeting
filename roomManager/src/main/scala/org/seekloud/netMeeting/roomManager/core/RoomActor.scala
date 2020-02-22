@@ -118,15 +118,16 @@ object RoomActor {
         msg match {
           case RAUserJoin(userId, userFrontActor) =>
             userMap.put(userId, userFrontActor)
+            val newRoomInfo = RoomInfo(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList, roomInfo.hostId)
             ProcessorClient.newConnect(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList).map{
               case Right(value) =>
                 if(value.errCode == 0){
                   dispatchTo(hostFrontActor, JoinRsp(
-                    roomInfo,
+                    newRoomInfo,
                     acceptance = true
                   ))
                   dispatchAllTo(userMap.values, JoinRsp(
-                    roomInfo,
+                    newRoomInfo,
                     acceptance = true
                   ))
                 }
@@ -136,19 +137,19 @@ object RoomActor {
               case Left(error) =>
                 log.debug(s"processor error: $error")
                 dispatchTo(hostFrontActor, JoinRsp(
-                  roomInfo,
+                  newRoomInfo,
                   acceptance = false,
                   errCode = 20001,
                   msg = s"processor错误：$error"
                 ))
                 dispatchAllTo(userMap.values, JoinRsp(
-                  roomInfo,
+                  newRoomInfo,
                   acceptance = false,
                   errCode = 20001,
                   msg = s"processor错误：$error"
                 ))
             }
-            idle(RoomInfo(roomInfo.roomId, userId :: roomInfo.userId, roomInfo.hostId), hostFrontActor, userMap, mixUrl)
+            idle(newRoomInfo, hostFrontActor, userMap, mixUrl)
 
           case RAClientSpeakReq(uId) =>
             //TODO 验证用户是否存在
