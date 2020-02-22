@@ -34,11 +34,11 @@ object ProcessorClient extends HttpUtil {
             Right(value)
           case Left(e) =>
             log.error(s"newConnect decode error : $e")
-            Left("Error")
+            Left(e.toString)
         }
       case Left(error) =>
         log.error(s"newConnect postJsonRequestSend error : $error")
-        Left("Error")
+        Left(error.toString)
     }
 
   }
