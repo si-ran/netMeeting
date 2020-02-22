@@ -93,23 +93,8 @@ object RoomActor {
       Behaviors.withTimers[Command] { implicit timer =>
         Behaviors.receiveMessage[Command] {
           case RAHostCreate(url, hostId, hostFrontActor) =>
-            ProcessorClient.newConnect(roomId, hostId :: Nil).foreach{
-              case Right(rsp) =>
-                if(rsp.errCode == 0){
-                  dispatchTo(hostFrontActor, EstablishMeetingRsp())
-                  ctx.self ! SwitchBehavior("idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url))
-                }
-                else{
-                  dispatchTo(hostFrontActor, EstablishMeetingRsp(20001, s"processor错误：${rsp.msg}"))
-                  log.debug(s"roomId:$roomId create processor error : ${rsp.msg}")
-                  ctx.self ! StopActor
-                }
-              case Left(e) =>
-                dispatchTo(hostFrontActor, EstablishMeetingRsp(20001, s"processor错误：$e"))
-                log.debug(s"roomId:$roomId create decode processor error : $e")
-                ctx.self ! StopActor
-            }
-            switchBehavior(ctx, "busy", busy(roomId))
+            dispatchTo(hostFrontActor, EstablishMeetingRsp())
+            switchBehavior(ctx,"idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url))
 
           case unknownMsg =>
             log.info(s"init unknown msg : $unknownMsg")
