@@ -40,11 +40,13 @@ object RmManager {
 
   var userId: Option[Long] = None
 
+  var roomInfo: Option[RoomInfo] = None
+
   var pullUrl: String = ""
+  var pushUrl: String = ""
 
   var identity: Identity.Value = Identity.Host
 
-  var pushUrl: String = ""
 
   object Identity extends Enumeration {
     val Host, Client = Value
@@ -52,7 +54,9 @@ object RmManager {
 
   sealed trait RmCommand
 
-  final case class StartLive(gc4Self: GraphicsContext, gc4Pull: GraphicsContext, roomId: Long, userId: Long, meetingType: MeetingType.Value) extends RmCommand
+  final case class StartLive(gc4Self: GraphicsContext, gc4Pull: GraphicsContext, roomId: Long,
+                             userId: Long, meetingType: MeetingType.Value,
+                             roomInfo: Option[RoomInfo]=None) extends RmCommand
 
   final case object StartJoin extends RmCommand
 
@@ -70,17 +74,21 @@ object RmManager {
 
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
 
+  private case class UpdateRoomInfos(roomInfo: RoomInfo) extends RmCommand
+
   /**
     * host
     */
   final case class HostWsEstablish(pushUrl: String) extends RmCommand
 
-  final case class EstablishMeetingRsp(errorCode: Int = 0, msg: String = "ok") extends RmCommand
+  final case class EstablishNewMeetingRsp(errorCode: Int = 0, msg: String = "ok") extends RmCommand
 
   /**
     * client
     */
-  final case class ClientJoin() extends RmCommand
+  final case class ClientJoin(roomId: Long, userId: Long) extends RmCommand
+
+  final case class ClientJoinRsp(roomInfo: RoomInfo, acceptance: Boolean) extends RmCommand
 
   private[this] def switchBehavior(
                                    ctx: ActorContext[RmCommand],
@@ -110,24 +118,24 @@ object RmManager {
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: GetPageItem =>
-//          log.debug("got msg get page item.")
           idle(msg.pageController)
 
         case msg: StartLive =>
           roomId = Some(msg.roomId)
           userId = Some(msg.userId)
           pushUrl = Routes.getPushUrl(msg.userId)
+          roomInfo = if(msg.roomInfo.isDefined) msg.roomInfo else roomInfo
           log.debug(s"push stream 2 $pushUrl")
           pullUrl = Routes.getPullUrl(msg.roomId, msg.userId)
           log.debug(s"pull stream from $pullUrl")
           msg.meetingType match {
             case MeetingType.CREATE =>
               ctx.self ! HostWsEstablish(pushUrl)
-              switchBehavior(ctx, "hostBehavior", hostBehavior(msg.gc4Self, msg.gc4Pull))
+              switchBehavior(ctx, "hostBehavior", hostBehavior(msg.gc4Self, msg.gc4Pull, pageController))
 
             case MeetingType.JOIN =>
-              ctx.self ! ClientJoin()
-              switchBehavior(ctx, "clientBehavior", clientBehavior())
+              ctx.self ! ClientJoin(msg.roomId, msg.userId)
+              switchBehavior(ctx, "clientBehavior", clientBehavior(msg.gc4Self, msg.gc4Pull, pageController))
           }
 
         case Close =>
@@ -144,6 +152,7 @@ object RmManager {
   def hostBehavior(
                     gc4Self: GraphicsContext,
                     gc4Pull: GraphicsContext,
+                    pageController: Option[PageController] = None,
                     sender: Option[ActorRef[WsMsgFront]] = None,
                     captureManager: Option[ActorRef[CaptureManager.CaptureCommand]] = None
                   )(
@@ -172,20 +181,24 @@ object RmManager {
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           val wsUrl = Routes.getWsUrl(userId.get)
-          buildWebsocket(ctx, wsUrl, successFunc(), failureFunc())
-          hostBehavior(gc4Self, gc4Pull, sender, Some(captureManager))
+          buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.CREATE)
+          hostBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
 
         case msg: GetSender =>
           log.debug(s"got msg $msg")
           msg.sender ! EstablishMeetingReq(pushUrl, roomId.get, userId.get)
           //debug
-          ctx.self ! EstablishMeetingRsp()
-          hostBehavior(gc4Self, gc4Pull, Some(msg.sender), captureManager)
+//          ctx.self ! EstablishNewMeetingRsp()
+          hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
-        case msg: EstablishMeetingRsp =>
+        case msg: EstablishNewMeetingRsp =>
           if(msg.errorCode == 0){
             captureManager.foreach(_ ! CaptureManager.StartEncode)
           }
+          Behaviors.same
+
+        case msg: UpdateRoomInfos =>
+          pageController.foreach(_.setRoomInfo(msg.roomInfo))
           Behaviors.same
 
         case Close =>
@@ -200,16 +213,55 @@ object RmManager {
     }
 
   def clientBehavior(
-                      sender: Option[ActorRef[WsMsgFront]] = None
+                      gc4Self: GraphicsContext,
+                      gc4Pull: GraphicsContext,
+                      pageController: Option[PageController] = None,
+                      sender: Option[ActorRef[WsMsgFront]] = None,
+                      captureManagerOpt: Option[ActorRef[CaptureManager.CaptureCommand]] = None ,
                     )(
                       implicit stashBuffer: StashBuffer[RmCommand],
                       timer: TimerScheduler[RmCommand]
                     ): Behavior[RmCommand] =
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
+        case msg: ClientJoin =>
+          def successFunc(): Unit = {
+
+          }
+          def failureFunc(): Unit = {
+            Boot.addToPlatform {
+              WarningDialog.initWarningDialog("连接失败！")
+            }
+          }
+          val wsUrl = Routes.getWsUrl(userId.get)
+          buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.JOIN)
+          Behaviors.same
+
         case msg: GetSender =>
-          // todo start push stream
-          clientBehavior(Some(msg.sender))
+          assert(userId.isDefined && roomId.isDefined)
+          msg.sender ! JoinReq(userId.get, roomId.get)
+          clientBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManagerOpt)
+
+        case msg: ClientJoinRsp =>
+          msg.acceptance match {
+            case true =>
+              roomInfo = Some(msg.roomInfo)
+              pageController.foreach(_.setRoomInfo(msg.roomInfo))
+              val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
+              clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
+            case _ =>
+              //todo join refused
+              log.info(s"join refused.")
+              Behaviors.same
+          }
+
+        case msg: UpdateRoomInfos =>
+          pageController.foreach(_.setRoomInfo(msg.roomInfo))
+          Behaviors.same
+
+        case Close =>
+          log.info("close in idle.")
+          Behaviors.same
 
         case x =>
           log.info(s"got unknown msg in clientBehavior $x")
@@ -223,7 +275,8 @@ object RmManager {
                     ctx: ActorContext[RmCommand],
                     url: String,
                     successFunc: => Unit,
-                    failureFunc: => Unit
+                    failureFunc: => Unit,
+                    meetingType: MeetingType.Value
                     )(
     implicit timer: TimerScheduler[RmCommand]
   ): Unit = {
@@ -231,7 +284,7 @@ object RmManager {
     val wsFlow = Http().webSocketClientFlow(WebSocketRequest(url))
     val source = getSource()
 
-    val sink = getRMSink(ctx)
+    val sink = getRMSink(ctx.self, meetingType)
 
     val (stream, response) =
       source
@@ -275,13 +328,14 @@ object RmManager {
     }
 
   def getRMSink(
-               rmManager: ActorContext[RmCommand]
+               rmManager: ActorRef[RmCommand],
+               meetingType: MeetingType.Value
                )(
     implicit timer: TimerScheduler[RmCommand]
   ): Sink[Message, Future[Done]] = {
     Sink.foreach[Message]{
       case TextMessage.Strict(msg) =>
-        wsMessageHandler(TextMsg(msg), rmManager)
+        wsMessageHandler(TextMsg(msg), rmManager, meetingType)
 
       case BinaryMessage.Strict(bMsg) =>
         val buffer = new MiddleBufferInJvm(bMsg.asByteBuffer)
@@ -289,7 +343,7 @@ object RmManager {
           case Right(rst) => rst
           case Left(_) => DecodeError
         }
-        wsMessageHandler(message, rmManager)
+        wsMessageHandler(message, rmManager, meetingType)
 
       case msg: BinaryMessage.Streamed =>
         val futureMsg = msg.dataStream.runFold(new ByteStringBuilder().result()){
@@ -301,17 +355,40 @@ object RmManager {
             case Right(rst) => rst
             case Left(_) => DecodeError
           }
-          wsMessageHandler(message, rmManager)
+          wsMessageHandler(message, rmManager, meetingType)
         }
 
       case _ => //do nothing
     }
   }
 
-  def wsMessageHandler(data: WsMsgRm, rmManager: ActorContext[RmCommand]) = {
+  def wsMessageHandler(
+                        data: WsMsgRm,
+                        rmManager: ActorRef[RmCommand],
+                        meetingType: MeetingType.Value
+                      ) = {
     data match {
       case msg: HeatBeat =>
-        log.debug(s"got msg $msg")
+        log.debug(s"ws got msg $msg")
+
+      case msg: EstablishMeetingRsp =>
+        log.debug(s"ws got msg $msg")
+        if(meetingType == MeetingType.CREATE)
+          rmManager ! EstablishNewMeetingRsp()
+
+      case msg: JoinRsp =>
+        if(meetingType == MeetingType.JOIN){
+          if(msg.errCode == 0)
+            rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
+          else
+            log.info(s"join error: ${msg.errCode}  ${msg.msg}")
+        }
+
+      case msg: UpdateRoomInfo =>
+        if(msg.errCode == 0)
+          rmManager ! UpdateRoomInfos(msg.roomInfo)
+        else
+          log.info(s"update roomInfo error: ${msg.errCode}  ${msg.msg}")
 
       case TextMsg(msg) =>
         log.debug(s"rev ws msg: $msg")

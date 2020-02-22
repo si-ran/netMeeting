@@ -12,18 +12,18 @@ import javafx.scene.layout.{AnchorPane, HBox, VBox}
 class AnchorControl(x: Double, y: Double) {
   val host = new ToggleButton("")
   host.getStyleClass.add("host")
-//  host.setDisable(true)
-  Tooltip.install(host, new Tooltip("host"))
+  host.setDisable(true)
+//  Tooltip.install(host, new Tooltip("host"))
 
   val camera = new ToggleButton("")
   camera.getStyleClass.add("camera")
   //    camera.setDisable(true)
-  Tooltip.install(camera, new Tooltip("禁用摄像头"))
+//  Tooltip.install(camera, new Tooltip("禁用摄像头"))
 
   val microphone = new ToggleButton("")
   microphone.getStyleClass.add("microphone")
   //    microphone.setDisable(true)
-  Tooltip.install(camera, new Tooltip("禁用摄像头"))
+//  Tooltip.install(camera, new Tooltip("禁用摄像头"))
 
   val hBox = new HBox(host, camera, microphone)
   hBox.setSpacing(10)
@@ -38,6 +38,7 @@ class AnchorControl(x: Double, y: Double) {
   anchorPane.getChildren.add(vBox)
   anchorPane.setLayoutX(x)
   anchorPane.setLayoutY(y)
+  anchorPane.setVisible(false)
 
 
   def getAnchorPane() = this.anchorPane

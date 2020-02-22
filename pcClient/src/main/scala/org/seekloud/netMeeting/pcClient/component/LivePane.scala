@@ -9,7 +9,7 @@ import javafx.scene.{Group, Scene}
 import javafx.scene.canvas.Canvas
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
-import javafx.scene.layout.{GridPane, HBox, VBox}
+import javafx.scene.layout.{AnchorPane, GridPane, HBox, VBox}
 import javafx.stage.Stage
 import javax.imageio.ImageIO
 import org.bytedeco.ffmpeg.global.avcodec.{av_jni_set_java_vm, avcodec_register_all}
@@ -44,102 +44,51 @@ class LivePane extends Application{
     val anchorControl2 = new AnchorControl(410+400,144)
     val anchorControl3 = new AnchorControl(90+400,324)
     val anchorControl4 = new AnchorControl(410+400,324)
+    val anchorControl4Self = new AnchorControl(130,257)
 
+    val anchorPane4Self = anchorControl4Self.getAnchorPane()
+    anchorPane4Self.setVisible(true)
     val anchorPane1 = anchorControl1.getAnchorPane()
     val anchorPane2 = anchorControl2.getAnchorPane()
     val anchorPane3 = anchorControl3.getAnchorPane()
     val anchorPane4 = anchorControl4.getAnchorPane()
 
-/*    canvas.addEventFilter(MouseEvent.MOUSE_ENTERED, (event: MouseEvent) => {
-      print("x" + event.getX + "   ")
-      if(event.getX < canvas.getWidth/2 && event.getY < canvas.getHeight/2){
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane1)
-      } else if(event.getX >= canvas.getWidth/2 && event.getY < canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane2)
-      } else if(event.getX < canvas.getWidth/2 && event.getY >= canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane3)
-      } else {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane4)
-      }
+    val anchorPaneList = List[AnchorPane](anchorPane1, anchorPane2, anchorPane3, anchorPane4)
+    anchorPaneList.foreach(_.setVisible(true))
 
-      println("y: " + event.getY)
+    anchorControl4Self.microphone.setOnAction(_ => {
+      if(anchorControl4Self.microphone.isSelected)
+        println(s"microphone clicked")
     })
-
-    canvas.addEventFilter(MouseEvent.MOUSE_MOVED, (event: MouseEvent) => {
-      if(event.getX < canvas.getWidth/2 && event.getY < canvas.getHeight/2){
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane1)
-      } else if(event.getX >= canvas.getWidth/2 && event.getY < canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane2)
-      } else if(event.getX < canvas.getWidth/2 && event.getY >= canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane3)
-      } else {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
-        group.getChildren.add(anchorPane4)
-      }
-    })
-
-    canvas.addEventFilter(MouseEvent.MOUSE_EXITED, (_: MouseEvent) => {
-      if(group.getChildren.size() > 1) {
-        group.getChildren.remove(1, group.getChildren.size())
-      }
-    })*/
 
 
     scene.addEventFilter(MouseEvent.MOUSE_MOVED, (event: MouseEvent) => {
+      group.getChildren.remove(1, group.getChildren.size())
       if(event.getX < (canvas.getWidth/2 + 400) && event.getX > 400 && event.getY < canvas.getHeight/2){
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
+
         group.getChildren.add(anchorPane1)
+
       } else if(event.getX >= (canvas.getWidth/2 + 400) && event.getY < canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
+
         group.getChildren.add(anchorPane2)
+
       } else if(event.getX < (canvas.getWidth/2 + 400) && event.getX > 400 && event.getY >= canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
+
         group.getChildren.add(anchorPane3)
+
       } else if(event.getX >= (canvas.getWidth/2 + 400) && event.getY >= canvas.getHeight/2) {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
+
         group.getChildren.add(anchorPane4)
-      } else {
-        if(group.getChildren.size() > 1){
-          group.getChildren.remove(1, group.getChildren.size())
-        }
+
+      } else if(event.getX <= 400 && event.getY <= (360-(360-225)/2) && event.getY >= (360-(360-225)/2)-225) {
+
+        group.getChildren.add(anchorPane4Self)
+
       }
     })
 
     scene.addEventFilter(MouseEvent.MOUSE_EXITED, (_: MouseEvent) => {
-      if(group.getChildren.size() > 1) {
         group.getChildren.remove(1, group.getChildren.size())
-      }
     })
 
 
@@ -153,7 +102,7 @@ class LivePane extends Application{
   }
 }
 
-object LivePane {
+/*object LivePane {
 
   private var loadingException: Exception = null
 
@@ -195,5 +144,5 @@ object LivePane {
     val frame = converter.convert(bufferedImage)
     canvasFrame.showImage(frame)
   }
-}
+}*/
 
