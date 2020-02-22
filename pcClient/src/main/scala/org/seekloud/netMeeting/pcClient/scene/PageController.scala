@@ -56,11 +56,11 @@ class PageController(
       override def createNewIssue(meetingType: MeetingType.Value): Unit = {
         val userId = homeStage.getUserId
         creatorStage = new CreatorStage(meetingType, userId)
+        val url = Routes.getPushUrl(userId)
+        creatorStage.setUrl(url)
         if(meetingType == MeetingType.CREATE){
           val roomId = userId
           creatorStage.setRoomId(roomId)
-          val url = Routes.getPushUrl(userId)
-          creatorStage.setUrl(url)
         }
         creatorStage.showStage()
         setListener4CreatorStage()

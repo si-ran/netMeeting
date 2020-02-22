@@ -35,7 +35,7 @@ object EncodeActor {
   val frame = FrameUtils.convert(image)
 
   case class EncodeFlag(
-                       var imageFlag: Boolean = false,
+                       var imageFlag: Boolean = true,
                        var soundFlag: Boolean = true
                        )
 

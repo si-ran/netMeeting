@@ -90,6 +90,11 @@ object RmManager {
 
   final case class ClientJoinRsp(roomInfo: RoomInfo, acceptance: Boolean) extends RmCommand
 
+  final case class PushStream() extends RmCommand
+
+  final case object PUSH_STREAM_DELAY_KEY
+
+
   private[this] def switchBehavior(
                                    ctx: ActorContext[RmCommand],
                                    behaviorName: String,
@@ -176,8 +181,10 @@ object RmManager {
           }
 
           //for debug
-          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
-          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
+//          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
+//          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
+          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
+          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           val wsUrl = Routes.getWsUrl(userId.get)
@@ -248,6 +255,7 @@ object RmManager {
               roomInfo = Some(msg.roomInfo)
               pageController.foreach(_.setRoomInfo(msg.roomInfo))
               val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
+              captureManager ! CaptureManager.StartEncode
               clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
             case _ =>
               //todo join refused
@@ -377,6 +385,7 @@ object RmManager {
           rmManager ! EstablishNewMeetingRsp()
 
       case msg: JoinRsp =>
+        log.debug(s"ws got msg $msg")
         if(meetingType == MeetingType.JOIN){
           if(msg.errCode == 0)
             rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
