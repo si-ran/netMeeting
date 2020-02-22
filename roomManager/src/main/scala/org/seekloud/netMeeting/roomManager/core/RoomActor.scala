@@ -39,6 +39,8 @@ object RoomActor {
 
   private final case object BehaviorChangeKey
 
+  final case object StopActor extends Command
+
   final case class RAHostCreate(url: String, hostId: Long, userFrontActor: ActorRef[WsMsgManager]) extends Command
 
   final case class RAUserJoin(userId:Long, userFrontActor: ActorRef[WsMsgManager]) extends Command
@@ -73,6 +75,9 @@ object RoomActor {
           log.debug(s"${ctx.self.path} is time out when busy, msg=$m")
           switchBehavior(ctx, "init", init(id))
 
+        case StopActor =>
+          Behaviors.stopped
+
         case x =>
           stashBuffer.stash(x)
           Behavior.same
@@ -88,7 +93,20 @@ object RoomActor {
       Behaviors.withTimers[Command] { implicit timer =>
         Behaviors.receiveMessage[Command] {
           case RAHostCreate(url, hostId, hostFrontActor) =>
-            switchBehavior(ctx, "idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url))
+            ProcessorClient.newConnect(roomId, hostId :: Nil).foreach{
+              case Right(rsp) =>
+                if(rsp.errCode == 0){
+                  ctx.self ! SwitchBehavior("idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url))
+                }
+                else{
+                  log.debug(s"roomId:$roomId create processor error : ${rsp.msg}")
+                  ctx.self ! StopActor
+                }
+              case Left(e) =>
+                log.debug(s"roomId:$roomId create decode processor error : $e")
+                ctx.self ! StopActor
+            }
+            switchBehavior(ctx, "busy", busy(roomId))
 
           case unknownMsg =>
             log.info(s"init unknown msg : $unknownMsg")
