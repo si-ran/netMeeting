@@ -418,12 +418,13 @@ object RmManager {
         if(pull) {
           rmManager ! StartPull
           pull = false
-        }
-        if(meetingType == MeetingType.JOIN){
-          if(msg.errCode == 0)
-            rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
-          else
-            log.info(s"join error: ${msg.errCode}  ${msg.msg}")
+
+          if(meetingType == MeetingType.JOIN){
+            if(msg.errCode == 0)
+              rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
+            else
+              log.info(s"join error: ${msg.errCode}  ${msg.msg}")
+          }
         }
 
       case msg: UpdateRoomInfo =>
