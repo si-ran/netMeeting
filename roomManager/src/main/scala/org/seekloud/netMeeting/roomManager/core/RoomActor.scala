@@ -96,13 +96,16 @@ object RoomActor {
             ProcessorClient.newConnect(roomId, hostId :: Nil).foreach{
               case Right(rsp) =>
                 if(rsp.errCode == 0){
+                  dispatchTo(hostFrontActor, EstablishMeetingRsp())
                   ctx.self ! SwitchBehavior("idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url))
                 }
                 else{
+                  dispatchTo(hostFrontActor, EstablishMeetingRsp(20001, s"processor错误：${rsp.msg}"))
                   log.debug(s"roomId:$roomId create processor error : ${rsp.msg}")
                   ctx.self ! StopActor
                 }
               case Left(e) =>
+                dispatchTo(hostFrontActor, EstablishMeetingRsp(20001, s"processor错误：$e"))
                 log.debug(s"roomId:$roomId create decode processor error : $e")
                 ctx.self ! StopActor
             }
@@ -126,7 +129,6 @@ object RoomActor {
     timer: TimerScheduler[Command]
   ): Behavior[Command] ={
     Behaviors.setup[Command]{ ctx =>
-      dispatchTo(hostFrontActor, EstablishMeetingRsp())
       Behaviors.receive[Command]{(ctx, msg) =>
         msg match {
           case RAUserJoin(userId, userFrontActor) =>
