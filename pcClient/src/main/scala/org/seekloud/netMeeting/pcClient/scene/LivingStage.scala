@@ -134,10 +134,10 @@ class LivingStage(userId: Long) extends Application{
       if(indexOfHost == -1) {
         log.warn(s"hostId is not in userList")
       } else {
-//        val indexOfSelf = roomInfo.userId.indexWhere(_ == userId)
-//        val index = if(indexOfSelf > indexOfHost)  indexOfHost-1 else indexOfHost
-//        anchorPaneList(index).setVisible(true)
-//        anchorControlList(index).host.setSelected(true)
+        val indexOfSelf = roomInfo.userId.indexWhere(_ == userId)
+        val index = if(indexOfSelf < indexOfHost)  indexOfHost-1 else indexOfHost
+        anchorPaneList(index).setVisible(true)
+        anchorControlList(index).host.setSelected(true)
       }
     }
   }
