@@ -39,10 +39,10 @@ object DBUtil {
 
     //val dataSource = new MysqlDataSource()
 
-    log.info(s"connect to db: $slickUrl")
-    dataSource.setUrl("jdbc:postgresql://10.1.29.248:5432/netmeeting")
-    dataSource.setUser("bubble")
-    dataSource.setPassword("bubble1qaz@WSX")
+    log.info(s"connect to db: jdbc:postgresql://47.92.170.2:5432/teamxwc")
+    dataSource.setUrl("jdbc:postgresql://47.92.170.2:5432/teamxwc")
+    dataSource.setUser("teamxwc")
+    dataSource.setPassword("team1qaz@WSXxwc")
 
     val hikariDS = new HikariDataSource()
     hikariDS.setDataSource(dataSource)

@@ -8,9 +8,11 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.typed.scaladsl.{ActorSink, ActorSource}
 import org.seekloud.byteobject.ByteObject._
 import org.seekloud.byteobject.MiddleBufferInJvm
+import org.seekloud.netMeeting.roomManager.Boot.executor
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.seekloud.netMeeting.roomManager.common.AppSettings
+import org.seekloud.netMeeting.roomManager.utils.ProcessorClient
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -111,14 +113,36 @@ object RoomActor {
         msg match {
           case RAUserJoin(userId, userFrontActor) =>
             userMap.put(userId, userFrontActor)
-            dispatchTo(hostFrontActor, JoinRsp(
-              roomInfo,
-              acceptance = true
-            ))
-            dispatchAllTo(userMap.values, JoinRsp(
-              roomInfo,
-              acceptance = true
-            ))
+            ProcessorClient.newConnect(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList).map{
+              case Right(value) =>
+                if(value.errCode == 0){
+                  dispatchTo(hostFrontActor, JoinRsp(
+                    roomInfo,
+                    acceptance = true
+                  ))
+                  dispatchAllTo(userMap.values, JoinRsp(
+                    roomInfo,
+                    acceptance = true
+                  ))
+                }
+                else{
+                  log.debug(s"processor error: errCode ${value.errCode}, msg ${value.msg}")
+                }
+              case Left(error) =>
+                log.debug(s"processor error: $error")
+                dispatchTo(hostFrontActor, JoinRsp(
+                  roomInfo,
+                  acceptance = false,
+                  errCode = 20001,
+                  msg = s"processor错误：$error"
+                ))
+                dispatchAllTo(userMap.values, JoinRsp(
+                  roomInfo,
+                  acceptance = false,
+                  errCode = 20001,
+                  msg = s"processor错误：$error"
+                ))
+            }
             idle(RoomInfo(roomInfo.roomId, userId :: roomInfo.userId, roomInfo.hostId), hostFrontActor, userMap, mixUrl)
 
           case RAClientSpeakReq(uId) =>

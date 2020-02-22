@@ -35,11 +35,11 @@ object MySlickCodeGenerator {
   val jdbcDriver = "org.postgresql.Driver"
 //  val slickDriver = "slick.jdbc.H2Profile"
 //  val jdbcDriver = "org.h2.Driver"
-  val url = "jdbc:postgresql://10.1.29.248:5432/netmeeting"
+  val url = "jdbc:postgresql://47.92.170.2:5432/teamxwc"
   val outputFolder = "target/gencode/genTablesPsql"
   val pkg = "org.seekloud.netMeeting.models"
-  val user = "bubble"
-  val password = "bubble1qaz@WSX"
+  val user = "teamxwc"
+  val password = "team1qaz@WSXxwc"
 
 
   //val dbDriver = MySQLDriver
