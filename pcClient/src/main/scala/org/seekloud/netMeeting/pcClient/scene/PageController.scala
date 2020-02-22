@@ -36,10 +36,11 @@ class PageController(
       //todo login 2 room manager.
       RMClient.signIn(username, password).map{
         case Right(signInRsp) =>
-          log.debug(s"sign in success.")
+          log.debug(s"sign in success. ${signInRsp}")
           addToPlatform{
             loginStage.close()
-            val userId = 10010
+//            val userId = 10010
+            val userId = signInRsp.data.get.userId
 //            homeStage = new HomeStage(signInRsp.data.get.userId)
             homeStage = new HomeStage(userId)
             homeStage.showStage()
