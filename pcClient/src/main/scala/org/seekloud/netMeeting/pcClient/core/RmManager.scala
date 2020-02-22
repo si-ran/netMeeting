@@ -25,6 +25,8 @@ import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtoc
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
+
 
 
 /**
@@ -64,6 +66,8 @@ object RmManager {
 
   final case class GetSender(sender:  ActorRef[WsMsgFront]) extends RmCommand
 
+  final case object SendPing extends RmCommand
+
   final case object BackHome extends RmCommand
 
   final case class GetPageItem(pageController: Option[PageController]) extends RmCommand
@@ -77,6 +81,8 @@ object RmManager {
   private case class UpdateRoomInfos(roomInfo: RoomInfo) extends RmCommand
 
   private case object StartPull extends RmCommand
+
+  private case object PING_KEY
 
   /**
     * host
@@ -196,9 +202,15 @@ object RmManager {
         case msg: GetSender =>
           log.debug(s"got msg $msg")
           msg.sender ! EstablishMeetingReq(pushUrl, roomId.get, userId.get)
+          timer.startSingleTimer(PING_KEY, SendPing, 5.seconds)
+
           //debug
 //          ctx.self ! EstablishNewMeetingRsp()
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
+
+        case SendPing =>
+          sender.foreach(_ ! PingPackage)
+          Behaviors.same
 
         case msg: EstablishNewMeetingRsp =>
           Behaviors.same
@@ -251,7 +263,12 @@ object RmManager {
         case msg: GetSender =>
           assert(userId.isDefined && roomId.isDefined)
           msg.sender ! JoinReq(userId.get, roomId.get)
+          timer.startSingleTimer(PING_KEY, SendPing, 5.seconds)
           clientBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManagerOpt)
+
+        case SendPing =>
+          sender.foreach(_ ! PingPackage)
+          Behaviors.same
 
         case msg: ClientJoinRsp =>
           msg.acceptance match {
