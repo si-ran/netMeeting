@@ -153,8 +153,13 @@ object RoomActor {
           case RAUserExit(uId) =>
             userMap.remove(uId)
             val userList = roomInfo.userId.filterNot(_ == uId)
-            idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl)
-
+            if(userList.isEmpty){
+              log.info(s"roomId: ${roomInfo.roomId} is empty, dead")
+              Behaviors.stopped
+            }
+            else{
+              idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl)
+            }
 
           case unknownMsg =>
             log.info(s"room:${roomInfo.roomId} idle unknown msg : $unknownMsg")

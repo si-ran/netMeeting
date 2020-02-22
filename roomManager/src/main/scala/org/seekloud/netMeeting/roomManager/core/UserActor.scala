@@ -172,6 +172,7 @@ object UserActor {
           }
 
         case UserDisconnect(actor) => //frontActor中断
+          log.debug(s"id: $userId frontActor disconnect")
           ctx.unwatch(actor)
           Behaviors.stopped
 
@@ -214,6 +215,8 @@ object UserActor {
           }
 
         case UserDisconnect(actor) => //frontActor中断
+          log.debug(s"id: $userId frontActor disconnect")
+          roomManager ! RMUserExit(userId, roomId)
           ctx.unwatch(actor)
           Behaviors.stopped
 
