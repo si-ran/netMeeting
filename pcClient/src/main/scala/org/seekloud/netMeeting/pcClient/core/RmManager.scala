@@ -202,7 +202,7 @@ object RmManager {
         case msg: GetSender =>
           log.debug(s"got msg $msg")
           msg.sender ! EstablishMeetingReq(pushUrl, roomId.get, userId.get)
-          timer.startSingleTimer(PING_KEY, SendPing, 5.seconds)
+          timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
 
           //debug
 //          ctx.self ! EstablishNewMeetingRsp()
@@ -263,7 +263,7 @@ object RmManager {
         case msg: GetSender =>
           assert(userId.isDefined && roomId.isDefined)
           msg.sender ! JoinReq(userId.get, roomId.get)
-          timer.startSingleTimer(PING_KEY, SendPing, 5.seconds)
+          timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
           clientBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManagerOpt)
 
         case SendPing =>
