@@ -46,7 +46,7 @@ object RmManager {
   var pushUrl: String = ""
 
   var identity: Identity.Value = Identity.Host
-
+  private var pull: Boolean = true
 
   object Identity extends Enumeration {
     val Host, Client = Value
@@ -75,6 +75,8 @@ object RmManager {
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
 
   private case class UpdateRoomInfos(roomInfo: RoomInfo) extends RmCommand
+
+  private case object StartPull extends RmCommand
 
   /**
     * host
@@ -199,9 +201,11 @@ object RmManager {
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
         case msg: EstablishNewMeetingRsp =>
-          if(msg.errorCode == 0){
-            captureManager.foreach(_ ! CaptureManager.StartEncode)
-          }
+          Behaviors.same
+
+        case StartPull =>
+          log.debug("got msg startPull")
+          captureManager.foreach(_ ! CaptureManager.StartEncode)
           Behaviors.same
 
         case msg: UpdateRoomInfos =>
@@ -382,10 +386,16 @@ object RmManager {
       case msg: EstablishMeetingRsp =>
         log.debug(s"ws got msg $msg")
         if(meetingType == MeetingType.CREATE)
-          rmManager ! EstablishNewMeetingRsp()
+          if(msg.errorCode == 0){
+            rmManager ! EstablishNewMeetingRsp()
+          }
 
       case msg: JoinRsp =>
         log.debug(s"ws got msg $msg")
+        if(pull) {
+          rmManager ! StartPull
+          pull = false
+        }
         if(meetingType == MeetingType.JOIN){
           if(msg.errCode == 0)
             rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)

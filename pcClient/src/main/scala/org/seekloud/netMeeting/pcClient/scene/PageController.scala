@@ -3,6 +3,7 @@ package org.seekloud.netMeeting.pcClient.scene
 import akka.actor.typed.ActorRef
 import org.seekloud.netMeeting.pcClient.Boot.{addToPlatform, executor}
 import org.seekloud.netMeeting.pcClient.common.Routes
+import org.seekloud.netMeeting.pcClient.component.WarningDialog
 import org.seekloud.netMeeting.pcClient.core.RmManager
 import org.seekloud.netMeeting.pcClient.core.RmManager.RmCommand
 import org.seekloud.netMeeting.pcClient.scene.CreatorStage.{CreatorStageListener, MeetingType}
@@ -37,15 +38,21 @@ class PageController(
       RMClient.signIn(username, password).map{
         case Right(signInRsp) =>
           log.debug(s"sign in success. ${signInRsp}")
-          addToPlatform{
-            loginStage.close()
-//            val userId = 10010
-            val userId = signInRsp.data.get.userId
-//            homeStage = new HomeStage(signInRsp.data.get.userId)
-            homeStage = new HomeStage(userId)
-            homeStage.showStage()
-            setListener4HomeStage()
+          if(signInRsp.errCode == 0) {
+            addToPlatform{
+              loginStage.close()
+              //            val userId = 10010
+              val userId = signInRsp.data.get.userId
+              homeStage = new HomeStage(userId)
+              homeStage.showStage()
+              setListener4HomeStage()
+            }
+          } else {
+            addToPlatform{
+              WarningDialog.initWarningDialog("登录失败")
+            }
           }
+
         case Left(error) =>
           log.error(s"sign in error, ${error.getMessage}")
       }
