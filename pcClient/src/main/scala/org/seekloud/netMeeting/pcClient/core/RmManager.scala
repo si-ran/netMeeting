@@ -183,8 +183,8 @@ object RmManager {
           //for debug
 //          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
 //          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
-          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
-          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
+//          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
+//          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           val wsUrl = Routes.getWsUrl(userId.get)

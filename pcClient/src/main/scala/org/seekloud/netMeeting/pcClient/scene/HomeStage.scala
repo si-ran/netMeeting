@@ -70,7 +70,7 @@ class HomeStage(userId: Long) extends Application{
 
 //  val pane = new BorderPane(anchorPane)
   val group = new Group()
-  val imageView = new ImageView(new Image("/img/bg.png"))
+//  val imageView = new ImageView(new Image("/img/bg.png"))
 //  group.getChildren.addAll(imageView, anchorPane)
   group.getChildren.add(anchorPane)
 
