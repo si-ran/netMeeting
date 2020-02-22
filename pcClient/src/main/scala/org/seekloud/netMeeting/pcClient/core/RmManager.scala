@@ -248,6 +248,7 @@ object RmManager {
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: ClientJoin =>
+          val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           def successFunc(): Unit = {
 
           }
@@ -258,7 +259,7 @@ object RmManager {
           }
           val wsUrl = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.JOIN)
-          Behaviors.same
+          clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
 
         case msg: GetSender =>
           assert(userId.isDefined && roomId.isDefined)
@@ -275,14 +276,19 @@ object RmManager {
             case true =>
               roomInfo = Some(msg.roomInfo)
               pageController.foreach(_.setRoomInfo(msg.roomInfo))
-              val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
-              captureManager ! CaptureManager.StartEncode
-              clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
+              captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
+            //              timer.startPeriodicTimer(PUSH_STREAM_DELAY_KEY, PushStream(), 10.seconds)
+//              clientBehavior(gc4Self, gc4Pull, pageController, sender)
             case _ =>
               //todo join refused
               log.info(s"join refused.")
-              Behaviors.same
+//              Behaviors.same
           }
+          Behaviors.same
+
+        case PushStream() =>
+          captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
+          Behaviors.same
 
         case msg: UpdateRoomInfos =>
           pageController.foreach(_.setRoomInfo(msg.roomInfo))
