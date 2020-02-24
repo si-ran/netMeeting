@@ -42,10 +42,13 @@ object TestPullAndPush {
   val FilePath2 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/mov_bbb.mp4"
   val FilePath3 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/big_buck_bunny.mp4"
 
-  val OutPath1 = "rtmp://10.1.29.247:42069/live/10001"
-  val OutPath2 = "rtmp://10.1.29.247:42069/live/10002"
-  val OutPath3 = "rtmp://10.1.29.247:42069/live/10003"
-  val FileOutPath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
+  val OutPath1 = "rtmp://47.92.170.2:42069/live/10001"
+  val OutPath2 = "rtmp://47.92.170.2:42069/live/10002"
+  val OutPath3 = "rtmp://47.92.170.2:42069/live/10003"
+  val FileImageOutPath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image"
+  val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out1.flv"
+  val FileOutPath2 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out2.flv"
+  val FileOutPath3 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out3.flv"
   var audioChannels = 2 //todo 待议
   var frameRate = 30
   val bitRate = 2000000
@@ -112,7 +115,7 @@ object TestPullAndPush {
           )
           println("start success grab")
           println(i)
-          val outputStream = new FileOutputStream(new File(FileOutPath))
+          val outputStream = new FileOutputStream(new File(FileOutPath1))
           val recorder = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
           recorder.setFrameRate(frameRate)
           recorder.setVideoBitrate(bitRate)
@@ -169,11 +172,11 @@ object TestPullAndPush {
   def main(args: Array[String]): Unit = {
     val threadPool:ExecutorService = Executors.newFixedThreadPool(60)
     try{
-//      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
-//      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
+      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
+      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
 //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
 //      Thread.sleep(3000)
-      newConnect(10001,List("10002","10001"),"",1)
+//      newConnect(10001,List("10001","10002","10003"),"",1)
 //      threadPool.execute(new PullPipeThread())
     }finally {
       threadPool.shutdown()

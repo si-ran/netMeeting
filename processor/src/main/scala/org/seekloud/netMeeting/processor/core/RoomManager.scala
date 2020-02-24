@@ -5,6 +5,7 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer, TimerSch
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * User: cq
@@ -21,7 +22,7 @@ object RoomManager {
 
   case class UpdateRoomInfo(roomId: Long, layout:Int ) extends Command
 
-  case class RecorderRef(roomId: Long, ref: ActorRef[RecorderActor.Command]) extends Command
+  case class RecorderRef(roomId: Long, userId:String, ref: ActorRef[RecorderActor.Command]) extends Command
 
   case class ChildDead(roomId: Long, childName: String, value: ActorRef[RoomActor.Command]) extends Command
 
@@ -58,11 +59,11 @@ object RoomManager {
           }
           Behaviors.same
 
-        case RecorderRef(roomId, ref) =>
+        case RecorderRef(roomId,userId, ref) =>
           log.info(s"${ctx.self} receive a msg${msg}")
           val roomActor = roomInfoMap.get(roomId)
           if(roomActor.nonEmpty){
-            roomActor.foreach(_ ! RoomActor.Recorder(roomId, ref) )
+            roomActor.foreach(_ ! RoomActor.Recorder(roomId, userId, ref) )
           }
           Behaviors.same
 
