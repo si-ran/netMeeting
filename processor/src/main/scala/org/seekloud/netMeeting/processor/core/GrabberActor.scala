@@ -7,7 +7,6 @@ import akka.actor.typed.{ActorRef, Behavior}
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Success, Try}
 
@@ -32,25 +31,25 @@ object GrabberActor {
 
   case object GrabFrame extends Command
 
-  case class Recorder(userId:String, rec: ActorRef[RecorderActor.Command]) extends Command
+  case class Recorder(rec: ActorRef[RecorderActor.Command]) extends Command
 
   case object GrabLost extends Command
 
   case object TimerKey4Close
 
-  def create(roomId: Long, liveId: String, url: String, userIdList:List[String], recorderActorMap:mutable.Map[String,ActorRef[RecorderActor.Command]]): Behavior[Command]= {
+  def create(roomId: Long, liveId: String, url: String, recorderRef: ActorRef[RecorderActor.Command]): Behavior[Command]= {
     Behaviors.setup[Command]{ ctx =>
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command] {
         implicit timer =>
           log.info(s"grabberActor start----")
-          init(roomId, liveId, url, userIdList, recorderActorMap)
+          init(roomId, liveId, url, recorderRef)
       }
     }
   }
 
-  def init(roomId: Long, liveId: String, url: String, userIdList:List[String],
-           recorderActorMap:mutable.Map[String,ActorRef[RecorderActor.Command]]
+  def init(roomId: Long, liveId: String, url: String,
+           recorderRef:ActorRef[RecorderActor.Command]
           )(implicit timer: TimerScheduler[Command],
             stashBuffer: StashBuffer[Command]):Behavior[Command] = {
     log.info(s"$liveId grabber turn to init")
@@ -59,25 +58,18 @@ object GrabberActor {
         case t: Recorder =>
           log.info(s"${ctx.self} receive a msg $t")
           log.info(url)
-          if(t.userId != liveId){
-            recorderActorMap.put(t.userId,t.rec)
+          val grabber = new FFmpegFrameGrabber(url)
+          Try {
+            grabber.start()
+          } match {
+            case Success(value) =>
+              log.info("start success grab")
+            case e: Exception =>
+              log.info(s"exception occured in creant grabber")
           }
-          if(recorderActorMap.size == userIdList.length-1){
-            val grabber = new FFmpegFrameGrabber(url)
-            Try {
-              grabber.start()
-            } match {
-              case Success(value) =>
-                log.info("start success grab")
-              case e: Exception =>
-                log.info(s"exception occured in creant grabber")
-            }
-            log.info(s"$liveId grabber start successfully")
-            ctx.self ! GrabFrameFirst
-            work(roomId, liveId, grabber, recorderActorMap.values.toList, url)
-          }else{
-            init(roomId,liveId,url,userIdList,recorderActorMap)
-          }
+          log.info(s"$liveId grabber start successfully")
+          ctx.self ! GrabFrameFirst
+          work(roomId, liveId, grabber, t.rec, url)
 
         case StopGrabber =>
           log.info(s"grabber $liveId stopped when init")
@@ -93,7 +85,7 @@ object GrabberActor {
   def work( roomId: Long,
             liveId: String,
             grabber: FFmpegFrameGrabber,
-            recorderList: List[ActorRef[RecorderActor.Command]],
+            recorder: ActorRef[RecorderActor.Command],
             url: String
           )(implicit stashBuffer: StashBuffer[Command],
             timer: TimerScheduler[Command]): Behavior[Command] = {
@@ -103,7 +95,7 @@ object GrabberActor {
           val frame = grabber.grab()
           if(frame != null){
             if(frame.image != null){
-              recorderList.foreach( _! RecorderActor.NewFrame(liveId, frame.clone()))
+              recorder ! RecorderActor.NewFrame(liveId, frame.clone())
               ctx.self ! GrabFrame
             }else{
               ctx.self ! GrabLost
@@ -121,11 +113,11 @@ object GrabberActor {
           val sampleRate = grabber.getSampleRate
           val height = grabber.getImageHeight
           val width = grabber.getImageWidth
-          recorderList.foreach(_ ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId))
+          recorder ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId)
 
           if(frame != null){
             if(frame.image != null){
-              recorderList.foreach(_ ! RecorderActor.NewFrame(liveId, frame.clone()))
+              recorder ! RecorderActor.NewFrame(liveId, frame.clone())
               ctx.self ! GrabFrame
             }else{
               ctx.self ! GrabLost
@@ -139,7 +131,7 @@ object GrabberActor {
         case GrabFrame =>
           val frame = grabber.grab()
           if(frame != null) {
-            recorderList.foreach(_ ! RecorderActor.NewFrame(liveId, frame.clone()))
+            recorder ! RecorderActor.NewFrame(liveId, frame.clone())
             ctx.self ! GrabFrame
           }else{
             log.info(s"$liveId --- frame is null")
