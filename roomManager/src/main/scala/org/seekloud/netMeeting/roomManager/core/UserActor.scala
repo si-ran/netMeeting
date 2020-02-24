@@ -157,7 +157,7 @@ object UserActor {
             case PingPackage =>
               Behaviors.same
 
-            case EstablishMeeting(url, roomId, `userId`) =>
+            case EstablishMeetingReq(url, roomId, `userId`) =>
               roomManager ! RMCreateRoom(url, roomId, userId, frontActor, ctx.self)
               switchBehavior(ctx, "busy", busy(userId, frontActor))
 
