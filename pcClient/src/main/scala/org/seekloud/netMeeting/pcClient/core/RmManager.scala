@@ -155,6 +155,10 @@ object RmManager {
           log.info("close in idle.")
           Behaviors.same
 
+        case msg: ChildDead[CaptureManager.CaptureCommand] =>
+          log.info(s"got msg $msg in init")
+          Behaviors.same
+
         case x =>
           log.info(s"got unknown msg in idle $x")
           Behaviors.unhandled
@@ -191,10 +195,11 @@ object RmManager {
           //for debug
 //          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
 //          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
-//          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
-//          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
+          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
+          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
+          captureManager ! CaptureManager.Start
           val wsUrl = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.CREATE)
           hostBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
@@ -205,7 +210,7 @@ object RmManager {
           timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
 
           //debug
-//          ctx.self ! EstablishNewMeetingRsp()
+          ctx.self ! StartPull
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
         case SendPing =>
@@ -227,6 +232,8 @@ object RmManager {
         case Close =>
           log.info("close in hostBehavior.")
           captureManager.foreach(_ ! CaptureManager.Close)
+          sender.foreach(_ ! Disconnect)
+          timer.cancel(PING_KEY)
           switchBehavior(ctx, "idle", idle())
 
         case x =>
@@ -248,7 +255,6 @@ object RmManager {
     Behaviors.receive[RmCommand]{ (ctx, msg) =>
       msg match {
         case msg: ClientJoin =>
-          val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           def successFunc(): Unit = {
 
           }
@@ -257,6 +263,8 @@ object RmManager {
               WarningDialog.initWarningDialog("连接失败！")
             }
           }
+          val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
+          captureManager ! CaptureManager.Start
           val wsUrl = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.JOIN)
           clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
@@ -295,7 +303,9 @@ object RmManager {
           Behaviors.same
 
         case Close =>
-          log.info("close in idle.")
+          log.info("close in client.")
+          timer.cancel(PING_KEY)
+          captureManagerOpt.foreach(_ ! CaptureManager.Close)
           Behaviors.same
 
         case x =>
@@ -327,15 +337,15 @@ object RmManager {
         .toMat(sink)(Keep.left)
         .run()
 
-    val connected = response.flatMap{ upgrage =>
-      if(upgrage.response.status == StatusCodes.SwitchingProtocols){
+    val connected = response.flatMap{ upgrade =>
+      if(upgrade.response.status == StatusCodes.SwitchingProtocols){
         ctx.self ! GetSender(stream)
         successFunc
         Future.successful("link roomMamager successfully.")
       }
       else{
         failureFunc
-        throw new RuntimeException(s"link roomManager failed: ${upgrage.response.status}")
+        throw new RuntimeException(s"link roomManager failed: ${upgrade.response.status}")
       }
     }
     connected.onComplete(i => log.info(i.toString))

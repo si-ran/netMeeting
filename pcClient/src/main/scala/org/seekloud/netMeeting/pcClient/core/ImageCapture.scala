@@ -194,7 +194,7 @@ object ImageCapture {
             case ex: Exception =>
               log.warn(s"release image grabber failed: $ex")
           }
-          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
+          timer.startSingleTimer("image_capture", Terminate, 10.millis)
           Behaviors.same
 
         case Terminate =>
