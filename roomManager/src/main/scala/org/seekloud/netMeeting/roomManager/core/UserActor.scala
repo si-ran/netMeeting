@@ -251,6 +251,7 @@ object UserActor {
 
             case Disconnect =>
               log.info(s"user $userId client stop")
+              roomManager ! RMUserExit(userId, roomId)
               frontActor ! CompleteMsgRm
               ctx.unwatch(frontActor)
               Behaviors.stopped
