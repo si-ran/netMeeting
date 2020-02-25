@@ -17,9 +17,9 @@ import scala.util.{Failure, Success}
   * Date: 2020/2/23
   * Time: 18:23
   */
-class VideoRecorder(pullUrl: String) {
+class VideoRecorder(roomId: Long, pullUrl: String) {
 
-  private val outUrl = "D:/out222.mp4"
+  private val outUrl = s"./video/video_${roomId}_${System.currentTimeMillis() / 1000}.mp4"
   private var flag = true //注意只在recordStop中修改
   private var grabber: FFmpegFrameGrabber = _
   private var recorder: FFmpegFrameRecorder = _
@@ -57,22 +57,23 @@ class VideoRecorder(pullUrl: String) {
     println("start")
     flag = true
     grabber = new FFmpegFrameGrabber(pullUrl)
+    grabber.setOption("rw_timeout", "20000000")
     recorder = new FFmpegFrameRecorder(outUrl, 640, 360)
     grabber.start()
     recorder.setImageWidth(grabber.getImageWidth / 2)
     recorder.setImageHeight(grabber.getImageHeight / 2)
     recorder.setAudioChannels(grabber.getAudioChannels)
     recorder.start()
-//    while(flag){
-//      val frame = grabber.grabFrame()
-//      if(null != frame) {
-//        recorder.record(frame)
-//      }
-//    }
-    recordFrame()
-//    println("stop")
-//    grabber.stop()
-//    recorder.stop()
+    while(flag){
+      val frame = grabber.grabFrame()
+      if(null != frame) {
+        recorder.record(frame)
+      }
+    }
+//    recordFrame()
+    println("stop")
+    grabber.stop()
+    recorder.stop()
   }
 
   def recordStop() ={

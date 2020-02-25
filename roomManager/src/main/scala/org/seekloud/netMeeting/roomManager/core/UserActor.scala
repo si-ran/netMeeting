@@ -135,7 +135,7 @@ object UserActor {
         Behaviors.receiveMessage[Command] {
           case UserJoin(frontActor) =>
             ctx.watchWith(frontActor, UserDisconnect(frontActor))
-            val record = new VideoRecorder("rtmp://47.92.170.2:42069/live/10011")
+            val record = new VideoRecorder(10002, "rtmp://47.92.170.2:42069/live/10011")
             switchBehavior(ctx, "idle", wait(id, frontActor, record))
 
           case unknownMsg =>
@@ -170,19 +170,13 @@ object UserActor {
               switchBehavior(ctx, "busy", busy(userId, frontActor, recorder))
 
             case UserRecordReq(mode) =>
-              try{
-                Future{
-                  recorder.recordStart()
-                }.onComplete{
-                  case Success(_) =>
-                    println("over")
-                  case Failure(e) =>
-                    println(s"actor error $e")
-                }
-              }
-              catch{
-                case e: Exception =>
-                  println(s"error: $e")
+              Future{
+                recorder.recordStart()
+              }.onComplete{
+                case Success(_) =>
+                  println("over")
+                case Failure(e) =>
+                  println(s"actor error $e")
               }
               Behaviors.same
 
@@ -237,7 +231,12 @@ object UserActor {
             case UserRecordReq(mode) =>
               Future{
                 recorder.recordStart()
-              }.wait(20000)
+              }.onComplete{
+                case Success(_) =>
+                  println("over")
+                case Failure(e) =>
+                  println(s"actor error $e")
+              }
               Behaviors.same
 
             case UserRecordStopReq(mode) =>
