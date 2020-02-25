@@ -180,23 +180,25 @@ object CaptureManager {
           val soundCapture = getSoundCapture(ctx, msg.line, encodeConfig.frameRate, encodeConfig.sampleRate, encodeConfig.channels, encodeConfig.sampleSizeInBit)
           idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, Some(soundCapture), recorderActorOpt, streamProcessOpt)
 
+        //提前启动，不是响应StartEncode消息, 但两者都接收到以后才进行推流
         case ImageCaptureStartSuccess(frameRate) =>
+          log.debug(s"got msg image capture start success")
           encodeConfig.frameRate = frameRate
-//          val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
-          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+          encodeFlag match {
+            case true =>
+              val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
 
-          //提前启动，不是响应StartEncode消息, 但两者都接收到以后才进行推流
+            case _ =>
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag=true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+          }
+
         case StartEncodeSuccess =>
-//          encodeFlag match {
-//            case true =>
-              grabberMap.foreach(_._2 ! ImageCapture.StartEncode(recorderActorOpt.get))
-              soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActorOpt.get))
-              val streamProcess = getStreamProcess(ctx, pullUrl, encodeConfig, gc4Pull)
-              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
-
-//            case _ =>
-//              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
-//          }
+          log.debug(s"got msg StartEncodeSuccess.")
+          grabberMap.foreach(_._2 ! ImageCapture.StartEncode(recorderActorOpt.get))
+          soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActorOpt.get))
+          val streamProcess = getStreamProcess(ctx, pullUrl, encodeConfig, gc4Pull)
+          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
 
         case StartStreamProcessSuccess =>
           log.debug(s"got msg StartStreamProcessSuccess.")
@@ -209,8 +211,15 @@ object CaptureManager {
 
         //接收到ws消息后
         case StartEncode =>
-//          log.debug(s"got msg $msg")
-          val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
+          log.debug(s"got msg $msg")
+          encodeFlag match {
+            case true =>
+              val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
+
+            case _ =>
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag=true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+          }
 
 /*          encodeFlag match {
             case true =>
@@ -222,7 +231,7 @@ object CaptureManager {
             case _ =>
               idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
           }*/
-          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
+//          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
 
 
         case Close =>
