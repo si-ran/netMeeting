@@ -85,6 +85,7 @@ object StreamProcess {
       Behaviors.withTimers[Command] { implicit timer =>
         val converter = new ImageConverter
         ctx.self ! StartSdl
+        log.debug(s"pull stream from $url")
         init(parent, url, converter, needDraw, gc, encodeConfig)
       }
     }

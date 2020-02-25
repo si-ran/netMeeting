@@ -12,6 +12,7 @@ import javafx.scene.image.Image
 import javafx.scene.layout._
 import javafx.scene.paint.Color
 import javafx.stage.{Modality, Stage}
+import org.seekloud.netMeeting.pcClient.common.Routes
 
 /**
   * @user: wanruolong
@@ -54,9 +55,9 @@ class CreatorStage(meetingType: MeetingType.Value) extends Application{
   val urlText = new TextField()
 
   userIdText.setEditable(false)
+  urlText.setEditable(false)
   if(meetingType == MeetingType.CREATE) {
     roomIdText.setEditable(false)
-    urlText.setEditable(false)
   }
 
   roomIdText.textProperty().addListener(new ChangeListener[String] {

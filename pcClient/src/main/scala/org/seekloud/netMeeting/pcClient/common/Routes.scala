@@ -18,7 +18,7 @@ object Routes {
   val userUrl: String = baseUrl + "/user"
   val clientUrl: String = baseUrl + "/client"
   val signInByMail: String = userUrl + "/signInByMail"
-  val signUp: String = "www.baidu.com"
+  val signUp: String = "http://47.92.170.2:42061/netMeeting#/"
   val signIn: String = clientUrl + "/signIn"
   val getRoomList: String = userUrl + "/getRoomList"
   val searchRoom: String = userUrl + "/searchRoom"
@@ -43,7 +43,9 @@ object Routes {
 
   val hostNotLive = 100024
 
-  val streamBase = "rtmp://10.1.29.247:42069/live"
+//  val streamBase = "rtmp://10.1.29.247:42069/live"
+//
+  val streamBase = "rtmp://47.92.170.2:42069/live"
 
   def getWsUrl(id: Long) = s"$wsBase/websocketJoin?id=$id"
 

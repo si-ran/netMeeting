@@ -57,7 +57,7 @@ class Boot extends javafx.application.Application {
     rmManager ! RmManager.GetPageItem(Some(pageController))
 
     val scene = loginScene.getScene
-    primaryStage.setAlwaysOnTop(true)
+//    primaryStage.setAlwaysOnTop(true)
     primaryStage.setResizable(false)
     primaryStage.setScene(scene)
     primaryStage.getIcons().add(icon)
