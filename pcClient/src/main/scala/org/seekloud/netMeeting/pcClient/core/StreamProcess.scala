@@ -43,7 +43,7 @@ object StreamProcess {
 
   final case class InitGrabber(sdl: SourceDataLine) extends Command
 
-  final case class GrabberStartSuccess(grabber: FFmpegFrameGrabber1, sdl: SourceDataLine) extends Command
+  final case class GrabberStartSuccess(grabber: FFmpegFrameGrabber, sdl: SourceDataLine) extends Command
 
   final case object StartSdl extends Command
 
@@ -107,7 +107,7 @@ object StreamProcess {
     Behaviors.receive[Command] {(ctx, msg) =>
       msg match {
         case msg: InitGrabber =>
-          val grabber = new FFmpegFrameGrabber1(url)
+          val grabber = new FFmpegFrameGrabber(url)
           grabber.setImageWidth(encodeConfig.imgWidth)
           grabber.setImageHeight(encodeConfig.imgHeight)
           grabber.setOption("rw_timeout", "2000000")
@@ -164,7 +164,7 @@ object StreamProcess {
   def work(
             parent: ActorRef[CaptureManager.CaptureCommand],
             url: String,
-            grabber: FFmpegFrameGrabber1,
+            grabber: FFmpegFrameGrabber,
             converter: ImageConverter,
             needDraw: Boolean,
             gc: GraphicsContext,

@@ -230,6 +230,7 @@ object RmManager {
 
         case Close =>
           log.info("close in hostBehavior.")
+          pull = true
           captureManager.foreach(_ ! CaptureManager.Close)
           sender.foreach(_ ! Disconnect)
           timer.cancel(PING_KEY)
@@ -303,6 +304,7 @@ object RmManager {
 
         case Close =>
           log.info("close in client.")
+          pull = true
           sender.foreach(_ ! Disconnect)
           timer.cancel(PING_KEY)
           captureManagerOpt.foreach(_ ! CaptureManager.Close)
@@ -427,14 +429,14 @@ object RmManager {
       case msg: JoinRsp =>
         log.debug(s"ws got msg $msg")
         if(pull) {
-          rmManager ! StartPull
-          pull = false
-
           if(meetingType == MeetingType.JOIN){
             if(msg.errCode == 0)
               rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
             else
               log.info(s"join error: ${msg.errCode}  ${msg.msg}")
+          } else {
+            rmManager ! StartPull
+            pull = false
           }
         }
 
