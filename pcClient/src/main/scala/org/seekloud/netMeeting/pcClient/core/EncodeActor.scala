@@ -228,8 +228,8 @@ object EncodeActor {
             case ex: Exception =>
               log.error(s"release encode error: $ex")
           }
-          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
-          Behaviors.same
+//          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
+          Behaviors.stopped
 
         case Restart =>
           log.debug("restart encoder")

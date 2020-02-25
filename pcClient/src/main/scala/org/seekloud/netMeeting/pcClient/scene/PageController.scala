@@ -34,7 +34,6 @@ class PageController(
 
   loginStage.setListener(new LoginStageListener {
     override def login(username: String, password: String): Unit = {
-      //todo login 2 room manager.
       RMClient.signIn(username, password).map{
         case Right(signInRsp) =>
           log.debug(s"sign in success. ${signInRsp}")
@@ -48,9 +47,7 @@ class PageController(
               setListener4HomeStage()
             }
           } else {
-            addToPlatform{
-              WarningDialog.initWarningDialog("登录失败")
-            }
+            loginStage.loginError()
           }
 
         case Left(error) =>

@@ -4,7 +4,7 @@ import java.io.File
 
 import javafx.application.Application
 import javafx.event.EventHandler
-import javafx.geometry.Pos
+import javafx.geometry.{Insets, Pos}
 import javafx.scene.{Group, Scene}
 import javafx.scene.canvas.{Canvas, GraphicsContext}
 import javafx.scene.control.Label
@@ -59,11 +59,12 @@ class LivingStage(userId: Long) extends Application{
 
   val canvas4Pull = new Canvas(640, 360)
 
-  val anchorControl4Self = new AnchorControl(130,257)
-  val anchorControl1 = new AnchorControl(90+400, 144)
-  val anchorControl2 = new AnchorControl(410+400,144)
-  val anchorControl3 = new AnchorControl(90+400,324)
-  val anchorControl4 = new AnchorControl(410+400,324)
+
+  val anchorControl4Self = new AnchorControl(130+15,257+15)
+  val anchorControl1 = new AnchorControl(90+400+30, 144+15)
+  val anchorControl2 = new AnchorControl(410+400+30,144+15)
+  val anchorControl3 = new AnchorControl(90+400+30,324+15)
+  val anchorControl4 = new AnchorControl(410+400+30,324+15)
 
   val anchorPane4Self = anchorControl4Self.getAnchorPane()
   anchorPane4Self.setVisible(true)
@@ -81,15 +82,15 @@ class LivingStage(userId: Long) extends Application{
 
   scene.addEventFilter(MouseEvent.MOUSE_MOVED, (event: MouseEvent) => {
     group.getChildren.remove(1, group.getChildren.size())
-    if(event.getX <= 400 && event.getY <= (360-(360-225)/2) && event.getY >= (360-(360-225)/2)-225) {
+    if(event.getX <= 400+15 && event.getY <= (360-(360-225)/2)+15 && event.getY >= (360-(360-225)/2)-225+15) {
       group.getChildren.add(anchorPane4Self)
-    } else if(event.getX < (canvas4Pull.getWidth/2 + 400) && event.getX > 400 && event.getY < canvas4Pull.getHeight/2){
+    } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY < canvas4Pull.getHeight/2+15){
       group.getChildren.add(anchorPane1)
-    } else if(event.getX >= (canvas4Pull.getWidth/2 + 400) && event.getY < canvas4Pull.getHeight/2) {
+    } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY < canvas4Pull.getHeight/2+15) {
       group.getChildren.add(anchorPane2)
-    } else if(event.getX < (canvas4Pull.getWidth/2 + 400) && event.getX > 400 && event.getY >= canvas4Pull.getHeight/2) {
+    } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY >= canvas4Pull.getHeight/2+15) {
       group.getChildren.add(anchorPane3)
-    } else if(event.getX >= (canvas4Pull.getWidth/2 + 400) && event.getY >= canvas4Pull.getHeight/2) {
+    } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY >= canvas4Pull.getHeight/2+15) {
       group.getChildren.add(anchorPane4)
     }
   })
@@ -159,6 +160,8 @@ class LivingStage(userId: Long) extends Application{
     val canvasVBox = new VBox(canvas4Self)
     canvasVBox.setAlignment(Pos.CENTER)
     val hBox = new HBox(canvasVBox, canvas4Pull)
+    hBox.setSpacing(15)
+    hBox.setPadding(new Insets(15))
     group.getChildren.addAll(hBox)
 
     primaryStage.setScene(scene)
