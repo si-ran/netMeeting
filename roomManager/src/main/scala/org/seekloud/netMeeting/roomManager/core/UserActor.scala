@@ -184,6 +184,12 @@ object UserActor {
               recorder.recordStop()
               Behaviors.same
 
+            case Disconnect =>
+              log.info(s"user $userId client stop")
+              frontActor ! CompleteMsgRm
+              ctx.unwatch(frontActor)
+              Behaviors.stopped
+
             case e =>
               log.info(s"wait ws unknown msg $e")
               dispatchTo(frontActor, TextMsg(msg = "等待状态，不接受此ws消息"))
@@ -242,6 +248,12 @@ object UserActor {
             case UserRecordStopReq(mode) =>
               recorder.recordStop()
               Behaviors.same
+
+            case Disconnect =>
+              log.info(s"user $userId client stop")
+              frontActor ! CompleteMsgRm
+              ctx.unwatch(frontActor)
+              Behaviors.stopped
 
             case e =>
               log.info(s"live ws unknown msg $e")
