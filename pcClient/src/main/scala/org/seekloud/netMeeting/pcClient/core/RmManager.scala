@@ -209,7 +209,7 @@ object RmManager {
           timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
 
           //debug
-          ctx.self ! StartPull
+//          ctx.self ! StartPull
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
         case SendPing =>
