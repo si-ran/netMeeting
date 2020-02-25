@@ -13,9 +13,11 @@ import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.seekloud.netMeeting.roomManager.Boot._
 import org.seekloud.netMeeting.roomManager.core.RoomManager._
+import org.seekloud.netMeeting.roomManager.utils.VideoRecorder
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -84,7 +86,7 @@ object UserActor {
     stashBuffer.unstashAll(ctx, behavior)
   }
 
-  private def busy(id: Long, frontActor: ActorRef[WsMsgManager])(
+  private def busy(id: Long, frontActor: ActorRef[WsMsgManager], recorder: VideoRecorder)(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
     timer: TimerScheduler[Command]
@@ -97,20 +99,20 @@ object UserActor {
 
         case RoomCreateRsp(roomId, errCode) =>
           if(errCode == 0){
-            switchBehavior(ctx, "live", live(id, roomId, frontActor))
+            switchBehavior(ctx, "live", live(id, roomId, frontActor, recorder))
           }
           else{
             dispatchTo(frontActor, TextMsg("无法创建房间"))
-            switchBehavior(ctx, "wait", wait(id, frontActor))
+            switchBehavior(ctx, "wait", wait(id, frontActor, recorder))
           }
 
         case RoomJoinRsp(roomId, errCode) =>
           if(errCode == 0){
-            switchBehavior(ctx, "live", live(id, roomId, frontActor))
+            switchBehavior(ctx, "live", live(id, roomId, frontActor, recorder))
           }
           else{
             dispatchTo(frontActor, JoinRsp(RoomInfo(-1, Nil, -1), acceptance = false))
-            switchBehavior(ctx, "wait", wait(id, frontActor))
+            switchBehavior(ctx, "wait", wait(id, frontActor, recorder))
           }
 
         case TimeOut(m) =>
@@ -133,7 +135,8 @@ object UserActor {
         Behaviors.receiveMessage[Command] {
           case UserJoin(frontActor) =>
             ctx.watchWith(frontActor, UserDisconnect(frontActor))
-            switchBehavior(ctx, "idle", wait(id, frontActor))
+            val record = new VideoRecorder("rtmp://47.92.170.2:42069/live/10011")
+            switchBehavior(ctx, "idle", wait(id, frontActor, record))
 
           case unknownMsg =>
             log.info(s"init unknown msg : $unknownMsg")
@@ -144,7 +147,8 @@ object UserActor {
 
   private def wait(
     userId: Long,
-    frontActor: ActorRef[WsMsgManager]
+    frontActor: ActorRef[WsMsgManager],
+    recorder: VideoRecorder
   )(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
@@ -159,11 +163,32 @@ object UserActor {
 
             case EstablishMeetingReq(url, roomId, `userId`) =>
               roomManager ! RMCreateRoom(url, roomId, userId, frontActor, ctx.self)
-              switchBehavior(ctx, "busy", busy(userId, frontActor))
+              switchBehavior(ctx, "busy", busy(userId, frontActor, recorder))
 
             case JoinReq(uId, roomId) =>
               roomManager ! RMJoinRoom(roomId, uId, frontActor, ctx.self)
-              switchBehavior(ctx, "busy", busy(userId, frontActor))
+              switchBehavior(ctx, "busy", busy(userId, frontActor, recorder))
+
+            case UserRecordReq(mode) =>
+              try{
+                Future{
+                  recorder.recordStart()
+                }.onComplete{
+                  case Success(_) =>
+                    println("over")
+                  case Failure(e) =>
+                    println(s"actor error $e")
+                }
+              }
+              catch{
+                case e: Exception =>
+                  println(s"error: $e")
+              }
+              Behaviors.same
+
+            case UserRecordStopReq(mode) =>
+              recorder.recordStop()
+              Behaviors.same
 
             case e =>
               log.info(s"wait ws unknown msg $e")
@@ -192,6 +217,7 @@ object UserActor {
     userId: Long,
     roomId: Long,
     frontActor: ActorRef[WsMsgManager],
+    recorder: VideoRecorder
   )(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
@@ -206,6 +232,16 @@ object UserActor {
 
             case SpeakReq(uId, rId) =>
               roomManager ! RMClientSpeakReq(uId, rId)
+              Behaviors.same
+
+            case UserRecordReq(mode) =>
+              Future{
+                recorder.recordStart()
+              }.wait(20000)
+              Behaviors.same
+
+            case UserRecordStopReq(mode) =>
+              recorder.recordStop()
               Behaviors.same
 
             case e =>

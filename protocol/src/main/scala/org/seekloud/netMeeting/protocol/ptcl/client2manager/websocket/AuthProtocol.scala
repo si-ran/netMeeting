@@ -162,5 +162,14 @@ object AuthProtocol {
                        errCode: Int = 0,
                        msg: String = "ok"
                      ) extends WsMsgHost with WsMsgRm2Audience
+
+  /*开始录像*/
+  case class UserRecordReq(
+    mode: Int
+  ) extends WsMsgRm2Host with WsMsgAudience
+
+  case class UserRecordStopReq(
+    mode: Int
+  ) extends WsMsgRm2Host with WsMsgAudience
 }
 

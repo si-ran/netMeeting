@@ -4,7 +4,7 @@ val scalaV = "2.12.10"
 
 val projectName = "netMeeting"
 
-val projectVersion = "19.11.1"
+val projectVersion = "20.2.24"
 
 def commonSettings = Seq(
   version := projectVersion,
@@ -105,6 +105,7 @@ lazy val roomManager = (project in file("roomManager")).enablePlugins(PackPlugin
     packExtraClasspath := Map("roomManager" -> Seq("."))
   )
   .settings(
+    libraryDependencies ++= Dependencies.bytedecoLibs,
     libraryDependencies ++= Dependencies.backendDependencies
   )
   .settings {
