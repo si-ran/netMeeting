@@ -51,7 +51,7 @@ object Routes {
 
   def getPushUrl(userId: Long) = s"$streamBase/$userId"
 
-  def getPullUrl(roomId: Long, userId: Long) = s"$streamBase/${roomId}_$userId"
+  def getPullUrl(roomId: Long, userId: Long) = s"$streamBase/${roomId}_x"
 
   def linkRoomManager(userId: Long, token: String, roomId: Long): String = wsBase + "/setupWebSocket" + s"?userId=$userId&token=$token&roomId=$roomId"
 
