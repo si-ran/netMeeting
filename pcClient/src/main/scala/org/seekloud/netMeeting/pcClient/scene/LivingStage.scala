@@ -1,13 +1,12 @@
 package org.seekloud.netMeeting.pcClient.scene
 
-import java.io.File
 
 import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.geometry.{Insets, Pos}
 import javafx.scene.{Group, Scene}
 import javafx.scene.canvas.{Canvas, GraphicsContext}
-import javafx.scene.control.Label
+import javafx.scene.control.{Button, Label}
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout._
@@ -101,6 +100,13 @@ class LivingStage(userId: Long) extends Application{
     }
   })
 
+  //debug
+  val testButton = new Button("test")
+  testButton.setOnAction{_ =>
+    val roomInfo = RoomInfo(10002, List[Long](10002, 10003, 10004), 10002)
+    this.updateRoomInfo(roomInfo)
+  }
+
 
   def isHost: Boolean = _isHost
 
@@ -120,7 +126,7 @@ class LivingStage(userId: Long) extends Application{
     anchorControl4Self.host.setSelected(isHost)
     val indexOfHost = roomInfo.userId.indexWhere(_ == roomInfo.hostId)
     if(isHost) {
-      (0 until roomInfo.userId.length-1).foreach{i =>
+      (0 until roomInfo.userId.length).foreach{i =>
         if(i < indexOfHost) {
           anchorPaneList(i).setVisible(true)
         } else if(i > indexOfHost) {
@@ -159,7 +165,7 @@ class LivingStage(userId: Long) extends Application{
     //    val pane = new Pane(canvas)
     val canvasVBox = new VBox(canvas4Self)
     canvasVBox.setAlignment(Pos.CENTER)
-    val hBox = new HBox(canvasVBox, canvas4Pull)
+    val hBox = new HBox(canvasVBox, canvas4Pull, testButton)
     hBox.setSpacing(15)
     hBox.setPadding(new Insets(15))
     group.getChildren.addAll(hBox)

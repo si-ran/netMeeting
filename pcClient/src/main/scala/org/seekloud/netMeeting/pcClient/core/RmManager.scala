@@ -28,7 +28,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 
 
-
 /**
   * @user: wanruolong
   * @date: 2020/2/6 15:24
@@ -195,8 +194,8 @@ object RmManager {
           //for debug
 //          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
 //          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
-          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
-          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
+//          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
+//          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           captureManager ! CaptureManager.Start
@@ -304,11 +303,13 @@ object RmManager {
 
         case Close =>
           log.info("close in client.")
+          sender.foreach(_ ! Disconnect)
           timer.cancel(PING_KEY)
           captureManagerOpt.foreach(_ ! CaptureManager.Close)
           Behaviors.same
 
         case x =>
+
           log.info(s"got unknown msg in clientBehavior $x")
           Behaviors.unhandled
 

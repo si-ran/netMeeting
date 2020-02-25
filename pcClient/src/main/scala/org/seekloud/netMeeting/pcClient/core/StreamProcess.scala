@@ -110,7 +110,7 @@ object StreamProcess {
           val grabber = new FFmpegFrameGrabber1(url)
           grabber.setImageWidth(encodeConfig.imgWidth)
           grabber.setImageHeight(encodeConfig.imgHeight)
-          grabber.setOption("rw_timeout", "800000")
+          grabber.setOption("rw_timeout", "2000000")
           Future {
             log.debug(s"stream grabber is starting...")
             grabber.start()
@@ -208,12 +208,14 @@ object StreamProcess {
                 soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
                 soundQueue.offer(frame.clone())
               }
-              if(imageQueue.size() > 50 && soundQueue.size() > 50){
-                timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
-              }
-              else{
-                ctx.self ! GrabFrame
-              }
+            }
+            else{
+              println("frame is null")
+            }
+            if(imageQueue.size() > 50 && soundQueue.size() > 50){
+              timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
+            }
+            else{
               ctx.self ! GrabFrame
             }
           } catch {

@@ -96,8 +96,6 @@ object CaptureManager {
 
   final case object Close extends CaptureCommand
 
-  final case object Close1 extends CaptureCommand
-
   final case object Terminate extends CaptureCommand
 
   case object STOP_KEY
@@ -226,20 +224,11 @@ object CaptureManager {
         case Close =>
           log.debug(s"stream process is not null: ${streamProcessOpt.isDefined}")
           streamProcessOpt.foreach(_ ! StreamProcess.Close)
-//          timer.startSingleTimer("wait for close", Close1, 2.seconds)
           soundCaptureOpt.foreach(_ ! SoundCapture.StopSample)
           grabberMap.foreach(_._2 ! ImageCapture.Close)
           drawActorOpt.foreach(_ ! StopDraw)
           recorderActorOpt.foreach(_ ! EncodeActor.Close)
           timer.startSingleTimer("capture_manager_terminate", Terminate, 4.seconds)
-          Behaviors.same
-
-        case Close1 =>
-          soundCaptureOpt.foreach(_ ! SoundCapture.StopSample)
-          grabberMap.foreach(_._2 ! ImageCapture.Close)
-          drawActorOpt.foreach(_ ! StopDraw)
-          recorderActorOpt.foreach(_ ! EncodeActor.Close)
-          timer.startSingleTimer("capture_manager_terminate", Terminate, 2.seconds)
           Behaviors.same
 
         case Terminate =>

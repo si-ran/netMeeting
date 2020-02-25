@@ -35,6 +35,7 @@ object EncodeActor {
   val frame = FrameUtils.convert(image)
 
   case class EncodeFlag(
+                       var encodeFlag: Boolean = true,
                        var imageFlag: Boolean = true,
                        var soundFlag: Boolean = true
                        )
@@ -101,6 +102,7 @@ object EncodeActor {
           recorder.setVideoOption("tune", "zerolatency")
           recorder.setVideoOption("preset", "ultrafast")
           recorder.setVideoOption("crf", "23")
+//          recorder.setOption("rw_timeout", "800000")
           recorder.setFormat("flv")
 //          recorder.setInterleaved(true)
 //          recorder.setGopSize(60)
@@ -116,15 +118,15 @@ object EncodeActor {
           recorder.setSampleRate(44100)
           recorder.setAudioChannels(encodeConfig.channels)
           recorder.setAudioCodec(encodeConfig.audioCodec)
-          try{
+/*          try{
             log.debug(s" recorder is starting...")
             recorder.start()
             ctx.self ! StartEncodeSuccess(recorder)
           }catch {
             case e: Exception =>
               log.info("recorder start failed.")
-          }
-/*          Future {
+          }*/
+          Future {
             log.debug(s" recorder is starting...")
             recorder.start()
             recorder
@@ -133,7 +135,7 @@ object EncodeActor {
             case Failure(ex) =>
               log.error("recorder start failed")
               log.error(s"$ex")
-          }*/
+          }
           Behaviors.same
 
         case msg: StartEncodeSuccess =>
@@ -169,38 +171,29 @@ object EncodeActor {
     Behaviors.receive[Command]{ (ctx, msg) =>
       msg match {
         case msg: SendFrame =>
-//          val videoTs = System.nanoTime() - ts
-
-            try{
-              //              encoder.setTimestamp(startTime * ((1000/encoderConfig.frameRate)*1000).toLong)
-
-//              if(videoTs/1000>encoder.getTimestamp){
-//                println(s"timeInterv：${System.nanoTime()/1000 - msg.ts/1000}")
-//                println(s"${videoTs/1000} -> ${encoder.getTimestamp} = ${videoTs/1000-encoder.getTimestamp}=====:number${encoder.getFrameNumber}")
-//                encoder.setTimestamp(videoTs/1000)
-//              }
-              if(msg.frame.image != null){
+          if(encodeFlag.encodeFlag) {
+            if(msg.frame.image != null){
+              try{
                 if(encodeFlag.imageFlag) {
                   encoder.record(msg.frame)
                 } else{
                   encoder.record(frame.clone())
                 }
+              }catch{
+                case ex:Exception=>
+                  if(ex.getMessage.startsWith("av_interleaved_write_frame() error")){
+                    encodeFlag.encodeFlag = false
+                    ctx.self ! Restart
+                  }
+                  log.error(s"encode image frame error: $ex")
               }
-
-            }catch{
-              case ex:Exception=>
-                if(ex.getMessage.startsWith("av_interleaved_write_frame() error")){
-                  ctx.self ! Restart
-                }
-                log.error(s"encode image frame error: $ex")
             }
+          }
           Behaviors.same
 
         case msg:SendSample =>
+          if(encodeFlag.encodeFlag) {
             try{
-              val cur = System.currentTimeMillis()
-//              println(s"time_interval: ${cur-lastTs}")
-              lastTs = cur
               if(encodeFlag.soundFlag) {
                 encoder.recordSamples(encodeConfig.sampleRate.toInt, encodeConfig.channels, msg.samples)
               } else{
@@ -210,9 +203,14 @@ object EncodeActor {
               }
             }catch{
               case ex:Exception=>
+                if(ex.getMessage.startsWith("av_interleaved_write_frame() error")){
+                  encodeFlag.encodeFlag = false
+                  ctx.self ! Restart
+                }
                 log.error(s"encode audio frame error: $ex")
                 ctx.self ! Close
             }
+          }
           Behaviors.same
 
         case msg: ChangeFlag =>
@@ -234,7 +232,7 @@ object EncodeActor {
         case Restart =>
           log.debug("restart encoder")
           try {
-            encoder.releaseUnsafe()
+            encoder.stop()
             ctx.self ! StartEncode
             log.info(s"release encode resources.")
           } catch {
@@ -251,5 +249,15 @@ object EncodeActor {
           Behaviors.unhandled
       }
     }
+
+/*  def busy(
+            parent: ActorRef[CaptureManager.CaptureCommand]
+          )(
+    implicit stashBuffer: StashBuffer[Command],
+    timer: TimerScheduler[Command]
+  ): Behavior[Command] =
+    Behaviors.receive[Command] { (ctx, msg) =>
+
+    }*/
 
 }
