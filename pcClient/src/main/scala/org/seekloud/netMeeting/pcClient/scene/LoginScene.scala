@@ -9,6 +9,7 @@ import javafx.geometry.Pos
 import javafx.scene.control.{Button, Label, PasswordField, TextField}
 import javafx.scene.image.Image
 import javafx.scene.layout.{AnchorPane, HBox, VBox}
+import javafx.scene.paint.Color
 import javafx.scene.{Group, Scene}
 import javafx.stage.Stage
 import org.seekloud.netMeeting.pcClient.common.Routes
@@ -37,7 +38,9 @@ class LoginScene(stage: Stage) {
   val labelUsername = new Label("用户名：")
   val labelPassword  = new Label("密  码：")
   val userText = new TextField()
+  userText.setText("shining")
   val passwordText = new PasswordField()
+  passwordText.setText("123")
   val loginButton = new Button("登录")
   val logUpButton = new Button("注册")
   val nameBox = new HBox(labelUsername, userText)
@@ -49,11 +52,16 @@ class LoginScene(stage: Stage) {
   buttonBox.setSpacing(30)
   buttonBox.setAlignment(Pos.CENTER)
 
+  val errorLabel = new Label("登录失败！")
+  errorLabel.setTextFill(Color.RED)
+  errorLabel.setAlignment(Pos.CENTER)
+  errorLabel.setVisible(false)
   loginButton.setDefaultButton(true)
   loginButton.setOnAction { event =>
 //    println("button clicked")
     val username = userText.getText()
     val password = passwordText.getText()
+    errorLabel.setVisible(false)
     listener.login(username, password)
   }
 
@@ -66,7 +74,7 @@ class LoginScene(stage: Stage) {
     }
   }
 
-  val inputBox = new VBox(nameBox, passwordBox)
+  val inputBox = new VBox(nameBox, passwordBox, errorLabel)
   inputBox.setAlignment(Pos.CENTER)
   inputBox.setSpacing(15)
   val vBox = new VBox(inputBox, buttonBox)
@@ -77,6 +85,10 @@ class LoginScene(stage: Stage) {
   group.getChildren.add(anchorPane)
 
   def getScene = this.scene
+
+  def loginError() = {
+    errorLabel.setVisible(true)
+  }
 
   def close() = {
     stage.close()

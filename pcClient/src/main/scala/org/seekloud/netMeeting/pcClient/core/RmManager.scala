@@ -25,6 +25,8 @@ import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtoc
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
+
 
 
 /**
@@ -46,7 +48,7 @@ object RmManager {
   var pushUrl: String = ""
 
   var identity: Identity.Value = Identity.Host
-
+  private var pull: Boolean = true
 
   object Identity extends Enumeration {
     val Host, Client = Value
@@ -64,6 +66,8 @@ object RmManager {
 
   final case class GetSender(sender:  ActorRef[WsMsgFront]) extends RmCommand
 
+  final case object SendPing extends RmCommand
+
   final case object BackHome extends RmCommand
 
   final case class GetPageItem(pageController: Option[PageController]) extends RmCommand
@@ -75,6 +79,10 @@ object RmManager {
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends RmCommand
 
   private case class UpdateRoomInfos(roomInfo: RoomInfo) extends RmCommand
+
+  private case object StartPull extends RmCommand
+
+  private case object PING_KEY
 
   /**
     * host
@@ -89,6 +97,11 @@ object RmManager {
   final case class ClientJoin(roomId: Long, userId: Long) extends RmCommand
 
   final case class ClientJoinRsp(roomInfo: RoomInfo, acceptance: Boolean) extends RmCommand
+
+  final case class PushStream() extends RmCommand
+
+  final case object PUSH_STREAM_DELAY_KEY
+
 
   private[this] def switchBehavior(
                                    ctx: ActorContext[RmCommand],
@@ -142,6 +155,10 @@ object RmManager {
           log.info("close in idle.")
           Behaviors.same
 
+        case msg: ChildDead[CaptureManager.CaptureCommand] =>
+          log.info(s"got msg $msg in init")
+          Behaviors.same
+
         case x =>
           log.info(s"got unknown msg in idle $x")
           Behaviors.unhandled
@@ -176,10 +193,13 @@ object RmManager {
           }
 
           //for debug
-          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
-          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
+//          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
+//          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
+          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
+          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
+          captureManager ! CaptureManager.Start
           val wsUrl = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.CREATE)
           hostBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
@@ -187,14 +207,22 @@ object RmManager {
         case msg: GetSender =>
           log.debug(s"got msg $msg")
           msg.sender ! EstablishMeetingReq(pushUrl, roomId.get, userId.get)
+          timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
+
           //debug
-//          ctx.self ! EstablishNewMeetingRsp()
+          ctx.self ! StartPull
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
+        case SendPing =>
+          sender.foreach(_ ! PingPackage)
+          Behaviors.same
+
         case msg: EstablishNewMeetingRsp =>
-          if(msg.errorCode == 0){
-            captureManager.foreach(_ ! CaptureManager.StartEncode)
-          }
+          Behaviors.same
+
+        case StartPull =>
+          log.debug("got msg startPull")
+          captureManager.foreach(_ ! CaptureManager.StartEncode)
           Behaviors.same
 
         case msg: UpdateRoomInfos =>
@@ -204,6 +232,8 @@ object RmManager {
         case Close =>
           log.info("close in hostBehavior.")
           captureManager.foreach(_ ! CaptureManager.Close)
+          sender.foreach(_ ! Disconnect)
+          timer.cancel(PING_KEY)
           switchBehavior(ctx, "idle", idle())
 
         case x =>
@@ -233,34 +263,49 @@ object RmManager {
               WarningDialog.initWarningDialog("连接失败！")
             }
           }
+          val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
+          captureManager ! CaptureManager.Start
           val wsUrl = Routes.getWsUrl(userId.get)
           buildWebsocket(ctx, wsUrl, successFunc(), failureFunc(), MeetingType.JOIN)
-          Behaviors.same
+          clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
 
         case msg: GetSender =>
           assert(userId.isDefined && roomId.isDefined)
           msg.sender ! JoinReq(userId.get, roomId.get)
+          timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
           clientBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManagerOpt)
+
+        case SendPing =>
+          sender.foreach(_ ! PingPackage)
+          Behaviors.same
 
         case msg: ClientJoinRsp =>
           msg.acceptance match {
             case true =>
               roomInfo = Some(msg.roomInfo)
               pageController.foreach(_.setRoomInfo(msg.roomInfo))
-              val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
-              clientBehavior(gc4Self, gc4Pull, pageController, sender, Some(captureManager))
+              captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
+            //              timer.startPeriodicTimer(PUSH_STREAM_DELAY_KEY, PushStream(), 10.seconds)
+//              clientBehavior(gc4Self, gc4Pull, pageController, sender)
             case _ =>
               //todo join refused
               log.info(s"join refused.")
-              Behaviors.same
+//              Behaviors.same
           }
+          Behaviors.same
+
+        case PushStream() =>
+          captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
+          Behaviors.same
 
         case msg: UpdateRoomInfos =>
           pageController.foreach(_.setRoomInfo(msg.roomInfo))
           Behaviors.same
 
         case Close =>
-          log.info("close in idle.")
+          log.info("close in client.")
+          timer.cancel(PING_KEY)
+          captureManagerOpt.foreach(_ ! CaptureManager.Close)
           Behaviors.same
 
         case x =>
@@ -292,15 +337,15 @@ object RmManager {
         .toMat(sink)(Keep.left)
         .run()
 
-    val connected = response.flatMap{ upgrage =>
-      if(upgrage.response.status == StatusCodes.SwitchingProtocols){
+    val connected = response.flatMap{ upgrade =>
+      if(upgrade.response.status == StatusCodes.SwitchingProtocols){
         ctx.self ! GetSender(stream)
         successFunc
         Future.successful("link roomMamager successfully.")
       }
       else{
         failureFunc
-        throw new RuntimeException(s"link roomManager failed: ${upgrage.response.status}")
+        throw new RuntimeException(s"link roomManager failed: ${upgrade.response.status}")
       }
     }
     connected.onComplete(i => log.info(i.toString))
@@ -374,14 +419,22 @@ object RmManager {
       case msg: EstablishMeetingRsp =>
         log.debug(s"ws got msg $msg")
         if(meetingType == MeetingType.CREATE)
-          rmManager ! EstablishNewMeetingRsp()
+          if(msg.errorCode == 0){
+            rmManager ! EstablishNewMeetingRsp()
+          }
 
       case msg: JoinRsp =>
-        if(meetingType == MeetingType.JOIN){
-          if(msg.errCode == 0)
-            rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
-          else
-            log.info(s"join error: ${msg.errCode}  ${msg.msg}")
+        log.debug(s"ws got msg $msg")
+        if(pull) {
+          rmManager ! StartPull
+          pull = false
+
+          if(meetingType == MeetingType.JOIN){
+            if(msg.errCode == 0)
+              rmManager ! ClientJoinRsp(msg.roomInfo, msg.acceptance)
+            else
+              log.info(s"join error: ${msg.errCode}  ${msg.msg}")
+          }
         }
 
       case msg: UpdateRoomInfo =>

@@ -4,12 +4,14 @@ package org.seekloud.netMeeting.pcClient.component
 import java.io.File
 
 import javafx.application.Application
-import javafx.geometry.Pos
+import javafx.geometry.{Insets, Pos}
 import javafx.scene.{Group, Scene}
 import javafx.scene.canvas.Canvas
+import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.{AnchorPane, GridPane, HBox, VBox}
+import javafx.scene.paint.Color
 import javafx.stage.Stage
 import javax.imageio.ImageIO
 import org.bytedeco.ffmpeg.global.avcodec.{av_jni_set_java_vm, avcodec_register_all}
@@ -30,21 +32,32 @@ class LivePane extends Application{
     val canvas4Self = new Canvas(400, 225)
     val image = new Image("/img/camera.png")
     val image1 = new Image("/img/camera.png")
-    canvas4Self.getGraphicsContext2D.drawImage(image, 0, 0, canvas4Self.getWidth, canvas4Self.getHeight)
+    val gc4Self = canvas4Self.getGraphicsContext2D
+
+    gc4Self.drawImage(image, 0, 0, canvas4Self.getWidth, canvas4Self.getHeight)
+//    canvas4Self.getGraphicsContext2D.rect(0, 0, canvas4Self.getWidth, canvas4Self.getHeight)
+    gc4Self.setStroke(Color.BLUE)
+    gc4Self.setLineWidth(5)
+    gc4Self.strokeRect(0,0,canvas4Self.getWidth, canvas4Self.getHeight)
     val canvas = new Canvas(640, 360)
-    canvas.getGraphicsContext2D.drawImage(image1, 0, 0, canvas.getWidth, canvas.getHeight)
+    val gc = canvas.getGraphicsContext2D
+    gc.drawImage(image1, 0, 0, canvas.getWidth, canvas.getHeight)
+    gc.setStroke(Color.BLUE)
+    gc.setLineWidth(5)
+    gc.strokeRect(0,0,canvas.getWidth, canvas.getHeight)
+//    gc.rect(0, 0, canvas.getWidth, canvas.getHeight)
     val group = new Group
     val scene = new Scene(group)
     scene.getStylesheets.add(
       this.getClass.getClassLoader.getResource("css/common.css").toExternalForm
     )
-    val anchorControl1 = new AnchorControl(90+400, 144)
+    val anchorControl1 = new AnchorControl(90+400+30, 144+15)
     anchorControl1.host.setSelected(true)
     anchorControl1.host.setDisable(true)
-    val anchorControl2 = new AnchorControl(410+400,144)
-    val anchorControl3 = new AnchorControl(90+400,324)
-    val anchorControl4 = new AnchorControl(410+400,324)
-    val anchorControl4Self = new AnchorControl(130,257)
+    val anchorControl4Self = new AnchorControl(130+15,257+15)
+    val anchorControl2 = new AnchorControl(410+400+30,144+15)
+    val anchorControl3 = new AnchorControl(90+400+30,324+15)
+    val anchorControl4 = new AnchorControl(410+400+30,324+15)
 
     val anchorPane4Self = anchorControl4Self.getAnchorPane()
     anchorPane4Self.setVisible(true)
@@ -92,9 +105,13 @@ class LivePane extends Application{
     })
 
 
-    val vBox = new VBox(canvas4Self)
+    val label = new Label("test")
+    label.setTextFill(Color.RED)
+    val vBox = new VBox(label, canvas4Self)
     vBox.setAlignment(Pos.CENTER)
     val hBox = new HBox(vBox, canvas)
+    hBox.setSpacing(15)
+    hBox.setPadding(new Insets(15))
     group.getChildren.addAll(hBox)
 
     primaryStage.setScene(scene)

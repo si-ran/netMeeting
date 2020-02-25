@@ -3,6 +3,7 @@ package org.seekloud.netMeeting.pcClient.scene
 import akka.actor.typed.ActorRef
 import org.seekloud.netMeeting.pcClient.Boot.{addToPlatform, executor}
 import org.seekloud.netMeeting.pcClient.common.Routes
+import org.seekloud.netMeeting.pcClient.component.WarningDialog
 import org.seekloud.netMeeting.pcClient.core.RmManager
 import org.seekloud.netMeeting.pcClient.core.RmManager.RmCommand
 import org.seekloud.netMeeting.pcClient.scene.CreatorStage.{CreatorStageListener, MeetingType}
@@ -33,18 +34,22 @@ class PageController(
 
   loginStage.setListener(new LoginStageListener {
     override def login(username: String, password: String): Unit = {
-      //todo login 2 room manager.
       RMClient.signIn(username, password).map{
         case Right(signInRsp) =>
-          log.debug(s"sign in success.")
-          addToPlatform{
-            loginStage.close()
-            val userId = 10010
-//            homeStage = new HomeStage(signInRsp.data.get.userId)
-            homeStage = new HomeStage(userId)
-            homeStage.showStage()
-            setListener4HomeStage()
+          log.debug(s"sign in success. ${signInRsp}")
+          if(signInRsp.errCode == 0) {
+            addToPlatform{
+              loginStage.close()
+              //            val userId = 10010
+              val userId = signInRsp.data.get.userId
+              homeStage = new HomeStage(userId)
+              homeStage.showStage()
+              setListener4HomeStage()
+            }
+          } else {
+            loginStage.loginError()
           }
+
         case Left(error) =>
           log.error(s"sign in error, ${error.getMessage}")
       }
@@ -56,11 +61,11 @@ class PageController(
       override def createNewIssue(meetingType: MeetingType.Value): Unit = {
         val userId = homeStage.getUserId
         creatorStage = new CreatorStage(meetingType, userId)
+        val url = Routes.getPushUrl(userId)
+        creatorStage.setUrl(url)
         if(meetingType == MeetingType.CREATE){
           val roomId = userId
           creatorStage.setRoomId(roomId)
-          val url = Routes.getPushUrl(userId)
-          creatorStage.setUrl(url)
         }
         creatorStage.showStage()
         setListener4CreatorStage()

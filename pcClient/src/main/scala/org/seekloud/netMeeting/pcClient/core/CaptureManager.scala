@@ -70,6 +70,8 @@ object CaptureManager {
 
   sealed trait CaptureCommand
 
+  final case object Start extends CaptureCommand
+
   private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends CaptureCommand
 
   final case class StartGrabberImage(mediaType: MediaType.Value) extends CaptureCommand
@@ -93,6 +95,8 @@ object CaptureManager {
 //  final case class Ready4GrabStream(url: String) extends CaptureCommand
 
   final case object Close extends CaptureCommand
+
+  final case object Close1 extends CaptureCommand
 
   final case object Terminate extends CaptureCommand
 
@@ -118,16 +122,10 @@ object CaptureManager {
       log.info("ImageCapture is starting")
       implicit val stashBuffer: StashBuffer[CaptureCommand] = StashBuffer[CaptureCommand](Int.MaxValue)
       Behaviors.withTimers[CaptureCommand]{ implicit timer =>
-//        ctx.self ! StartGrabberImage(MediaType.Camera)
-        ctx.self ! StartCaptureSound
         val imageMode = ImageMode()
         val encodeConfig = EncodeConfig()
-        val drawActor = ctx.spawn(drawer(gc4Self), "drawActor")
-        val childName = s"${MediaType.Camera}_capture"
-        val imageCapture = getImageCapture(ctx, encodeConfig, MediaType.Camera, Some(drawActor), childName)
         val grabberMap = new mutable.HashMap[MediaType.Value, ActorRef[ImageCapture.Command]]()
-        grabberMap.put(MediaType.Camera, imageCapture)
-        idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = false,  imageMode, encodeConfig, drawActor, grabberMap)
+        idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = false,  imageMode, encodeConfig, None, grabberMap)
       }
     }
   }
@@ -141,7 +139,7 @@ object CaptureManager {
             encodeFlag: Boolean = false,
             imageMode: ImageMode,
             encodeConfig: EncodeConfig,
-            drawActor: ActorRef[DrawCommand],
+            drawActorOpt: Option[ActorRef[DrawCommand]],
             grabberMap: mutable.HashMap[MediaType.Value, ActorRef[ImageCapture.Command]],
             soundCaptureOpt: Option[ActorRef[SoundCapture.Command]] = None,
             recorderActorOpt: Option[ActorRef[EncodeActor.Command]] = None,
@@ -152,6 +150,15 @@ object CaptureManager {
           ): Behavior[CaptureCommand] =
     Behaviors.receive[CaptureCommand]{ (ctx, msg) =>
       msg match {
+        case Start =>
+          ctx.self ! StartCaptureSound
+          val drawActor = ctx.spawn(drawer(gc4Self), "drawActor")
+          val childName = s"${MediaType.Camera}_capture"
+          val imageCapture = getImageCapture(ctx, encodeConfig, MediaType.Camera, Some(drawActor), childName)
+          grabberMap.put(MediaType.Camera, imageCapture)
+          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag,  imageMode, encodeConfig, Some(drawActor),
+            grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+
         case StartCaptureSound =>
           val audioFormat = new AudioFormat(encodeConfig.sampleRate, encodeConfig.sampleSizeInBit, encodeConfig.channels, true, false)
           //        val minfoSet: Array[Mixer.Info] = AudioSystem.getMixerInfo
@@ -173,12 +180,12 @@ object CaptureManager {
 
         case msg: SoundStartSuccess =>
           val soundCapture = getSoundCapture(ctx, msg.line, encodeConfig.frameRate, encodeConfig.sampleRate, encodeConfig.channels, encodeConfig.sampleSizeInBit)
-          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActor, grabberMap, Some(soundCapture), recorderActorOpt, streamProcessOpt)
+          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, Some(soundCapture), recorderActorOpt, streamProcessOpt)
 
         case ImageCaptureStartSuccess(frameRate) =>
           encodeConfig.frameRate = frameRate
           val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
-          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
+          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
 
           //提前启动，不是响应StartEncode消息, 但两者都接收到以后才进行推流
         case StartEncodeSuccess =>
@@ -187,10 +194,10 @@ object CaptureManager {
               grabberMap.foreach(_._2 ! ImageCapture.StartEncode(recorderActorOpt.get))
               soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActorOpt.get))
               val streamProcess = getStreamProcess(ctx, pullUrl, encodeConfig, gc4Pull)
-              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
 
             case _ =>
-              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
           }
 
         case StartStreamProcessSuccess =>
@@ -210,19 +217,29 @@ object CaptureManager {
               grabberMap.foreach(_._2 ! ImageCapture.StartEncode(recorderActorOpt.get))
               soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActorOpt.get))
               val streamProcess = getStreamProcess(ctx, pullUrl, encodeConfig, gc4Pull)
-              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
 
             case _ =>
-              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActor, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
           }
 
         case Close =>
+          log.debug(s"stream process is not null: ${streamProcessOpt.isDefined}")
+          streamProcessOpt.foreach(_ ! StreamProcess.Close)
+//          timer.startSingleTimer("wait for close", Close1, 2.seconds)
           soundCaptureOpt.foreach(_ ! SoundCapture.StopSample)
           grabberMap.foreach(_._2 ! ImageCapture.Close)
-          drawActor ! StopDraw
+          drawActorOpt.foreach(_ ! StopDraw)
           recorderActorOpt.foreach(_ ! EncodeActor.Close)
-          streamProcessOpt.foreach(_ ! StreamProcess.Close)
-//          timer.startSingleTimer(STOP_KEY, Terminate, 1.seconds)
+          timer.startSingleTimer("capture_manager_terminate", Terminate, 4.seconds)
+          Behaviors.same
+
+        case Close1 =>
+          soundCaptureOpt.foreach(_ ! SoundCapture.StopSample)
+          grabberMap.foreach(_._2 ! ImageCapture.Close)
+          drawActorOpt.foreach(_ ! StopDraw)
+          recorderActorOpt.foreach(_ ! EncodeActor.Close)
+          timer.startSingleTimer("capture_manager_terminate", Terminate, 2.seconds)
           Behaviors.same
 
         case Terminate =>
@@ -238,6 +255,10 @@ object CaptureManager {
           Behaviors.same
 
         case msg: ChildDead[SoundCapture.Command] =>
+          log.info(s"$msg")
+          Behaviors.same
+
+        case msg: ChildDead[StreamProcess.Command] =>
           log.info(s"$msg")
           Behaviors.same
 

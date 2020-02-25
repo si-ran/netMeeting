@@ -7,15 +7,16 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer, TimerScheduler}
 import javafx.scene.canvas.GraphicsContext
 import javax.sound.sampled.{AudioFormat, AudioSystem, SourceDataLine}
-import org.bytedeco.javacv.{CanvasFrame, FFmpegFrameGrabber, Frame, FrameGrabber}
+import org.bytedeco.javacv._
 import org.seekloud.netMeeting.pcClient.Boot
 import org.seekloud.netMeeting.pcClient.core.CaptureManager.{EncodeConfig, MediaType}
 import org.seekloud.netMeeting.pcClient.utils.ImageConverter
 import org.seekloud.netMeeting.pcClient.Boot.executor
 import org.seekloud.netMeeting.pcClient.core.ImageCapture.CaptureSetting
+import org.seekloud.netMeeting.pcClient.core.player.{ImagePlayer, SoundPlayer}
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future, TimeoutException}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -40,9 +41,9 @@ object StreamProcess {
 
   sealed trait Command
 
-  final case object InitGrabber extends Command
+  final case class InitGrabber(sdl: SourceDataLine) extends Command
 
-  final case class GrabberStartSuccess(grabber: FFmpegFrameGrabber) extends Command
+  final case class GrabberStartSuccess(grabber: FFmpegFrameGrabber1, sdl: SourceDataLine) extends Command
 
   final case object StartSdl extends Command
 
@@ -51,6 +52,8 @@ object StreamProcess {
   final case object GrabFrame extends Command
 
   final case class StartSdlSuccess(sdl: SourceDataLine) extends Command
+
+  private case class ChildDead[U](name: String, childRef: ActorRef[U]) extends Command
 
   final case object Close extends Command
 
@@ -85,6 +88,7 @@ object StreamProcess {
       Behaviors.withTimers[Command] { implicit timer =>
         val converter = new ImageConverter
         ctx.self ! StartSdl
+        log.debug(s"pull stream from $url")
         init(parent, url, converter, needDraw, gc, encodeConfig)
       }
     }
@@ -95,18 +99,18 @@ object StreamProcess {
             converter: ImageConverter,
             needDraw: Boolean,
             gc: GraphicsContext,
-            encodeConfig: EncodeConfig,
-            sdl: Option[SourceDataLine] = None
+            encodeConfig: EncodeConfig
           )(
             implicit stashBuffer: StashBuffer[Command],
             timer: TimerScheduler[Command]
           ): Behavior[Command] =
     Behaviors.receive[Command] {(ctx, msg) =>
       msg match {
-        case InitGrabber =>
-          val grabber = new FFmpegFrameGrabber(url)
+        case msg: InitGrabber =>
+          val grabber = new FFmpegFrameGrabber1(url)
           grabber.setImageWidth(encodeConfig.imgWidth)
           grabber.setImageHeight(encodeConfig.imgHeight)
+          grabber.setOption("rw_timeout", "800000")
           Future {
             log.debug(s"stream grabber is starting...")
             grabber.start()
@@ -115,7 +119,7 @@ object StreamProcess {
           }.onComplete {
             case Success(grab) =>
               log.debug(s"grab start success")
-              ctx.self ! GrabberStartSuccess(grab)
+              ctx.self ! GrabberStartSuccess(grab, msg.sdl)
             case Failure(ex) =>
               log.error("camera start failed")
               log.error(s"$ex")
@@ -125,7 +129,7 @@ object StreamProcess {
         case msg: GrabberStartSuccess =>
           log.debug(s"got msg $msg")
           ctx.self ! StartGrab
-          switchBehavior(ctx, "work", work(parent, url, msg.grabber, converter, needDraw, gc, encodeConfig, sdl))
+          switchBehavior(ctx, "work", work(parent, url, msg.grabber, converter, needDraw, gc, encodeConfig, Some(msg.sdl)))
 
         case StartSdl =>
           val BIG_ENDIAN = true
@@ -143,9 +147,9 @@ object StreamProcess {
           Behaviors.same
 
         case msg: StartSdlSuccess =>
-          ctx.self ! InitGrabber
+          ctx.self ! InitGrabber(msg.sdl)
           log.debug(s"got msg $msg")
-          init(parent, url, converter, needDraw, gc, encodeConfig, Some(msg.sdl))
+          Behaviors.same
 
         case Close =>
           log.warn(s"close in init.")
@@ -160,14 +164,14 @@ object StreamProcess {
   def work(
             parent: ActorRef[CaptureManager.CaptureCommand],
             url: String,
-            grabber: FFmpegFrameGrabber,
+            grabber: FFmpegFrameGrabber1,
             converter: ImageConverter,
             needDraw: Boolean,
             gc: GraphicsContext,
             encodeConfig: EncodeConfig,
             sdlOpt: Option[SourceDataLine] = None,
-            soundThread: Option[Thread] = None,
-            imageThread: Option[Thread] = None
+            soundPlayerOpt: Option[ActorRef[SoundPlayer.Command]] = None,
+            imagePlayerOpt: Option[ActorRef[ImagePlayer.Command]] = None
           )(
             implicit stashBuffer: StashBuffer[Command],
             timer: TimerScheduler[Command]
@@ -176,16 +180,47 @@ object StreamProcess {
       msg match {
         case StartGrab =>
           ctx.self ! GrabFrame
-          val soundThread = getSoundThread(sdlOpt.get)
-          soundThread.start()
-          val imageThread = getImageThread(encodeConfig.frameRate, converter, gc, encodeConfig)
-          imageThread.start()
+          val soundPlayer = getSoundPlayer(ctx, sdlOpt.get)
+          val imagePlayer = getImagePlayer(ctx, encodeConfig.frameRate, converter, gc, encodeConfig)
+//          val soundThread = getSoundThread(sdlOpt.get)
+//          soundThread.start()
+//          val imageThread = getImageThread(encodeConfig.frameRate, converter, gc, encodeConfig)
+//          imageThread.start()
           parent ! CaptureManager.StartStreamProcessSuccess
-          work(parent, url, grabber, converter, needDraw, gc, encodeConfig, sdlOpt, Some(soundThread), Some(imageThread))
+          work(parent, url, grabber, converter, needDraw, gc, encodeConfig, sdlOpt, Some(soundPlayer), Some(imagePlayer))
+//          Behaviors.same
 
 
         case GrabFrame =>
-          Try(grabber.grab()) match {
+          try {
+            val frame = grabber.grab()
+            if (null != frame) {
+              if (null != frame.image) {
+                //                  println(s"image: ${frame.timestamp}")
+                imageFirstTs = if(imageFirstTs == 0) frame.timestamp else imageFirstTs
+                if(imageFirstTs != 0 && soundFirstTs != 0){
+                  timerIntervalBase = imageFirstTs - soundFirstTs
+                }
+                imageQueue.offer(frame.clone())
+              }
+              if(null != frame.samples) {
+                //                  println(s"sound ${frame.timestamp}")
+                soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
+                soundQueue.offer(frame.clone())
+              }
+              if(imageQueue.size() > 50 && soundQueue.size() > 50){
+                timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
+              }
+              else{
+                ctx.self ! GrabFrame
+              }
+              ctx.self ! GrabFrame
+            }
+          } catch {
+            case e: Exception =>
+              log.info(s"net grab error ${e.getMessage}")
+          }
+ /*         Try(grabber.grab()) match {
             case Success(frame) =>
               if (null != frame) {
                 if (null != frame.image) {
@@ -201,19 +236,20 @@ object StreamProcess {
                   soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
                   soundQueue.offer(frame.clone())
                 }
-                if(imageQueue.size() > 50 && soundQueue.size() > 50){
+                /*if(imageQueue.size() > 50 && soundQueue.size() > 50){
                   timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
                 }
                 else{
                   ctx.self ! GrabFrame
-                }
+                }*/
+                ctx.self ! GrabFrame
               }
 
             case Failure(ex) =>
-              ctx.self ! Restart
+//              ctx.self ! Restart
               log.error(s"grab error: $ex")
               log.info(s"stop grab stream")
-          }
+          }*/
           Behaviors.same
 
         case Restart =>
@@ -224,29 +260,35 @@ object StreamProcess {
             case ex: Exception =>
               log.warn(s"release stream resources failed: $ex")
           }
-          ctx.self ! InitGrabber
+          ctx.self ! InitGrabber(sdlOpt.get)
           switchBehavior(ctx, "init", init(parent, url, converter, needDraw, gc, encodeConfig))
 
         case Close =>
+          log.debug("got msg close")
+          timer.cancel(GRAB_FRAME_KEY)
           try {
             grabber.release()
-            if(sdlOpt.nonEmpty && sdlOpt.get.isOpen){
+/*            if(sdlOpt.nonEmpty && sdlOpt.get.isOpen){
               sdlOpt.foreach(_.close())
               log.debug(s"sdl closed.")
-              log.debug("stream grabber closed")
-            }
+            }*/
+            log.debug("stream grabber closed")
+
           } catch {
             case ex: Exception =>
               log.warn(s"release stream resources failed: $ex")
           }
 
-          soundThread.foreach(_.interrupt())
-          imageThread.foreach(_.interrupt())
-          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
+          soundPlayerOpt.foreach(_ ! SoundPlayer.Close)
+          imagePlayerOpt.foreach(_ ! ImagePlayer.Close)
+          timer.startSingleTimer("stream process", Terminate, 20.millis)
           Behaviors.same
 
         case Terminate =>
           log.info(s"stream processor stopped.")
+          soundQueue.clear()
+          imageQueue.clear()
+          timestamp = 0
           Behaviors.stopped
 
         case x =>
@@ -258,32 +300,32 @@ object StreamProcess {
 
   def getSoundThread(sdl: SourceDataLine): Thread = new Thread(){
     override def run(): Unit = {
-      log.debug(s"get sound thread.")
+      log.debug(s"sound thread started.")
       val sdlCapacity = sdl.available()
       val size = 4096
       val dataBuf = ByteBuffer.allocate(size)
       //      tempBuf.position(1)
-      try{
-        while(true){
-          val available = sdl.available()
-          if(available >= size){
-            val frame = soundQueue.poll()
-            if(null != frame && null != frame.samples){
-              timestamp = frame.timestamp - (sdlCapacity-available)/4096*23000
-//              println(s"frame.timestamp：${frame.timestamp}, timestamp$timestamp availables$availables, available$available")
-              val shortBuffer = frame.samples(0).asInstanceOf[ShortBuffer]
-              dataBuf.asShortBuffer().put(shortBuffer)
-              sdl.write(dataBuf.array, 0, dataBuf.remaining())
-              dataBuf.clear()
-            }
+      while(!Thread.currentThread().isInterrupted){
+        val available = sdl.available()
+        if(available >= size){
+          val frame = soundQueue.poll()
+          if(null != frame && null != frame.samples){
+            timestamp = frame.timestamp - (sdlCapacity-available)/4096*23000
+            //              println(s"frame.timestamp：${frame.timestamp}, timestamp$timestamp availables$availables, available$available")
+            val shortBuffer = frame.samples(0).asInstanceOf[ShortBuffer]
+            dataBuf.asShortBuffer().put(shortBuffer)
+            sdl.write(dataBuf.array, 0, dataBuf.remaining())
+            dataBuf.clear()
           }
-          Thread.sleep(15)
         }
-      } catch {
-        case e: InterruptedException =>
-          log.info(s"sound player interrupted.")
+        try{
+          Thread.sleep(15)
+        } catch {
+          case e: InterruptedException =>
+            Thread.currentThread().interrupt()
+        }
       }
-
+      log.info(s"sound player terminated.")
     }
   }
 
@@ -298,12 +340,12 @@ object StreamProcess {
       var lastTs = 0L
 //      val timeIntervalBase = 1000/frameRate
       var speed = 1f
-      try{
-        while (true){
+      while (!Thread.currentThread().isInterrupted){
+        try{
           val frame = imageQueue.poll()
           if(null != frame && null != frame.image){
-//            println(s"timerIntervalBase:$timerIntervalBase")
-//            println(s"frame.timestamp - timeIntervalBase: ${frame.timestamp} - $timestamp = ${frame.timestamp-timestamp}")
+            //            println(s"timerIntervalBase:$timerIntervalBase")
+            //            println(s"frame.timestamp - timeIntervalBase: ${frame.timestamp} - $timestamp = ${frame.timestamp-timestamp}")
             if(frame.timestamp - timestamp > 40000 + timerIntervalBase)
               speed = 1.1f
             if(frame.timestamp - timestamp > 80000 + timerIntervalBase)
@@ -319,18 +361,46 @@ object StreamProcess {
             var timeInterval = ((frame.timestamp - lastTs) * speed/1000).toLong
             timeInterval = if(timeInterval < 0) (1000/frameRate).toLong else timeInterval
             lastTs = frame.timestamp
-//            println(s"sleep: $timeInterval")
+            //            println(s"sleep: $timeInterval")
             //        println(timeInterval)
             Thread.sleep(timeInterval)
           }
+        } catch {
+          case e: InterruptedException =>
+            Thread.currentThread().interrupt()
         }
-      } catch {
-        case e: InterruptedException =>
-          log.info(s"image player interrupted.")
       }
-
+      log.debug(s"image player terminated.")
     }
+
+
   }
 
 
+  def getSoundPlayer(
+                    ctx: ActorContext[Command],
+                    sdl: SourceDataLine
+                  ): ActorRef[SoundPlayer.Command] = {
+    val childName = "sound_player"
+    ctx.child(childName).getOrElse{
+      val actor = ctx.spawn(SoundPlayer.create(ctx.self, sdl, soundQueue), childName)
+      ctx.watchWith(actor, ChildDead(childName, actor))
+      actor
+    }.unsafeUpcast[SoundPlayer.Command]
+  }
+
+  def getImagePlayer(
+                    ctx: ActorContext[Command],
+                    frameRate: Double,
+                    converter: ImageConverter,
+                    gc: GraphicsContext,
+                    encodeConfig: EncodeConfig,
+                  ): ActorRef[ImagePlayer.Command] = {
+    val childName = "image_player"
+    ctx.child(childName).getOrElse{
+      val actor = ctx.spawn(ImagePlayer.create(ctx.self, frameRate, converter, gc, encodeConfig, imageQueue), childName)
+      ctx.watchWith(actor, ChildDead(childName, actor))
+      actor
+    }.unsafeUpcast[ImagePlayer.Command]
+  }
 }

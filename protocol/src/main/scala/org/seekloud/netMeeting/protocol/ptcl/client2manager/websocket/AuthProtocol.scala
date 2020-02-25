@@ -73,6 +73,8 @@ object AuthProtocol {
   /*room manager发送*/
   sealed trait WsMsgRm2Audience extends WsMsgRm
 
+  case object Disconnect extends WsMsgHost with WsMsgAudience
+
 
   //由于没有鉴权，故可以直接推流到srs，推流后给后台发送创建房间的请求
   case class EstablishMeetingReq(

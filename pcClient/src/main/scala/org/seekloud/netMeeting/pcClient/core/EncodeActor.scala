@@ -35,7 +35,7 @@ object EncodeActor {
   val frame = FrameUtils.convert(image)
 
   case class EncodeFlag(
-                       var imageFlag: Boolean = false,
+                       var imageFlag: Boolean = true,
                        var soundFlag: Boolean = true
                        )
 
@@ -228,8 +228,8 @@ object EncodeActor {
             case ex: Exception =>
               log.error(s"release encode error: $ex")
           }
-          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
-          Behaviors.same
+//          timer.startSingleTimer(TERMINATE_KEY, Terminate, 10.millis)
+          Behaviors.stopped
 
         case Restart =>
           log.debug("restart encoder")
