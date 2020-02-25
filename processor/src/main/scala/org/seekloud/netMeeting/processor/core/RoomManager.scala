@@ -46,9 +46,14 @@ object RoomManager {
 
         case msg:NewConnection =>
           log.info(s"${ctx.self} receive a msg${msg}")
-          val roomActor = getRoomActor(ctx, msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
-          roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
-          roomInfoMap.put(msg.roomId, roomActor)
+          if(roomInfoMap.get(msg.roomId).nonEmpty){
+            val roomActor =roomInfoMap.get(msg.roomId).get
+            roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
+          }else{
+            val roomActor = getRoomActor(ctx, msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
+            roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
+            roomInfoMap.put(msg.roomId, roomActor)
+          }
           Behaviors.same
 
         case msg:UpdateRoomInfo =>

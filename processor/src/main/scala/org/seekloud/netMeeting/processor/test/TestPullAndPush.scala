@@ -147,7 +147,7 @@ object TestPullAndPush {
   }
 
   val processorBaseUrl = "http://127.0.0.1:30388/netMeeting/processor"
-//  val processorBaseUrl = "http://10.1.29.247:42068/netMeeting/processor"
+//  val processorBaseUrl = "http://47.92.170.2:42068/netMeeting/processor"
   private val log = LoggerFactory.getLogger(this.getClass)
 
   def newConnect(roomId:Long,userIdList:List[String],liveCode:String,layout:Int):Future[Either[String,NewConnectRsp]] = {
