@@ -182,21 +182,21 @@ object CaptureManager {
 
         case ImageCaptureStartSuccess(frameRate) =>
           encodeConfig.frameRate = frameRate
-          val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
-          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
+//          val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
+          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
 
           //提前启动，不是响应StartEncode消息, 但两者都接收到以后才进行推流
         case StartEncodeSuccess =>
-          encodeFlag match {
-            case true =>
+//          encodeFlag match {
+//            case true =>
               grabberMap.foreach(_._2 ! ImageCapture.StartEncode(recorderActorOpt.get))
               soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActorOpt.get))
               val streamProcess = getStreamProcess(ctx, pullUrl, encodeConfig, gc4Pull)
               idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, Some(streamProcess))
 
-            case _ =>
-              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
-          }
+//            case _ =>
+//              idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
+//          }
 
         case StartStreamProcessSuccess =>
           log.debug(s"got msg StartStreamProcessSuccess.")
@@ -209,8 +209,10 @@ object CaptureManager {
 
         //接收到ws消息后
         case StartEncode =>
-          log.debug(s"got msg $msg")
-          encodeFlag match {
+//          log.debug(s"got msg $msg")
+          val encodeActor = getEncoderActor(ctx, pushUrl, encodeConfig)
+
+/*          encodeFlag match {
             case true =>
               grabberMap.foreach(_._2 ! ImageCapture.StartEncode(recorderActorOpt.get))
               soundCaptureOpt.foreach(_ ! SoundCapture.SoundStartEncode(recorderActorOpt.get))
@@ -219,7 +221,9 @@ object CaptureManager {
 
             case _ =>
               idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag = true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
-          }
+          }*/
+          idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, Some(encodeActor), streamProcessOpt)
+
 
         case Close =>
           log.debug(s"stream process is not null: ${streamProcessOpt.isDefined}")
