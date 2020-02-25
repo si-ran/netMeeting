@@ -18,6 +18,8 @@ object RoomManager {
 
   case class NewConnection(roomId: Long,  userIdList:List[String], pushLiveCode: String, layout: Int) extends Command
 
+  case class CloseConnection(roomId: Long) extends Command
+
   case class CloseRoom(roomId: Long) extends Command
 
   case class UpdateRoomInfo(roomId: Long, layout:Int ) extends Command
@@ -54,6 +56,11 @@ object RoomManager {
             roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
             roomInfoMap.put(msg.roomId, roomActor)
           }
+          Behaviors.same
+
+        case msg:CloseConnection =>
+          roomInfoMap.get(msg.roomId).foreach(_ ! RoomActor.Stop)
+          roomInfoMap -= msg.roomId
           Behaviors.same
 
         case msg:UpdateRoomInfo =>

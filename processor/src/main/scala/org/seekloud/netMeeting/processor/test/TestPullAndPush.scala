@@ -4,12 +4,12 @@ import java.io.{File, FileOutputStream}
 import java.nio.channels.Channels
 import java.nio.channels.Pipe.SourceChannel
 import java.util.concurrent.{ExecutorService, Executors}
-import org.seekloud.netMeeting.processor.Boot.executor
 
+import org.seekloud.netMeeting.processor.Boot.executor
 import akka.actor.typed.scaladsl.Behaviors
 import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.javacv.{FFmpegFrameGrabber, FFmpegFrameRecorder}
-import org.seekloud.netMeeting.processor.protocol.SharedProtocol.{NewConnect, NewConnectRsp}
+import org.seekloud.netMeeting.processor.protocol.SharedProtocol.{CloseConnect, NewConnect, NewConnectRsp, SuccessRsp}
 import org.seekloud.netMeeting.processor.test.TestThread2.postJsonRequestSend
 import org.slf4j.LoggerFactory
 
@@ -169,14 +169,34 @@ object TestPullAndPush {
     }
   }
 
+  def stop(roomId:Long):Future[Either[String,SuccessRsp]] = {
+    val url = processorBaseUrl + "/closeConnect"
+    val jsonString = CloseConnect(roomId).asJson.noSpaces
+    postJsonRequestSend("post",url,List(),jsonString,timeOut = 60 * 1000,needLogRsp = false).map{
+      case Right(v) =>
+        decode[SuccessRsp](v) match {
+          case Right(data) =>
+            log.info("get data")
+            Right(data)
+          case Left(e) =>
+            log.error(s"connectRoom error:$e")
+            Left("error")
+        }
+      case Left(error) =>
+        log.error(s"connectRoom postJsonRequestSend error:$error")
+        Left("Error")
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     val threadPool:ExecutorService = Executors.newFixedThreadPool(60)
     try{
-      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
-      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
+//      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
+//      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
 //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
 //      Thread.sleep(3000)
-//      newConnect(10001,List("10001","10002","10003"),"",1)
+      newConnect(10001,List("10001","10002"),"",1)
+//      stop(10001)
 //      threadPool.execute(new PullPipeThread())
     }finally {
       threadPool.shutdown()

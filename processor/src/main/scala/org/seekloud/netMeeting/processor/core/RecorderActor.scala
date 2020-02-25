@@ -39,6 +39,8 @@ object RecorderActor {
 
   case class UpdateRoomInfo(roomId: Long, layout: Int) extends Command
 
+  case class UpdateUserList(userList:List[String]) extends Command
+
   case object InitFilter extends Command
 
   case object RestartRecord extends Command
@@ -60,6 +62,8 @@ object RecorderActor {
   case class Image4Mix(liveId:String, frame: Frame) extends VideoCommand
 
   case class ImageDraw(liveId:String,frame:Frame) extends VideoCommand
+
+  case class UpdateFrameQueue(userIdList:List[String]) extends VideoCommand
 
   case class SetLayout(layout: Int) extends VideoCommand
 
@@ -87,15 +91,6 @@ object RecorderActor {
           log.info(s"${ctx.self} userIdList:${userIdList}")
           avutil.av_log_set_level(-8)
           val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480)
-//          var outputStream:FileOutputStream = null
-//          if(pushLiveUrl.last == '1'){
-//            outputStream = new FileOutputStream(new File(FileOutPath1))
-//          }else if(pushLiveUrl.last == '2'){
-//            outputStream = new FileOutputStream(new File(FileOutPath2))
-//          }else if(pushLiveUrl.last == '3'){
-//            outputStream = new FileOutputStream(new File(FileOutPath3))
-//          }
-//          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
           recorder4ts.setFrameRate(frameRate)
           recorder4ts.setVideoBitrate(bitRate)
           recorder4ts.setVideoCodec(avcodec.AV_CODEC_ID_H264)
@@ -152,7 +147,6 @@ object RecorderActor {
 
         case NewFrame(userId, frame) =>
           val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
-//          val convertList = userIdList.map(id=>new Java2DFrameConverter)
           val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
           userIdList.foreach{
             id => frameMapQueue.put(id,mutable.Queue[Frame]())
@@ -216,6 +210,10 @@ object RecorderActor {
           }
           Behaviors.same
 
+        case UpdateUserList(userList4updata:List[String]) =>
+          drawer ! UpdateFrameQueue(userList4updata)
+          work(roomId,userList4updata,layout,recorder4ts,ffFilter,drawer,ts4User,tsDiffer,canvasSize)
+
         case msg: UpdateRoomInfo =>
           log.info(s"$roomId got msg: $msg in work.")
           if (msg.layout != layout) {
@@ -271,7 +269,7 @@ object RecorderActor {
               img = convert.convert(queue.dequeue())
             }
             graph.drawImage(img, i%layout_x_y(1)*width, i/layout_x_y(1)*height, width,height,null)
-            graph.drawString(s"用户${i}",i%layout_x_y(1)*width+50,i/layout_x_y(1)*height+50)
+            graph.drawString(s"User ${i+1}",i%layout_x_y(1)*width+50,i/layout_x_y(1)*height+50)
           }
 //          if(userIdList.length>=2){
 //            val queue1 = frameMapQueue.get(userIdList(1)).get
@@ -310,13 +308,25 @@ object RecorderActor {
 //            graph.drawString("用户4",370,230)
 //          }
           val frame = convert.convert(canvas)
-          log.info(s"${ctx.self} frame=$frame, userIdList=${userIdList}")
-          val fileName = s"$FileImageOutPath/img_${userIdList(0)}_${userIdList(1)}.jpg"
-          val outPut = new File(fileName)
-          ImageIO.write(canvas, "jpg", outPut)
-//          recorder4ts.record(frame.clone())
+//          log.info(s"${ctx.self} frame=$frame, userIdList=${userIdList}")
+          recorder4ts.record(frame.clone())
 //          log.info("recorded")
           Behaviors.same
+
+        case UpdateFrameQueue(userIdList4Updata:List[String]) =>
+          userIdList4Updata.map{
+            id=>
+              if(frameMapQueue.get(id).isEmpty){
+                frameMapQueue.put(id, mutable.Queue[Frame]())
+              }
+          }
+          userIdList.map{
+            id =>
+              if(userIdList4Updata.find(_ == id).isEmpty){
+                frameMapQueue -= id
+              }
+          }
+          draw(canvas, graph, lastTime, frameMapQueue, recorder4ts, convert, layout, bgImg, roomId, canvasSize, userIdList4Updata)
       }
     }
   }

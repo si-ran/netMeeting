@@ -11,6 +11,10 @@ object SharedProtocol {
     val msg:String
   }
 
+  case class CloseConnect(
+                         roomId: Long
+                         )
+
   case class NewConnect(
                          roomId: Long,
                          userIdList:List[String],
