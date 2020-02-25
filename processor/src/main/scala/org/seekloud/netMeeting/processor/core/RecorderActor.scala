@@ -78,7 +78,7 @@ object RecorderActor {
   private val emptyAudio = ShortBuffer.allocate(1024 * 2)
   private val emptyAudio4one = ShortBuffer.allocate(1152)
 
-  def create(roomId: Long,userIdList:List[String], pushLiveUrl:String,userId:String, layout: Int): Behavior[Command] = {
+  def create(roomId: Long,userIdList:List[String], pushLiveUrl:String, layout: Int): Behavior[Command] = {
     Behaviors.setup[Command] { ctx =>
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command] {
@@ -108,7 +108,7 @@ object RecorderActor {
             case e: Exception =>
               log.error(s" recorder meet error when start:$e")
           }
-          roomManager ! RoomManager.RecorderRef(roomId, userId, ctx.self)
+          roomManager ! RoomManager.RecorderRef(roomId, ctx.self)
           ctx.self ! InitFilter
           init(roomId,  userIdList, layout, recorder4ts, null, null, null, 30000, (0, 0))
       }

@@ -72,11 +72,11 @@ object RoomActor {
           var recorderActor:ActorRef[RecorderActor.Command] = null
           var first = false
           if(recorderActorO.nonEmpty){
-            recorderActor = recorderActorO.get
+            first = false
           }else{
             first = true
-            recorderActor = getRecorderActor(ctx,msg.userIdList, msg.roomId, s"${msg.roomId}_x" , pushLiveUrl, msg.pushLiveCode, msg.layout)
           }
+          recorderActor = getRecorderActor(ctx,msg.userIdList, msg.roomId, s"${msg.roomId}_x" , pushLiveUrl, msg.pushLiveCode, msg.layout)
           val grabberActorList = msg.userIdList.map{
             id =>
               val url = s"rtmp://$srsServerUrl/live/$id"
