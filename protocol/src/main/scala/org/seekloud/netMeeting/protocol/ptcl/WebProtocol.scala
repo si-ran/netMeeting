@@ -8,6 +8,7 @@ package org.seekloud.netMeeting.protocol.ptcl
 object WebProtocol {
 
   case class SignUpReq(
+    email: String,
     account: String,
     password: String
   )
@@ -16,5 +17,11 @@ object WebProtocol {
     errCode: Int = 0,
     msg: String = "ok"
   ) extends Response
+
+  case class SaveHeadImgRsp(
+    fileNameUrl: String,
+    errCode: Int = 0,
+    msg: String = "ok"
+  )
 
 }

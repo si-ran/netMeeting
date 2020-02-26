@@ -173,6 +173,7 @@ object RoomActor {
             val userList = roomInfo.userId.filterNot(_ == uId)
             if(userList.isEmpty){
               recorder.recordStop()
+              ProcessorClient.closeConnection(roomInfo.roomId)
               log.info(s"roomId: ${roomInfo.roomId} is empty, dead")
               Behaviors.stopped
             }

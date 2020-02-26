@@ -79,6 +79,16 @@ object AppSettings {
   val emailDomain = emailConfig.getString("domain")
   val emailAddresserEmail = emailConfig.getString("addresserEmail")
   val emailAddresserPwd = emailConfig.getString("addresserPwd")
+
+  val hestiaConfig = dependenceConfig.getConfig("hestia.config")
+  val hestiaAppId = hestiaConfig.getString("appId")
+  val hestiaSecureKey = hestiaConfig.getString("secureKey")
+  val hestiaProtocol = hestiaConfig.getString("protocol")
+  val hestiaImgProtocol = hestiaConfig.getString("imgProtocol")
+  val hestiaDomain = hestiaConfig.getString("domain")
+
+  val fileConfig = dependenceConfig.getConfig("file")
+  val headImgSavePath = fileConfig.getString("headImgPath")
   
   val sessionConfig = {
     val sConf = config.getConfig("session")

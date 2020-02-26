@@ -44,6 +44,25 @@ object ProcessorClient extends HttpUtil {
     }
   }
 
+  def closeConnection(roomId:Long):Future[Either[String,CloseConnectionRsp]] = {
+    val url = processorBaseUrl + "/closeConnection"
+    val jsonString = CloseConnectionReq(roomId).asJson.noSpaces
+    postJsonRequestSend("newConnect",url,List(),jsonString,timeOut = 60 * 1000).map{
+      case Right(v) =>
+        decode[CloseConnectionRsp](v) match{
+          case Right(value) =>
+            log.info(s"closeConnection success $v")
+            Right(value)
+          case Left(e) =>
+            log.error(s"closeConnection decode error : $e")
+            Left(e.toString)
+        }
+      case Left(error) =>
+        log.error(s"closeConnection postJsonRequestSend error : $error")
+        Left(error.toString)
+    }
+  }
+
 //  def main(args: Array[String]): Unit = {
 //    newConnect(10001, List(10001, 10002))
 //  }

@@ -31,11 +31,12 @@ object SignUpPage extends Page {
   }
 
   private def signUp(): Unit = {
+    val email = dom.document.getElementById("email").asInstanceOf[Input].value
     val account = dom.document.getElementById("account").asInstanceOf[Input].value
     val password = dom.document.getElementById("password").asInstanceOf[Input].value
     val passwordConfirm = dom.document.getElementById("password-twice").asInstanceOf[Input].value
     if(password.equals(passwordConfirm)){
-      val data = SignUpReq(account, password).asJson.noSpaces
+      val data = SignUpReq(email, account, password).asJson.noSpaces
       Http.postJsonAndParse[SignUpRsp](Routes.User.signUp, data).map{
         case Right(value) =>
           if(value.errCode == 0){
@@ -58,6 +59,7 @@ object SignUpPage extends Page {
     <div class="signUp-page">
       <div class="sign-up-top">用户注册</div>
       <div class="sign-up-contain">
+        <input id="email" placeholder="输入邮箱"></input>
         <input id="account" placeholder="输入用户名"></input>
         <input type="password" id="password" placeholder="输入密码"></input>
         <input type="password" id="password-twice" placeholder="确认密码"></input>

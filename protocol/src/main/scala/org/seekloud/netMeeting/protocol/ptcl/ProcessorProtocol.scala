@@ -19,4 +19,13 @@ object ProcessorProtocol {
     msg: String = "ok"
   )
 
+  case class CloseConnectionReq(
+    roomId: Long
+  )
+
+  case class CloseConnectionRsp(
+    errCode: Int = 0,
+    msg: String = "ok"
+  )
+
 }

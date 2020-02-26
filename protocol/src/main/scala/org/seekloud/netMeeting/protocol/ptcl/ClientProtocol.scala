@@ -23,7 +23,7 @@ object ClientProtocol {
     msg: String = "ok"
   ) extends Response
 
-  //url:
+  //url: netMeeting/client/sendEmail   post
   case class SendEmailReq(
     email: String,
     fromName: String,
