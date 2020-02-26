@@ -72,6 +72,13 @@ object AppSettings {
   val processorConfig = dependenceConfig.getConfig("processor")
   val processorIp = processorConfig.getString("ip")
   val processorPort = processorConfig.getString("port")
+
+  val emailConfig = dependenceConfig.getConfig("email")
+  val emailHost = emailConfig.getString("host")
+  val emailPort = emailConfig.getString("port")
+  val emailDomain = emailConfig.getString("domain")
+  val emailAddresserEmail = emailConfig.getString("addresserEmail")
+  val emailAddresserPwd = emailConfig.getString("addresserPwd")
   
   val sessionConfig = {
     val sConf = config.getConfig("session")
