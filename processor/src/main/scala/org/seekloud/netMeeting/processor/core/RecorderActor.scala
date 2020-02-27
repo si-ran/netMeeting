@@ -63,6 +63,8 @@ object RecorderActor {
 
   case class ImageDraw(liveId:String,frame:Frame) extends VideoCommand
 
+  case class Sound(frame: Frame) extends VideoCommand
+
   case object Image4Test extends VideoCommand
 
   case class UpdateFrameQueue(userIdList:List[String]) extends VideoCommand
@@ -126,11 +128,12 @@ object RecorderActor {
             ffFilter.close()
           }
           var str =""
-          for(i<- 0 until userIdList.length){
+          (0 until userIdList.length).reverse.foreach{i =>
             str+=s"[$i:a]"
           }
-          log.info(s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3 [a]")
-          val ffFilterN = new FFmpegFrameFilter(s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3 [a]", audioChannels)
+          str = s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3 [a]"
+          println(s"str: $str")
+          val ffFilterN = new FFmpegFrameFilter(str, audioChannels)
           ffFilterN.setAudioChannels(audioChannels)
           ffFilterN.setSampleFormat(sampleFormat)
           ffFilterN.setAudioInputs(userIdList.size)
@@ -190,15 +193,12 @@ object RecorderActor {
           }
           if (frame.samples != null) {
             try {
-              for(i <- 0 until userIdList.length){
-                if(userIdList(i) == liveId){
-                  ffFilter.pushSamples(i, frame.audioChannels, sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
-                }
-              }
-              val f = ffFilter.pullSamples().clone()
-              if(f != null){
+              val index = userIdList.indexWhere(_ == liveId)
+              ffFilter.pushSamples(index, frame.audioChannels, sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
+              val f = ffFilter.pullSamples()
+              if(f != null && f.samples != null){
 //                log.info("record sample")
-                recorder4ts.record(f)
+                drawer ! Sound(f)
 //                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
               }
             } catch {
@@ -211,7 +211,7 @@ object RecorderActor {
         case UpdateUserList(userList4updata:List[String]) =>
           drawer ! UpdateFrameQueue(userList4updata)
           var str =""
-          for(i<- 0 until userList4updata.length){
+          (0 until userList4updata.length).reverse.foreach{i =>
             str+=s"[$i:a]"
           }
           log.info(s"$str amix=inputs=${userList4updata.length}:duration=longest:dropout_transition=3 [a]")
@@ -290,6 +290,10 @@ object RecorderActor {
 //          log.info(s"${ctx.self} frame=$frame, userIdList=${userIdList}")
           recorder4ts.record(frame.clone())
 //          log.info("recorded")
+          Behaviors.same
+
+        case msg: Sound =>
+          recorder4ts.record(msg.frame)
           Behaviors.same
 
         case UpdateFrameQueue(userIdList4Updata:List[String]) =>
