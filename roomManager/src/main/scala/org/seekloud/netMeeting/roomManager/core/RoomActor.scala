@@ -49,6 +49,12 @@ object RoomActor {
 
   final case class RAClientSpeakReq(userId: Long) extends Command
 
+  final case class RAClientSpeakRsp(userId: Long, acceptance: Boolean) extends Command
+
+  final case class RAMediaControlReq(roomId: Long, userId: Long, needAudio: Boolean, needVideo: Boolean) extends Command
+
+  final case class RAKickOutReq(roomId: Long, userId: Long) extends Command
+
   final case class RAUserExit(userId: Long) extends Command
 
   private[this] def switchBehavior(
@@ -109,7 +115,7 @@ object RoomActor {
   private def idle(
     roomInfo: RoomInfo,
     hostFrontActor: ActorRef[WsMsgManager],
-    userMap: mutable.HashMap[Long, ActorRef[WsMsgManager]],
+    userMap: mutable.HashMap[Long, ActorRef[WsMsgManager]], //无host
     mixUrl: String,
     recorder: VideoRecorder
   )(
@@ -164,8 +170,32 @@ object RoomActor {
             idle(newRoomInfo, hostFrontActor, userMap, mixUrl, recorder)
 
           case RAClientSpeakReq(uId) =>
-            //TODO 验证用户是否存在
-            dispatchTo(hostFrontActor, SpeakRsp(uId, roomInfo.roomId, acceptance = true))
+            dispatchTo(hostFrontActor, SpeakReq(roomInfo.roomId, uId))
+            Behaviors.same
+
+          case msg: RAClientSpeakRsp =>
+            userMap.get(msg.userId).foreach{ actor =>
+              dispatchTo(actor, SpeakRsp(roomInfo.roomId, msg.userId, msg.acceptance))
+            }
+            Behaviors.same
+
+          case msg: RAMediaControlReq =>
+            if(userMap.get(msg.userId).nonEmpty){
+              dispatchTo(userMap(msg.userId), MediaControlReq(msg.roomId, msg.userId, msg.needAudio, msg.needVideo))
+              log.debug(s"RAMediaControlReq success room ${msg.roomId} and user ${msg.userId}")
+            }
+            else{
+              dispatchTo(hostFrontActor, MediaControlRsp(20011, "房间无此用户"))
+              log.debug("RAMediaControlReq no user")
+            }
+            Behaviors.same
+
+          case msg: RAKickOutReq =>
+            userMap.get(msg.userId).foreach{ actor =>
+              dispatchTo(actor, KickOutRsp())
+            }
+            dispatchTo(hostFrontActor, KickOutRsp())
+            ctx.self ! RAUserExit(msg.userId)
             Behaviors.same
 
           case RAUserExit(uId) =>
@@ -178,6 +208,7 @@ object RoomActor {
               Behaviors.stopped
             }
             else{
+              ProcessorClient.newConnect(roomInfo.roomId, userList)
               idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl, recorder)
             }
 

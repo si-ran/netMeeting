@@ -103,10 +103,14 @@ object AuthProtocol {
 
 
   //踢出会议室
-  case class KickOut(
+  case class KickOutReq(
                       roomId: Long,
                       userId: Long
-                    ) extends WsMsgHost with WsMsgRm2Audience
+                    ) extends WsMsgRm2Host with WsMsgAudience
+  case class KickOutRsp(
+                      errCode: Int = 0,
+                      msg: String = "ok"
+                    ) extends WsMsgHost with WsMsgRm2Audience //发给host和指定用户接收
 
   //TODO
   case class GiveHost2(
@@ -126,13 +130,18 @@ object AuthProtocol {
                        userId: Long
                      ) extends WsMsgHost with WsMsgRm2Audience
 
-  //TODO 控制用户的声音或画面
-  case class MediaControl(
+  //主持人控制用户的声音或画面
+  case class MediaControlReq(
                            roomId: Long,
                            userId: Long,
                            needAudio: Boolean = true,
                            needVideo: Boolean = true
-                         ) extends WsMsgHost with WsMsgRm2Audience
+                         ) extends WsMsgRm2Audience with WsMsgAudience //host发给rm，rm转发给对应用户
+
+  case class MediaControlRsp(
+                          errCode: Int = 0,
+                          msg: String = "ok"
+                        ) extends WsMsgHost with WsMsgRm2Audience //仅主持人接收rsp
 
   //TODO
   case class SpeakRsp4Host(
@@ -155,7 +164,7 @@ object AuthProtocol {
   case class SpeakReq(
                      roomId: Long,
                      userId: Long
-                     ) extends WsMsgRm2Host with WsMsgAudience
+                     ) extends WsMsgRm2Host with WsMsgAudience //用户发送，转发至host
 
   case class SpeakRsp(
                        roomId: Long,
@@ -163,7 +172,7 @@ object AuthProtocol {
                        acceptance: Boolean,
                        errCode: Int = 0,
                        msg: String = "ok"
-                     ) extends WsMsgHost with WsMsgRm2Audience
+                     ) extends WsMsgHost with WsMsgRm2Audience //host发送，转发至用户
 
   /*开始录像*/
   case class UserRecordReq(

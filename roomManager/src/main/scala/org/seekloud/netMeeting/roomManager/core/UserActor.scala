@@ -230,10 +230,6 @@ object UserActor {
             case PingPackage =>
               Behaviors.same
 
-            case SpeakReq(uId, rId) =>
-              roomManager ! RMClientSpeakReq(uId, rId)
-              Behaviors.same
-
             case UserRecordReq(mode) =>
               Future{
                 recorder.recordStart()
@@ -247,6 +243,22 @@ object UserActor {
 
             case UserRecordStopReq(mode) =>
               recorder.recordStop()
+              Behaviors.same
+
+            case SpeakReq(rId, uId) =>
+              roomManager ! RMClientSpeakReq(rId, uId)
+              Behaviors.same
+
+            case SpeakRsp(rId, uId, acceptance, _, _) =>
+              roomManager ! RMClientSpeakRsp(rId, uId, acceptance)
+              Behaviors.same
+
+            case MediaControlReq(roomId, userId, needAudio, needVideo) =>
+              roomManager ! RoomManager.RMMediaControlReq(roomId, userId, needAudio, needVideo)
+              Behaviors.same
+
+            case KickOutReq(rId, uId) =>
+              roomManager ! RoomManager.RMKickOutReq(rId, uId)
               Behaviors.same
 
             case Disconnect =>
