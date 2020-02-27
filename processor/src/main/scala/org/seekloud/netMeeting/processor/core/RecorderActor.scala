@@ -51,6 +51,10 @@ object RecorderActor {
 
   case class NewFrame(userId: String, frame: Frame) extends Command
 
+//  case class NewImage(userId: String, frame: Frame) extends Command
+//
+//  case class NewSample(userId: String, frame: Frame) extends Command
+
 //  case class UpdateRecorder(channel: Int, sampleRate: Int, frameRate: Double, width: Int, height: Int, liveId: String) extends Command
 
   case object TimerKey4Close
@@ -90,7 +94,7 @@ object RecorderActor {
       Behaviors.withTimers[Command] {
         implicit timer =>
           log.info(s"recorderActor start----")
-          log.info(s"${ctx.self} userIdList:${userIdList}")
+//          log.info(s"${ctx.self} userIdList:${userIdList}")
 //          avutil.av_log_set_level(-8)
           val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
 //          val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
@@ -271,7 +275,7 @@ object RecorderActor {
           Behaviors.same
 
         case f:ImageDraw =>
-          val time = f.frame.timestamp
+//          val time = f.frame.timestamp
           val size = frameMapQueue.size
           val layout_y = (size+1)/layout_x
           val width = canvasSize._1/layout_x
@@ -288,7 +292,7 @@ object RecorderActor {
           }
           val frame = convert.convert(canvas)
 //          log.info(s"${ctx.self} frame=$frame, userIdList=${userIdList}")
-          recorder4ts.record(frame.clone())
+          recorder4ts.record(frame)
 //          log.info("recorded")
           Behaviors.same
 

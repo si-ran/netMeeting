@@ -56,8 +56,8 @@ object GrabberActor {
     Behaviors.receive[Command] { (ctx, msg) =>
       msg match {
         case t: Recorder =>
-          log.info(s"${ctx.self} receive a msg $t")
-          log.info(url)
+//          log.info(s"grabber $liveId receive a msg $t")
+          log.info(s"grab from $url")
           val grabber = new FFmpegFrameGrabber(url)
           Try {
             grabber.start()
@@ -67,7 +67,7 @@ object GrabberActor {
             case e: Exception =>
               log.info(s"exception occured in creant grabber")
           }
-          log.info(s"$liveId grabber start successfully")
+//          log.info(s"$liveId grabber start successfully")
           ctx.self ! GrabFrameFirst
           work(roomId, liveId, grabber, t.rec, url)
 
@@ -91,7 +91,7 @@ object GrabberActor {
             timer: TimerScheduler[Command]): Behavior[Command] = {
     Behaviors.receive[Command] {(ctx, msg) =>
       msg match {
-        case GrabLost =>
+/*        case GrabLost =>
           val frame = grabber.grab()
           if(frame != null){
             if(frame.image != null){
@@ -101,7 +101,7 @@ object GrabberActor {
               ctx.self ! GrabLost
             }
           }
-          Behaviors.same
+          Behaviors.same*/
 
         case t:Recorder =>
           Behaviors.same
@@ -116,12 +116,10 @@ object GrabberActor {
 //          recorder ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId)
 
           if(frame != null){
-            if(frame.image != null){
-              recorder ! RecorderActor.NewFrame(liveId, frame.clone())
-              ctx.self ! GrabFrame
-            }else{
-              ctx.self ! GrabLost
-            }
+
+            recorder ! RecorderActor.NewFrame(liveId, frame.clone())
+
+            ctx.self ! GrabFrame
           } else {
             log.info(s"$liveId --- frame is null")
             ctx.self ! StopGrabber
