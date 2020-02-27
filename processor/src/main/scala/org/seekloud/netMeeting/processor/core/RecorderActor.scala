@@ -313,7 +313,7 @@ object RecorderActor {
           userIdList4Updata.map{
             id=>
               if(frameMapQueue.get(id).isEmpty){
-                frameMapQueue.put(id, mutable.Queue[Frame]())
+                frameMapQueue.put(id, new LinkedBlockingDeque[Frame]())
               }
           }
           userIdList.map{
