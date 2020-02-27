@@ -14,7 +14,10 @@ object ClientProtocol {
   )
 
   case class userInfo(
-    userId: Long
+    userId: Long,
+    nickname: String,
+    email: String,
+    headImg: String
   )
 
   case class SignInRsp(

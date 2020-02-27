@@ -180,13 +180,9 @@ object RoomActor {
             Behaviors.same
 
           case msg: RAMediaControlReq =>
-            if(userMap.get(msg.userId).nonEmpty){
-              dispatchTo(userMap(msg.userId), MediaControlReq(msg.roomId, msg.userId, msg.needAudio, msg.needVideo))
+            userMap.get(msg.userId).foreach{ actor =>
+              dispatchTo(actor, MediaControlReq(msg.roomId, msg.userId, msg.needAudio, msg.needVideo))
               log.debug(s"RAMediaControlReq success room ${msg.roomId} and user ${msg.userId}")
-            }
-            else{
-              dispatchTo(hostFrontActor, MediaControlRsp(20011, "房间无此用户"))
-              log.debug("RAMediaControlReq no user")
             }
             Behaviors.same
 

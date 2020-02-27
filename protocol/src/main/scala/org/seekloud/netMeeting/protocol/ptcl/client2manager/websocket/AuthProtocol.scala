@@ -118,30 +118,13 @@ object AuthProtocol {
                         userId: Long
                       ) extends WsMsgHost with WsMsgRm2Audience
 
-  //TODO 指定sb说话
-  case class GiveMicrophone2(
-                              roomId: Long,
-                              userId: Long
-                            ) extends WsMsgHost with WsMsgRm2Audience
-
-  //TODO 邀请用户加入会议
-  case class InviteReq(
-                       roomId: Long,
-                       userId: Long
-                     ) extends WsMsgHost with WsMsgRm2Audience
-
   //主持人控制用户的声音或画面
   case class MediaControlReq(
                            roomId: Long,
                            userId: Long,
                            needAudio: Boolean = true,
                            needVideo: Boolean = true
-                         ) extends WsMsgRm2Audience with WsMsgAudience //host发给rm，rm转发给对应用户
-
-  case class MediaControlRsp(
-                          errCode: Int = 0,
-                          msg: String = "ok"
-                        ) extends WsMsgHost with WsMsgRm2Audience //仅主持人接收rsp
+                         ) extends WsMsgRm2Audience with WsMsgHost //host发给rm，rm转发给对应用户
 
   //TODO
   case class SpeakRsp4Host(

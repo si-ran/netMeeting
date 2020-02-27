@@ -41,7 +41,7 @@ trait ClientService extends ServiceUtils with SessionBase {
               else{
                 val info = userInfo.get
                 if(info.password == value.password){
-                  complete(SignInRsp(Some(ClientProtocol.userInfo(info.uid))))
+                  complete(SignInRsp(Some(ClientProtocol.userInfo(info.uid, info.userName, info.email, info.headImg))))
                 }
                 else{
                   complete(SignInRsp(None, 10002, "密码错误"))
