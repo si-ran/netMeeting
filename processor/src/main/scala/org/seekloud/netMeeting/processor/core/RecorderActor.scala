@@ -4,6 +4,7 @@ import java.awt.Graphics
 import java.awt.image.BufferedImage
 import java.io.{File, FileOutputStream, OutputStream}
 import java.nio.ShortBuffer
+import java.util.concurrent.LinkedBlockingDeque
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
@@ -147,10 +148,10 @@ object RecorderActor {
 
         case NewFrame(userId, frame) =>
           val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
-          val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
+          val frameMapQueue = scala.collection.mutable.Map[String,LinkedBlockingDeque[Frame]]()
           userIdList.foreach{
             id => {
-              frameMapQueue.put(id,mutable.Queue[Frame]())
+              frameMapQueue.put(id, new LinkedBlockingDeque[Frame]())
             }
           }
           val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,
@@ -258,7 +259,7 @@ object RecorderActor {
     }
   }
 
-  def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,mutable.Queue[Frame]],
+  def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,LinkedBlockingDeque[Frame]],
            recorder4ts: FFmpegFrameRecorder,convert:Java2DFrameConverter,
            layout: Int = 0, bgImg: String, roomId: Long, canvasSize: (Int, Int),
            userIdList:List[String]): Behavior[VideoCommand] = {
@@ -271,7 +272,10 @@ object RecorderActor {
           Behaviors.same
 
         case t:Image4Mix =>
-          frameMapQueue.get(t.liveId).foreach( _ += t.frame)
+          frameMapQueue.get(t.liveId).foreach{queue =>
+            queue.clear()
+            queue.offer(t.frame)
+          }
           Behaviors.same
 
         case f:ImageDraw =>
@@ -280,12 +284,17 @@ object RecorderActor {
           val layout_y = (size+1)/layout_x
           val width = canvasSize._1/layout_x
           val height = canvasSize._2/layout_y
-          frameMapQueue.get(f.liveId).foreach( _ += f.frame)
+          frameMapQueue.get(f.liveId).foreach{queue =>
+            queue.clear()
+            queue.offer(f.frame)
+          }
           for(i <- 0 until userIdList.length){
-            val queue = frameMapQueue.get(userIdList(i)).get
+            val frame = frameMapQueue.get(userIdList(i)).get.peek()
             var img:BufferedImage=null
-            if(queue.nonEmpty){
-              img = convert.convert(queue.dequeue())
+            if(frame != null && frame.image != null){
+              img = convert.convert(frame)
+            }else {
+              log.warn(s"frame from deq is null")
             }
             graph.drawImage(img, i%layout_x*width, i/layout_x*height, width,height,null)
             graph.drawString(s"User ${i+1}",i%layout_x*width+50,i/layout_x*height+50)
