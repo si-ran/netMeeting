@@ -7,11 +7,15 @@ import java.nio.ShortBuffer
 import java.util.concurrent.LinkedBlockingDeque
 
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer, TimerScheduler}
 import javax.imageio.ImageIO
 import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_RGBA
 import org.bytedeco.ffmpeg.global.{avcodec, avutil}
-import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, Frame, Java2DFrameConverter}
+import org.bytedeco.opencv.global.{opencv_imgproc => OpenCVProc}
+import org.bytedeco.opencv.global.{opencv_core => OpenCVCore}
+import org.bytedeco.javacv.OpenCVFrameConverter.ToMat
+import org.bytedeco.javacv._
+import org.bytedeco.opencv.opencv_core.{Mat, Rect, Scalar, Size}
 import org.seekloud.netMeeting.processor.Boot.executor
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.processor.common.AppSettings._
@@ -22,6 +26,7 @@ import org.seekloud.netMeeting.processor.Boot.roomManager
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 
 /**
@@ -34,15 +39,51 @@ object RecorderActor {
   var frameRate = 30
   val layout_x = 2
 
+  val width = 640
+  val height = 360
+
+  val bottomSize = new Size(width, height)
+  val topSize = new Size(width/2, height/2)
+  val toMat = new ToMat()
+  val resizeMat = new Mat()
+  val canvas = new Mat(bottomSize, OpenCVCore.CV_8UC3, new Scalar(0, 0, 0, 0))
+  val converter = new OpenCVFrameConverter.ToIplImage()
+  val position = List[(Int, Int)]((0, 0), (width/2, 0), (0, height/2), (width/2, height/2))
+
+  def imgCombination( frameList: List[Frame]) = {
+    (0 until frameList.length).foreach{ i =>
+      val layMat = toMat.convert(frameList(i))
+      OpenCVProc.resize(layMat, resizeMat, topSize)
+      val layMask = new Mat(topSize, OpenCVCore.CV_8UC1, new Scalar(1d))
+      val layRoi = canvas(new Rect(position(i)._1, position(i)._2, topSize.width(), topSize.height()))
+      resizeMat.copyTo(layRoi, layMask)
+    }
+    val convertFrame = converter.convert(canvas)
+    convertFrame
+  }
+
   private val log = LoggerFactory.getLogger(this.getClass)
 
   sealed trait Command
 
+  case object InitFilter extends Command
+
+  case class StartFilterSuccess(ffFilter: FFmpegFrameFilter) extends Command
+
+  case class StartRecorderSuccess(recorder: FFmpegFrameRecorder, ffFilter: FFmpegFrameFilter) extends Command
+
+  case class RecorderImage(liveId: String, frame: Frame) extends Command
+
+  case class RecorderSound(liveId: String, frame: Frame) extends Command
+
+  case object Close extends Command
+
+
+
+
   case class UpdateRoomInfo(roomId: Long, layout: Int) extends Command
 
   case class UpdateUserList(userList:List[String]) extends Command
-
-  case object InitFilter extends Command
 
   case object RestartRecord extends Command
 
@@ -52,15 +93,10 @@ object RecorderActor {
 
   case class NewFrame(userId: String, frame: Frame) extends Command
 
-//  case class NewImage(userId: String, frame: Frame) extends Command
-//
-//  case class NewSample(userId: String, frame: Frame) extends Command
-
-//  case class UpdateRecorder(channel: Int, sampleRate: Int, frameRate: Double, width: Int, height: Int, liveId: String) extends Command
 
   case object TimerKey4Close
 
-  sealed trait VideoCommand
+/*  sealed trait VideoCommand
 
   case class TimeOut(msg: String) extends Command
 
@@ -78,7 +114,7 @@ object RecorderActor {
 
   case class NewRecord4Ts(recorder4ts: FFmpegFrameRecorder) extends VideoCommand
 
-  case object Close extends VideoCommand
+  case object Close extends VideoCommand*/
 
   case class Ts4User(var time: Long = 0)
 
@@ -89,49 +125,49 @@ object RecorderActor {
   private val emptyAudio = ShortBuffer.allocate(1024 * 2)
   private val emptyAudio4one = ShortBuffer.allocate(1152)
 
-  def create(roomId: Long,userIdList:List[String], pushLiveUrl:String, layout: Int): Behavior[Command] = {
+  private[this] def switchBehavior(
+                                    ctx: ActorContext[Command],
+                                    behaviorName: String,
+                                    behavior: Behavior[Command]
+                                  )(implicit stashBuffer: StashBuffer[Command]) = {
+    log.debug(s"${ctx.self.path} becomes $behaviorName behavior.")
+    stashBuffer.unstashAll(ctx, behavior)
+  }
+
+  def create(
+              parent: ActorRef[RoomActor.Command],
+              roomId: Long,
+              userIdList:List[String],
+              pushLiveUrl:String,
+              layout: Int,
+              queMap: mutable.HashMap[String, LinkedBlockingDeque[Frame]]
+            ): Behavior[Command] = {
     Behaviors.setup[Command] { ctx =>
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command] {
         implicit timer =>
-          log.info(s"recorderActor start----")
+          log.debug(s"recorderActor start----")
 //          log.info(s"${ctx.self} userIdList:${userIdList}")
 //          avutil.av_log_set_level(-8)
-          val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
-//          val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
-//          val outputStream = new FileOutputStream(new File(FileOutPath1))
-//          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
-          recorder4ts.setFrameRate(frameRate)
-          recorder4ts.setVideoBitrate(bitRate)
-          recorder4ts.setVideoCodec(avcodec.AV_CODEC_ID_H264)
-          recorder4ts.setAudioCodec(avcodec.AV_CODEC_ID_AAC)
-          recorder4ts.setMaxBFrames(0)
-          recorder4ts.setFormat("flv")
-          try {
-            recorder4ts.startUnsafe()
-          } catch {
-            case e: Exception =>
-              log.error(s" recorder meet error when start:$e")
-          }
           ctx.self ! InitFilter
-          init(roomId,  userIdList, layout, recorder4ts, null, null, null, 30000, (0, 0))
+
+          init(parent, roomId,  userIdList, layout, pushLiveUrl, queMap)
       }
     }
   }
 
-  def init(roomId: Long, userIdList:List[String], layout: Int,
-           recorder4ts: FFmpegFrameRecorder,
-           ffFilter: FFmpegFrameFilter,
-           drawer: ActorRef[VideoCommand],
-           ts4User: List[Ts4User],
-           tsDiffer: Int = 30000, canvasSize: (Int, Int))(implicit timer: TimerScheduler[Command],
-                                                            stashBuffer: StashBuffer[Command]): Behavior[Command] = {
+  def init(
+            parent: ActorRef[RoomActor.Command],
+            roomId: Long, userIdList:List[String], layout: Int,
+            pushLiveUrl:String,
+            queMap: mutable.HashMap[String, LinkedBlockingDeque[Frame]]
+          )(
+            implicit timer: TimerScheduler[Command],
+            stashBuffer: StashBuffer[Command]
+          ): Behavior[Command] = {
     Behaviors.receive[Command] { (ctx, msg) =>
       msg match {
         case InitFilter =>
-          if (ffFilter != null) {
-            ffFilter.close()
-          }
           var str =""
           (0 until userIdList.length).reverse.foreach{i =>
             str+=s"[$i:a]"
@@ -142,11 +178,50 @@ object RecorderActor {
           ffFilterN.setAudioChannels(audioChannels)
           ffFilterN.setSampleFormat(sampleFormat)
           ffFilterN.setAudioInputs(userIdList.size)
-          ffFilterN.start()
-          roomManager ! RoomManager.RecorderRef(roomId, ctx.self)
-          init(roomId, userIdList, layout, recorder4ts, ffFilterN, drawer, ts4User, tsDiffer, canvasSize)
+          Future{
+            ffFilterN.start()
+            ffFilterN
+          }.onComplete{
+            case Success(ffFilter) =>
+              ctx.self ! StartFilterSuccess(ffFilter)
+            case Failure(ex) =>
+              log.info(s"filter start failed ${ex.getMessage}")
+          }
+//          roomManager ! RoomManager.RecorderRef(roomId, ctx.self)
+          Behaviors.same
 
-        case NewFrame(userId, frame) =>
+        case msg: StartFilterSuccess =>
+          val recorder = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
+          recorder.setVideoOption("tune", "zerolatency")
+          recorder.setVideoOption("preset", "ultrafast")
+          recorder.setVideoOption("crf", "23")
+          recorder.setFrameRate(frameRate)
+          recorder.setVideoBitrate(bitRate)
+          recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
+          recorder.setMaxBFrames(0)
+
+          recorder.setAudioQuality(0)
+          recorder.setAudioOption("crf", "0")
+          recorder.setFormat("flv")
+          recorder.setSampleRate(44100)
+          recorder.setAudioChannels(2)
+          recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC)
+          Future{
+            recorder.start()
+            recorder
+          }.onComplete{
+            case Success(recorder) =>
+              ctx.self ! StartRecorderSuccess(recorder, msg.ffFilter)
+            case Failure(ex) =>
+              log.info(s"recorder start failed ${ex.getMessage}")
+          }
+          Behaviors.same
+
+        case msg: StartRecorderSuccess =>
+          switchBehavior(ctx, "work", work(parent, roomId, userIdList, queMap,  layout,msg.recorder, msg.ffFilter))
+
+
+/*        case NewFrame(userId, frame) =>
           val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
           val frameMapQueue = scala.collection.mutable.Map[String,LinkedBlockingDeque[Frame]]()
           userIdList.foreach{
@@ -157,64 +232,81 @@ object RecorderActor {
           val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,
            new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 360), userIdList), s"drawer_${roomId}_$userId")
           ctx.self ! NewFrame(userId, frame)
-          work(roomId,userIdList,layout,recorder4ts,ffFilter, drawer,ts4User,tsDiffer,canvasSize)
+          work(roomId,userIdList,layout,recorder4ts,ffFilter, drawer,ts4User,tsDiffer,canvasSize)*/
 
-        case CloseRecorder =>
-          try {
-            ffFilter.close()
-            drawer ! Close
-          } catch {
-            case e: Exception =>
-              log.error(s"$roomId recorder close error ---")
-          }
+        case Close =>
+          log.info("recorder close in init")
           Behaviors.stopped
 
-        case StopRecorder =>
-          timer.startSingleTimer(TimerKey4Close, CloseRecorder, 1.seconds)
-          Behaviors.same
       }
     }
   }
 
-  def work(roomId: Long, userIdList:List[String], layout: Int,
-           recorder4ts: FFmpegFrameRecorder,
-           ffFilter: FFmpegFrameFilter,
-           drawer: ActorRef[VideoCommand],
-           ts4User: List[Ts4User],
-           tsDiffer: Int = 30000, canvasSize: (Int, Int))
-          (implicit timer: TimerScheduler[Command],
-           stashBuffer: StashBuffer[Command]): Behavior[Command] = {
-    log.info(s"$roomId recorder to couple behavior")
+  def work(
+            parent: ActorRef[RoomActor.Command],
+            roomId: Long,
+            userIdList:List[String],
+            queMap: mutable.HashMap[String, LinkedBlockingDeque[Frame]],
+            layout: Int,
+            recorder: FFmpegFrameRecorder,
+            ffFilter: FFmpegFrameFilter,
+          )(
+            implicit timer: TimerScheduler[Command],
+            stashBuffer: StashBuffer[Command]
+          ): Behavior[Command] = {
     Behaviors.receive[Command] { (ctx, msg) =>
       msg match {
-        case NewFrame(liveId, frame) =>
-          if (frame.image != null) {
-//            drawer ! Image4Test
-            if(liveId == userIdList(0)){
-              drawer ! ImageDraw(liveId,frame)
-            }else{
-              drawer ! Image4Mix(liveId,frame)
+        case msg: RecorderImage =>
+          var frameList = List[Frame](msg.frame)
+          val index = userIdList.indexWhere(_ == msg.liveId)
+          (0 until userIdList.length).foreach{i =>
+            if(i != index) {
+              val queOpt = queMap.get(userIdList(i))
+              if(queOpt.isDefined) {
+                val frame = queOpt.get.peek()
+                if(frame != null && frame.image != null) {
+                  frameList = frame :: frameList
+                }
+              }
+
             }
           }
-          /*if (frame.samples != null) {
-            try {
-              val index = userIdList.indexWhere(_ == liveId)
-              ffFilter.pushSamples(index, frame.audioChannels, sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
-              val f = ffFilter.pullSamples()
-              if(f != null && f.samples != null){
-//                log.info("record sample")
-                drawer ! Sound(f)
-//                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
-              }
-            } catch {
-              case ex: Exception =>
-                log.debug(s"$liveId record sample error system: $ex")
-            }
-          }*/
+          val frame = imgCombination(frameList)
+          recorder.record(frame)
           Behaviors.same
 
-        case UpdateUserList(userList4updata:List[String]) =>
-          drawer ! UpdateFrameQueue(userList4updata)
+        case msg: RecorderSound =>
+          if(msg.frame != null && msg.frame.samples != null) {
+            try {
+              val index = userIdList.indexWhere(_ == msg.liveId)
+              ffFilter.pushSamples(index, 2, sampleRate, ffFilter.getSampleFormat, msg.frame.samples: _*)
+              val frame = ffFilter.pullSamples()
+              if(frame != null && frame.samples != null) {
+                recorder.record(frame)
+              }
+            } catch {
+              case e: Exception =>
+                log.info(s"recorder samples error ${e.getMessage}")
+            }
+          }
+          Behaviors.same
+
+        case Close =>
+          try {
+            ffFilter.close()
+            recorder.close()
+          } catch {
+            case e: Exception =>
+              log.info(s"close error ${e.getMessage}")
+          }
+          Behaviors.stopped
+
+        case x =>
+          log.info(s"rec unknown msg in work $x")
+          Behaviors.same
+
+
+  /*      case UpdateUserList(userList4updata:List[String]) =>
           var str =""
           (0 until userList4updata.length).reverse.foreach{i =>
             str+=s"[$i:a]"
@@ -225,21 +317,21 @@ object RecorderActor {
           ffFilterN.setSampleFormat(sampleFormat)
           ffFilterN.setAudioInputs(userList4updata.size)
           ffFilterN.start()
-          work(roomId,userList4updata,layout,recorder4ts,ffFilterN,drawer,ts4User,tsDiffer,canvasSize)
-
-        case msg: UpdateRoomInfo =>
+          work(roomId,userList4updata,layout,recorder,ffFilterN,drawer,ts4User,tsDiffer,canvasSize)
+*/
+       /* case msg: UpdateRoomInfo =>
           log.info(s"$roomId got msg: $msg in work.")
           if (msg.layout != layout) {
             drawer ! SetLayout(msg.layout)
           }
           ctx.self ! RestartRecord
-          work(roomId,  userIdList, msg.layout, recorder4ts, ffFilter, drawer, ts4User, tsDiffer, canvasSize)
-
-        case m@RestartRecord =>
+          work(roomId,  userIdList, msg.layout, recorder, ffFilter, drawer, ts4User, tsDiffer, canvasSize)
+*/
+       /* case m@RestartRecord =>
           log.info(s"couple state get $m")
           Behaviors.same
-
-        case CloseRecorder =>
+*/
+/*        case CloseRecorder =>
           try {
             ffFilter.close()
             drawer ! Close
@@ -247,19 +339,19 @@ object RecorderActor {
             case e: Exception =>
               log.error(s"$roomId recorder close error ---")
           }
-          Behaviors.stopped
+          Behaviors.stopped*/
 
-        case StopRecorder =>
+
+/*        case StopRecorder =>
           timer.startSingleTimer(TimerKey4Close, CloseRecorder, 1.seconds)
-          Behaviors.same
+          Behaviors.same*/
 
-        case x =>
-          Behaviors.same
+
       }
     }
   }
 
-  def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,LinkedBlockingDeque[Frame]],
+/*  def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,LinkedBlockingDeque[Frame]],
            recorder4ts: FFmpegFrameRecorder,convert:Java2DFrameConverter,
            layout: Int = 0, bgImg: String, roomId: Long, canvasSize: (Int, Int),
            userIdList:List[String]): Behavior[VideoCommand] = {
@@ -327,5 +419,5 @@ object RecorderActor {
           draw(canvas, graph, lastTime, frameMapQueue, recorder4ts, convert, layout, bgImg, roomId, canvasSize, userIdList4Updata)
       }
     }
-  }
+  }*/
 }

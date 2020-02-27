@@ -37,6 +37,8 @@ object RoomActor {
 
   case class ClosePipe(liveId: String) extends Command
 
+  final case object StartRecorderSuccess extends Command
+
   case object Timer4Stop
 
   case object Stop extends Command
@@ -66,7 +68,7 @@ object RoomActor {
 
         case msg:NewRoom =>
           log.info(s"${ctx.self} receive a msg $msg")
-          val pushLiveUrl = s"rtmp://$srsServerUrl/live/${msg.roomId}_x"
+          val pushLiveUrl = s"rtmp://$srsServerUrl/live/${msg.roomId}_xyz"
           log.info(s"pushurl:$pushLiveUrl")
           val recorderActorO = recorderMap.get(msg.roomId)
           var recorderActor:ActorRef[RecorderActor.Command] = null
@@ -93,6 +95,12 @@ object RoomActor {
           recorderMap.put(msg.roomId, recorderActor)
           roomLiveMap.put(msg.roomId,List())
           Behaviors.same
+
+
+        case StartRecorderSuccess =>
+
+          Behaviors.same
+
 
         case UpdateRoomInfo(roomId, layout) =>
           if(recorderMap.get(roomId).nonEmpty) {
@@ -132,7 +140,13 @@ object RoomActor {
     }
   }
 
-  def getGrabberActor(ctx: ActorContext[Command], roomId: Long, liveId: String, url:String, recorderRef: ActorRef[RecorderActor.Command]) = {
+  def getGrabberActor(
+                       ctx: ActorContext[Command],
+                       roomId: Long,
+                       liveId: String,
+                       url:String,
+                       recorderRef: ActorRef[RecorderActor.Command]
+                     ) = {
     val childName = s"grabberActor_$liveId"
     ctx.child(childName).getOrElse{
       val actor = ctx.spawn(GrabberActor.create(roomId, liveId, url:String, recorderRef), childName)
