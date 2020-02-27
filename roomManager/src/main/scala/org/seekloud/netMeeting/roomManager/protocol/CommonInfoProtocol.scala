@@ -23,7 +23,8 @@ object CommonInfoProtocol {
     account: String,
     password: String,
     create_time: Long,
-    rtmp_url: String
+    rtmp_url: String,
+    email: String,
   )
 
 }

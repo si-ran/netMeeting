@@ -1,0 +1,1592 @@
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/test/RecordAudioAndVideo.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/test/RecordAudioAndVideo.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/test/RecordAudioAndVideo.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
+@@ -0,0 +1,199 @@
++package org.seekloud.netMeeting.processor.test
++
++import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
++
++import javafx.scene.image.PixelFormat
++import javax.sound.sampled.{AudioFormat, AudioSystem, DataLine, TargetDataLine}
++import org.bytedeco.ffmpeg.global.avcodec
++import org.bytedeco.javacv.{FFmpegFrameGrabber, FFmpegFrameRecorder, FrameGrabber, FrameRecorder, OpenCVFrameGrabber}
++
++/**
++  * Author: Tao Zhang
++  * Date: 8/16/2019
++  * Time: 6:29 PM
++  */
++object RecordAudioAndVideo {
++
++
++  def main(args: Array[String]): Unit = {
++
++    //val outputFile = "data/out/record_av_" + System.currentTimeMillis() + ".ts"
++//    val outputFile = "data/out/record_av_" + System.currentTimeMillis() + ".flv"
++//    val outputFile = "F:/obs/" + System.currentTimeMillis() + ".flv"
++//    val outputFile = "rtmp://media.seekloud.com:62040/live/1234567?rtmpToken=9KTRwdF6CDcLJUElfv8aA2zfoGyb9sUG4WfDeZ6H&userId=100136"
++//    val outputFile = "rtmp://txy.live-send.acg.tv/live-txy/?streamname=live_44829093_50571972&key=faf3125e8c84c88ad7f05e4fcc017149"
++    val outputFile = "rtmp://47.92.170.2:42069/live/12345"
++
++
++    val audioChannels = 2
++
++    val videoGrabber = new OpenCVFrameGrabber(0)
++    videoGrabber.setImageWidth(640)
++    videoGrabber.setImageHeight(360)
++    videoGrabber.start()
++
++
++    val w = videoGrabber.getImageWidth
++    val h = videoGrabber.getImageHeight
++    val frameRate = videoGrabber.getFrameRate
++
++    println(s"grabber w: $w")
++    println(s"grabber h: $h")
++    println(s"grabber fr: $frameRate")
++    println(s"grabber pixel: ${videoGrabber.getPixelFormat}")
++
++
++    val recorder = new FFmpegFrameRecorder(outputFile, w, h, audioChannels)
++
++    //recorder.setFormat("mpegts")
++    recorder.setFormat("flv")
++    recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
++    recorder.setFrameRate(30)
++//    recorder.setVideoOption("preset", "veryfast")
++    recorder.setVideoOption("tune", "zerolatency")
++//    recorder.setVideoOption("profile", "baseline")
++//    recorder.setVideoOption("crf", "18")
++
++
++
++
++
++    // 不可变(固定)音频比特率
++    recorder.setAudioOption("crf", "0")
++    // 最高质量
++    recorder.setAudioQuality(0)
++    // 音频比特率
++    recorder.setAudioBitrate(192000)
++    // 音频采样率
++    recorder.setSampleRate(44100)
++    // 双通道(立体声)
++    recorder.setAudioChannels(2)
++    // 音频编/解码器
++    recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC)
++
++    val audioExecutor = new ScheduledThreadPoolExecutor(1)
++    val videoThread = getVideoGrabThread(videoGrabber, recorder)
++
++    recorder.start()
++
++    val f =
++      audioExecutor.scheduleAtFixedRate(
++        getAudioGrabRunnable(audioChannels, recorder),
++        10,
++        23,
++        TimeUnit.MILLISECONDS)
++
++    videoThread.start()
++
++    println("WAITING 1500 s.")
++    Thread.sleep(1500 * 1000)
++
++
++    (0 until 120).foreach{ i =>
++
++      println(s"+++++++++++++++++++++++++ STOPPING $i ++++++++++++++++++++++++++")
++      Thread.sleep(1000)
++    }
++
++
++    f.cancel(false)
++    videoThread.interrupt()
++
++    Thread.sleep(1000)
++    audioExecutor.shutdown()
++    recorder.close()
++    videoGrabber.close()
++    println("DONE.")
++  }
++
++
++  def getVideoGrabThread(grab: FrameGrabber, recorder: FFmpegFrameRecorder): Thread = new Thread {
++
++    override def run(): Unit = {
++
++      val recordBeginTime: Long = System.nanoTime()
++
++      var frame = grab.grab()
++      val pixelFormat = grab.getPixelFormat
++      while (!isInterrupted && frame != null) {
++        if (frame.image != null) {
++          val timestamp = (System.nanoTime() - recordBeginTime) / 1000
++          recorder.setTimestamp(timestamp)
++          recorder.record(frame)
++        }
++//        val t1 = System.currentTimeMillis()
++        frame = grab.grab()
++//        val t2 = System.currentTimeMillis()
++//        println(s"grab picture time: ${t2 - t1} ms")
++      }
++
++      println("VideoGrabThread finished.")
++    }
++
++  }
++
++
++  def getAudioGrabRunnable(audioChannels: Int, recorder: FFmpegFrameRecorder): Runnable = new Runnable {
++
++    val audioIndex = 0
++    /**
++      * 设置音频编码器 最好是系统支持的格式，否则getLine() 会发生错误
++      * 采样率:44.1k;采样率位数:16位;立体声(stereo);是否签名;true:
++      * big-endian字节顺序,false:little-endian字节顺序(详见:ByteOrder类)
++      */
++    val audioFormat = new AudioFormat(44100.0F, 16, audioChannels, true, false)
++
++    // 通过AudioSystem获取本地音频混合器信息
++    //val minfoSet = AudioSystem.getMixerInfo
++    // 通过AudioSystem获取本地音频混合器
++    //val mixer = AudioSystem.getMixer(minfoSet(audioIndex))
++    // 通过设置好的音频编解码器获取数据线信息
++    val dataLineInfo = new DataLine.Info(classOf[TargetDataLine], audioFormat)
++
++
++    val line = AudioSystem.getLine(dataLineInfo).asInstanceOf[TargetDataLine]
++    line.open(audioFormat)
++    line.start()
++
++    // 获得当前音频采样率// 获得当前音频采样率
++    val sampleRate = audioFormat.getSampleRate.asInstanceOf[Int]
++    // 获取当前音频通道数量
++    val numChannels = audioFormat.getChannels
++    // 初始化音频缓冲区(size是音频采样率*通道数)
++    val audioBufferSize = sampleRate * numChannels
++
++    val audioBytes = new Array[Byte](audioBufferSize)
++
++
++    var crabCount = 0
++
++    override def run(): Unit = {
++      import java.nio.{ByteBuffer, ByteOrder, ShortBuffer}
++      val runTime = System.nanoTime()
++      crabCount += 1
++      try { // 非阻塞方式读取
++        val nBytesRead = line.read(audioBytes, 0, line.available)
++        // 因为我们设置的是16位音频格式,所以需要将byte[]转成short[]
++        val nSamplesRead = nBytesRead / 2
++        val samples = new Array[Short](nSamplesRead)
++
++        /**
++          * ByteBuffer.wrap(audioBytes)-将byte[]数组包装到缓冲区
++          * ByteBuffer.order(ByteOrder)-按little-endian修改字节顺序，解码器定义的
++          * ByteBuffer.asShortBuffer()-创建一个新的short[]缓冲区
++          * ShortBuffer.get(samples)-将缓冲区里short数据传输到short[]
++          */
++        ByteBuffer.wrap(audioBytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer.get(samples)
++        // 将short[]包装到ShortBuffer
++        val sBuff = ShortBuffer.wrap(samples, 0, nSamplesRead)
++        // 按通道录制shortBuffer
++        recorder.recordSamples(sampleRate, numChannels, sBuff)
++      } catch {
++        case e: FrameRecorder.Exception =>
++          e.printStackTrace()
++      }
++    }
++  }
++
++
++}
+\ No newline at end of file
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/test/SoundMix.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/test/SoundMix.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/test/SoundMix.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
+@@ -0,0 +1,161 @@
++package org.seekloud.netMeeting.processor.test
++
++/**
++  * @user: wanruolong
++  * @date: 2020/2/4 11:01
++  *
++  */
++
++import java.nio.{ByteBuffer, ByteOrder, ShortBuffer}
++import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
++
++import javax.sound.sampled.{AudioFormat, AudioSystem, DataLine, TargetDataLine}
++
++import scala.collection.mutable
++import javax.swing.JFrame
++import org.bytedeco.ffmpeg.global.avcodec
++import org.bytedeco.javacv._
++import org.slf4j.LoggerFactory
++import org.bytedeco.ffmpeg.global.avutil
++
++import scala.collection.mutable.ListBuffer
++import scala.io.StdIn
++
++object SoundMix  {
++  //sound
++  val peopleNum = 3
++  val audioChannels = 2
++  val sampleFormat = avutil.AV_SAMPLE_FMT_S16
++  val complexFilter = s" amix=inputs=$peopleNum:duration=longest:dropout_transition=3 "
++  val sampleRate = 44100
++
++  //file
++  val urlList = List[String]("H:/wav/BNS_CloseMic.wav", "H:/wav/BNS_OpenMic.wav", "H:/wav/OpenTeamTalk.wav")
++  var grabberList = List[FFmpegFrameGrabber]()
++
++
++  def main(args: Array[String]): Unit = {
++    (0 until peopleNum).foreach{i =>
++      val grabber = new FFmpegFrameGrabber(urlList(i))
++      grabber.start()
++      grabberList = grabber :: grabberList
++    }
++
++    val recorder = new FFmpegFrameRecorder("H:/wav/recorder.flv", audioChannels)
++    recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC)
++    recorder.setAudioChannels(audioChannels)
++    recorder.setAudioBitrate(192000)
++    recorder.setAudioQuality(0)
++    recorder.setFormat("flv")
++    recorder.start()
++
++
++
++        //音频混流
++    var filterStr = complexFilter
++    (1 to peopleNum).reverse.foreach { i =>
++      filterStr = s"[${i - 1}:a]" + filterStr
++    }
++    filterStr += "[a]"
++    println(s"audio filter: $filterStr")
++
++    val ffFilter = new FFmpegFrameFilter(
++      filterStr,
++      audioChannels
++    )
++    ffFilter.setAudioChannels(audioChannels)
++    ffFilter.setSampleFormat(sampleFormat)
++    ffFilter.setAudioInputs(peopleNum)
++    ffFilter.start()
++
++//    val frame = grabberList(0).grab()
++//    println(frame.opaque)
++//    println(frame.audioChannels)
++//    println(frame.sampleRate)
++
++
++    var continue = true
++    while(continue){
++      (0 until peopleNum).foreach{i =>
++        //            println(i)
++        val frame = grabberList(i).grab()
++        if(frame != null && frame.samples != null){
++          //              println(frame.samples.length)
++
++          /*              val s = frame.samples
++                        s.foreach{buff =>
++                          print(buff.capacity())
++                          print("  ")
++                          print(buff.limit())
++                        }*/
++          //              println()
++          try{
++            ffFilter.pushSamples(i, audioChannels, sampleRate, sampleFormat, frame.samples: _*)
++          } catch {
++            case e: Exception =>
++              println("encounter null pointer.")
++              e.printStackTrace()
++          }
++        }else{
++          continue = false
++          println("frame is empty.")
++        }
++      }
++      val frame = ffFilter.pullSamples()
++      if(frame != null && frame.samples != null){
++        recorder.record(frame)
++      }else{
++        println("frame is null")
++      }
++    }
++
++
++/*    val thread = new Thread(){
++      override def run(): Unit = {
++
++        var continue = true
++        while(continue){
++          (0 until peopleNum).foreach{i =>
++            //            println(i)
++            val frame = grabberList(i).grab()
++            if(frame != null && frame.samples != null){
++              //              println(frame.samples.length)
++
++              /*              val s = frame.samples
++                            s.foreach{buff =>
++                              print(buff.capacity())
++                              print("  ")
++                              print(buff.limit())
++                            }*/
++              //              println()
++              try{
++                ffFilter.pushSamples(i, audioChannels, sampleRate, sampleFormat, frame.samples: _*)
++              } catch {
++                case e: Exception =>
++                  println("encounter null pointer.")
++                  e.printStackTrace()
++              }
++            }else{
++              continue = false
++              println("frame is empty.")
++            }
++          }
++          val frame = ffFilter.pullSamples()
++          if(frame != null && frame.samples != null){
++            recorder.record(frame)
++          }else{
++            println("frame is null")
++          }
++        }
++      }
++    }
++
++    thread.start()
++    Thread.sleep(20000)
++    thread.interrupt()*/
++
++    ffFilter.stop()
++    grabberList.foreach(grabber => grabber.stop())
++    recorder.stop()
++  }
++}
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestManyRecorders.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestManyRecorders.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestManyRecorders.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
+@@ -0,0 +1,9 @@
++package org.seekloud.netMeeting.processor.test
++
++/**
++  * User: cq
++  * Date: 2020/2/24
++  */
++object TestManyRecorders {
++
++}
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/test/testSrs.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/test/testSrs.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/test/testSrs.scala	(revision 214de4eb65ecf4c17556421e57624afa8e2eb087)
+@@ -0,0 +1,45 @@
++package org.seekloud.netMeeting.processor.test
++
++import org.bytedeco.ffmpeg.global.avcodec
++import org.bytedeco.javacv.{CanvasFrame, FFmpegFrameRecorder, OpenCVFrameGrabber}
++
++
++object testSrs {
++
++  def main(args: Array[String]): Unit = {
++    val width = 640
++    val height = 360
++    val grabber = new OpenCVFrameGrabber(0)
++    grabber.setImageWidth(width)
++    grabber.setImageHeight(height)
++    grabber.start()
++    println(s"=====grabber started=====")
++    val frameRate = grabber.getFrameRate
++
++//    val url = "rtmp://10.1.29.247:42069/live/12345"
++    val url = "rtmp://47.92.170.2:42069/live/10003"
++
++    val recorder = new FFmpegFrameRecorder(url, width, height)
++    recorder.setVideoOption("tune", "zerolatency")
++    recorder.setVideoOption("preset", "ultrafast")
++    recorder.setVideoOption("crf", "23")
++    recorder.setFormat("flv")
++    recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
++    recorder.setFrameRate(frameRate)
++    recorder.start()
++
++    println(s"=====recorder started=====")
++    val canvasFrame = new CanvasFrame("camera")
++
++    while(true) {
++      val frame = grabber.grab()
++      if(null != frame && null != frame.image) {
++        recorder.record(frame)
++        canvasFrame.showImage(frame)
++      }
++    }
++  }
++
++
++
++}
+Index: build.sbt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- build.sbt	(date 1582357865000)
++++ build.sbt	(date 1582544563000)
+@@ -136,7 +136,7 @@
+   .settings(commonSettings: _*)
+   .settings(
+     mainClass in reStart := Some(processorMain),
+-    javaOptions in reStart += "-Xmx2g"
++    javaOptions in reStart += "-Xmx4g"
+   )
+   .settings(name := "processor")
+   .settings(
+@@ -145,7 +145,7 @@
+     //packSettings,
+     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
+     packMain := Map("processor" -> processorMain),
+-    packJvmOpts := Map("processor" -> Seq("-Xmx2g", "-Xms1g")),
++    packJvmOpts := Map("processor" -> Seq("-Xmx3g", "-Xms2g")),
+     packExtraClasspath := Map("processor" -> Seq("."))
+   )
+   .settings(
+Index: processor/src/main/resources/application.conf
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/resources/application.conf	(date 1582357865000)
++++ processor/src/main/resources/application.conf	(date 1582544563000)
+@@ -7,7 +7,7 @@
+ 
+   server {
+     protocol = "rtmp"
+-    host = "10.1.29.247:42069"
++    host = "47.92.170.2:42069"
+     port = 42069
+     InternalToken = "aklj345lkjOIu345olnmadf"
+   }
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/core/GrabberActor.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/core/GrabberActor.scala	(date 1582357865000)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/core/GrabberActor.scala	(date 1582544563000)
+@@ -7,6 +7,7 @@
+ import org.bytedeco.javacv.FFmpegFrameGrabber
+ import org.slf4j.LoggerFactory
+ 
++import scala.collection.mutable
+ import scala.concurrent.duration._
+ import scala.util.{Success, Try}
+ 
+@@ -31,25 +32,25 @@
+ 
+   case object GrabFrame extends Command
+ 
+-  case class Recorder(rec: ActorRef[RecorderActor.Command]) extends Command
++  case class Recorder(userId:String, rec: ActorRef[RecorderActor.Command]) extends Command
+ 
+   case object GrabLost extends Command
+ 
+   case object TimerKey4Close
+ 
+-  def create(roomId: Long, liveId: String, url: String, recorderRef: ActorRef[RecorderActor.Command]): Behavior[Command]= {
++  def create(roomId: Long, liveId: String, url: String, userIdList:List[String], recorderActorMap:mutable.Map[String,ActorRef[RecorderActor.Command]]): Behavior[Command]= {
+     Behaviors.setup[Command]{ ctx =>
+       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
+       Behaviors.withTimers[Command] {
+         implicit timer =>
+           log.info(s"grabberActor start----")
+-          init(roomId, liveId, url, recorderRef)
++          init(roomId, liveId, url, userIdList, recorderActorMap)
+       }
+     }
+   }
+ 
+-  def init(roomId: Long, liveId: String, url: String,
+-           recorderRef:ActorRef[RecorderActor.Command]
++  def init(roomId: Long, liveId: String, url: String, userIdList:List[String],
++           recorderActorMap:mutable.Map[String,ActorRef[RecorderActor.Command]]
+           )(implicit timer: TimerScheduler[Command],
+             stashBuffer: StashBuffer[Command]):Behavior[Command] = {
+     log.info(s"$liveId grabber turn to init")
+@@ -58,18 +59,25 @@
+         case t: Recorder =>
+           log.info(s"${ctx.self} receive a msg $t")
+           log.info(url)
+-          val grabber = new FFmpegFrameGrabber(url)
+-          Try {
+-            grabber.start()
+-          } match {
+-            case Success(value) =>
+-              log.info("start success grab")
+-            case e: Exception =>
+-              log.info(s"exception occured in creant grabber")
+-          }
+-          log.info(s"$liveId grabber start successfully")
+-          ctx.self ! GrabFrameFirst
+-          work(roomId, liveId, grabber, t.rec, url)
++          if(t.userId != liveId){
++            recorderActorMap.put(t.userId,t.rec)
++          }
++          if(recorderActorMap.size == userIdList.length-1){
++            val grabber = new FFmpegFrameGrabber(url)
++            Try {
++              grabber.start()
++            } match {
++              case Success(value) =>
++                log.info("start success grab")
++              case e: Exception =>
++                log.info(s"exception occured in creant grabber")
++            }
++            log.info(s"$liveId grabber start successfully")
++            ctx.self ! GrabFrameFirst
++            work(roomId, liveId, grabber, recorderActorMap.values.toList, url)
++          }else{
++            init(roomId,liveId,url,userIdList,recorderActorMap)
++          }
+ 
+         case StopGrabber =>
+           log.info(s"grabber $liveId stopped when init")
+@@ -85,7 +93,7 @@
+   def work( roomId: Long,
+             liveId: String,
+             grabber: FFmpegFrameGrabber,
+-            recorder: ActorRef[RecorderActor.Command],
++            recorderList: List[ActorRef[RecorderActor.Command]],
+             url: String
+           )(implicit stashBuffer: StashBuffer[Command],
+             timer: TimerScheduler[Command]): Behavior[Command] = {
+@@ -95,7 +103,7 @@
+           val frame = grabber.grab()
+           if(frame != null){
+             if(frame.image != null){
+-              recorder ! RecorderActor.NewFrame(liveId, frame.clone())
++              recorderList.foreach( _! RecorderActor.NewFrame(liveId, frame.clone()))
+               ctx.self ! GrabFrame
+             }else{
+               ctx.self ! GrabLost
+@@ -113,11 +121,11 @@
+           val sampleRate = grabber.getSampleRate
+           val height = grabber.getImageHeight
+           val width = grabber.getImageWidth
+-          recorder ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId)
++          recorderList.foreach(_ ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId))
+ 
+           if(frame != null){
+             if(frame.image != null){
+-              recorder ! RecorderActor.NewFrame(liveId, frame.clone())
++              recorderList.foreach(_ ! RecorderActor.NewFrame(liveId, frame.clone()))
+               ctx.self ! GrabFrame
+             }else{
+               ctx.self ! GrabLost
+@@ -131,7 +139,7 @@
+         case GrabFrame =>
+           val frame = grabber.grab()
+           if(frame != null) {
+-            recorder ! RecorderActor.NewFrame(liveId, frame.clone())
++            recorderList.foreach(_ ! RecorderActor.NewFrame(liveId, frame.clone()))
+             ctx.self ! GrabFrame
+           }else{
+             log.info(s"$liveId --- frame is null")
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/core/RecorderActor.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/core/RecorderActor.scala	(date 1582357865000)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/core/RecorderActor.scala	(date 1582544563000)
+@@ -7,6 +7,7 @@
+ 
+ import akka.actor.typed.{ActorRef, Behavior}
+ import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
++import javax.imageio.ImageIO
+ import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_RGBA
+ import org.bytedeco.ffmpeg.global.{avcodec, avutil}
+ import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, Frame, Java2DFrameConverter}
+@@ -16,7 +17,7 @@
+ 
+ import scala.concurrent.duration._
+ import org.seekloud.netMeeting.processor.Boot.roomManager
+-import org.seekloud.netMeeting.processor.test.TestPullAndPush.FileOutPath
++import org.seekloud.netMeeting.processor.test.TestPullAndPush.{FileImageOutPath,FileOutPath1, FileOutPath2, FileOutPath3}
+ 
+ import scala.collection.mutable
+ import scala.collection.mutable.ListBuffer
+@@ -77,15 +78,23 @@
+   private val emptyAudio = ShortBuffer.allocate(1024 * 2)
+   private val emptyAudio4one = ShortBuffer.allocate(1152)
+ 
+-  def create(roomId: Long,userIdList:List[String], pushLiveUrl:String, layout: Int): Behavior[Command] = {
++  def create(roomId: Long,userIdList:List[String], pushLiveUrl:String,userId:String, layout: Int): Behavior[Command] = {
+     Behaviors.setup[Command] { ctx =>
+       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
+       Behaviors.withTimers[Command] {
+         implicit timer =>
+           log.info(s"recorderActor start----")
++          log.info(s"${ctx.self} userIdList:${userIdList}")
+           avutil.av_log_set_level(-8)
+           val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480)
+-//          val outputStream = new FileOutputStream(new File(FileOutPath))
++//          var outputStream:FileOutputStream = null
++//          if(pushLiveUrl.last == '1'){
++//            outputStream = new FileOutputStream(new File(FileOutPath1))
++//          }else if(pushLiveUrl.last == '2'){
++//            outputStream = new FileOutputStream(new File(FileOutPath2))
++//          }else if(pushLiveUrl.last == '3'){
++//            outputStream = new FileOutputStream(new File(FileOutPath3))
++//          }
+ //          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
+           recorder4ts.setFrameRate(frameRate)
+           recorder4ts.setVideoBitrate(bitRate)
+@@ -99,7 +108,7 @@
+             case e: Exception =>
+               log.error(s" recorder meet error when start:$e")
+           }
+-          roomManager ! RoomManager.RecorderRef(roomId, ctx.self)
++          roomManager ! RoomManager.RecorderRef(roomId, userId, ctx.self)
+           ctx.self ! InitFilter
+           init(roomId,  userIdList, layout, recorder4ts, null, null, null, 30000, (0, 0))
+       }
+@@ -120,13 +129,13 @@
+             ffFilter.close()
+           }
+           var str =""
+-          for(i<- 0 until userIdList.length-1){
++          for(i<- 0 until userIdList.length){
+             str+=s"[$i:a]"
+           }
+-          val ffFilterN = new FFmpegFrameFilter(s"$str amix=inputs=${userIdList.length-1}:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
++          val ffFilterN = new FFmpegFrameFilter(s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
+           ffFilterN.setAudioChannels(audioChannels)
+           ffFilterN.setSampleFormat(sampleFormat)
+-          ffFilterN.setAudioInputs(userIdList.size-1)
++          ffFilterN.setAudioInputs(userIdList.size)
+           ffFilterN.start()
+           init(roomId, userIdList, layout, recorder4ts, ffFilterN, drawer, ts4User, tsDiffer, canvasSize)
+ 
+@@ -142,21 +151,16 @@
+             init(roomId, userIdList, layout, recorder4ts, ffFilter, drawer,  ts4User, tsDiffer,  (640,  480))
+ 
+         case NewFrame(userId, frame) =>
+-          if(userId == userIdList(0)){  //todo 自己的画面暂时不做显示
+-            log.info("in self frame")
+-            Behaviors.same
+-          }else{
+-            val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
+-            val convertList = userIdList.drop(1).map(id=>new Java2DFrameConverter)
+-            val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
+-            userIdList.drop(1).foreach{
+-              id => frameMapQueue.put(id,mutable.Queue[Frame]())
+-            }
+-            val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,
+-              convertList, new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 360), userIdList), s"drawer_$roomId")
+-            ctx.self ! NewFrame(userId, frame)
+-            work(roomId,userIdList,layout,recorder4ts,ffFilter, drawer,ts4User,tsDiffer,canvasSize)
+-          }
++          val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
++//          val convertList = userIdList.map(id=>new Java2DFrameConverter)
++          val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
++          userIdList.foreach{
++            id => frameMapQueue.put(id,mutable.Queue[Frame]())
++          }
++          val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,
++           new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 360), userIdList), s"drawer_${roomId}_$userId")
++          ctx.self ! NewFrame(userId, frame)
++          work(roomId,userIdList,layout,recorder4ts,ffFilter, drawer,ts4User,tsDiffer,canvasSize)
+ 
+         case CloseRecorder =>
+           try {
+@@ -188,7 +192,7 @@
+       msg match {
+         case NewFrame(liveId, frame) =>
+           if (frame.image != null) {
+-            if(liveId == userIdList(1)){
++            if(liveId == userIdList(0)){
+               drawer ! ImageDraw(liveId,frame)
+             }else{
+               drawer ! Image4Mix(liveId,frame)
+@@ -196,9 +200,9 @@
+           }
+           if (frame.samples != null) {
+             try {
+-              for(i <- 1 until userIdList.length){
++              for(i <- 0 until userIdList.length){
+                 if(userIdList(i) == liveId){
+-                  ffFilter.pushSamples(i-1, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
++                  ffFilter.pushSamples(i, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
+                 }
+               }
+               val f = ffFilter.pullSamples().clone()
+@@ -245,71 +249,73 @@
+   }
+ 
+   def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,mutable.Queue[Frame]],
+-           recorder4ts: FFmpegFrameRecorder, convertList: List[Java2DFrameConverter],convert:Java2DFrameConverter,
++           recorder4ts: FFmpegFrameRecorder,convert:Java2DFrameConverter,
+            layout: Int = 0, bgImg: String, roomId: Long, canvasSize: (Int, Int),
+            userIdList:List[String]): Behavior[VideoCommand] = {
+     Behaviors.setup[VideoCommand] { ctx =>
+       Behaviors.receiveMessage[VideoCommand] {
+         case t:Image4Mix =>
+-          frameMapQueue.get(t.liveId).foreach(_+= t.frame)
++          frameMapQueue.get(t.liveId).foreach( _ += t.frame)
+           Behaviors.same
+         case f:ImageDraw =>
+-//          val time = f.frame.timestamp
+-//          val size = frameMapQueue.size
+-//          val layout_x_y= createLayoutNum(size)
+-//          val width = canvasSize._1/layout_x_y(1)
+-//          val height = canvasSize._2/layout_x_y(0)
+-          frameMapQueue.get(f.liveId).foreach(_+=f.frame)
+-//          for(i <- 1 until userIdList.length){
+-//            val queue = frameMapQueue.get(userIdList(i)).get
+-//            var img:BufferedImage=null
+-//            if(queue.nonEmpty){
+-//              img = convertList(i-1).convert(queue.dequeue())
+-//            }
+-//            graph.drawImage(img, (i-1)%layout_x_y(1)*width, (i-1)/layout_x_y(1)*height, width,height,null)
+-//            graph.drawString(s"用户${i}",(i-1)%layout_x_y(1)*width+50,(i-1)/layout_x_y(1)*height+50)
+-//          }
+-          if(userIdList.length>=2){
+-            val queue1 = frameMapQueue.get(userIdList(1)).get
+-            var image1:BufferedImage = null
+-            if(queue1.nonEmpty){
+-              image1 = convertList(0).convert(queue1.dequeue())
+-            }
+-            graph.drawImage(image1,0,0,320,180,null)
+-            graph.drawString("用户1",50,50)
+-          }
+-          if(userIdList.length>=3){
+-            val queue2 = frameMapQueue.get(userIdList(2)).get
+-            var image2:BufferedImage = null
+-            if(queue2.nonEmpty){
+-              image2 = convertList(1).convert(queue2.dequeue())
+-            }
+-            graph.drawImage(image2,320,0,320,180,null)
+-            graph.drawString("用户2",370,50)
+-          }
+-          if(userIdList.length>=4){
+-            val queue3 = frameMapQueue.get(userIdList(3)).get
+-            var image3 : BufferedImage = null
+-            if(queue3.nonEmpty){
+-              image3 = convertList(2).convert(queue3.dequeue())
+-            }
+-            graph.drawImage(image3,0,180,320,180,null)
+-            graph.drawString("用户3",50,230)
+-          }
+-          if(userIdList.length>=5){
+-            val queue4 = frameMapQueue.get(userIdList(4)).get
+-            var image4 : BufferedImage = null
+-            if(queue4.nonEmpty){
+-              image4 = convertList(2).convert(queue4.dequeue())
++          val time = f.frame.timestamp
++          val size = frameMapQueue.size
++          val layout_x_y= createLayoutNum(size)
++          val width = canvasSize._1/layout_x_y(1)
++          val height = canvasSize._2/layout_x_y(0)
++          frameMapQueue.get(f.liveId).foreach( _ += f.frame)
++          for(i <- 0 until userIdList.length){
++            val queue = frameMapQueue.get(userIdList(i)).get
++            var img:BufferedImage=null
++            if(queue.nonEmpty){
++              img = convert.convert(queue.dequeue())
+             }
+-            graph.drawImage(image4,320,180,320,180,null)
+-            graph.drawString("用户4",370,230)
++            graph.drawImage(img, i%layout_x_y(1)*width, i/layout_x_y(1)*height, width,height,null)
++            graph.drawString(s"用户${i}",i%layout_x_y(1)*width+50,i/layout_x_y(1)*height+50)
+           }
+-
++//          if(userIdList.length>=2){
++//            val queue1 = frameMapQueue.get(userIdList(1)).get
++//            var image1:BufferedImage = null
++//            if(queue1.nonEmpty){
++//              image1 = convertList(0).convert(queue1.dequeue())
++//            }
++//            graph.drawImage(image1,0,0,320,180,null)
++//            graph.drawString("用户1",50,50)
++//          }
++//          if(userIdList.length>=3){
++//            val queue2 = frameMapQueue.get(userIdList(2)).get
++//            var image2:BufferedImage = null
++//            if(queue2.nonEmpty){
++//              image2 = convertList(1).convert(queue2.dequeue())
++//            }
++//            graph.drawImage(image2,320,0,320,180,null)
++//            graph.drawString("用户2",370,50)
++//          }
++//          if(userIdList.length>=4){
++//            val queue3 = frameMapQueue.get(userIdList(3)).get
++//            var image3 : BufferedImage = null
++//            if(queue3.nonEmpty){
++//              image3 = convertList(2).convert(queue3.dequeue())
++//            }
++//            graph.drawImage(image3,0,180,320,180,null)
++//            graph.drawString("用户3",50,230)
++//          }
++//          if(userIdList.length>=5){
++//            val queue4 = frameMapQueue.get(userIdList(4)).get
++//            var image4 : BufferedImage = null
++//            if(queue4.nonEmpty){
++//              image4 = convertList(2).convert(queue4.dequeue())
++//            }
++//            graph.drawImage(image4,320,180,320,180,null)
++//            graph.drawString("用户4",370,230)
++//          }
+           val frame = convert.convert(canvas)
+-          //          println(frame)
+-          recorder4ts.record(frame.clone())
+-          //          log.info("recorded")
++          log.info(s"${ctx.self} frame=$frame, userIdList=${userIdList}")
++          val fileName = s"$FileImageOutPath/img_${userIdList(0)}_${userIdList(1)}.jpg"
++          val outPut = new File(fileName)
++          ImageIO.write(canvas, "jpg", outPut)
++//          recorder4ts.record(frame.clone())
++//          log.info("recorded")
+           Behaviors.same
+       }
+     }
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/core/RoomActor.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/core/RoomActor.scala	(date 1582357865000)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/core/RoomActor.scala	(date 1582544563000)
+@@ -27,7 +27,7 @@
+ 
+   case class UpdateRoomInfo(roomId: Long, layout: Int) extends Command
+ 
+-  case class Recorder(roomId: Long, recorderRef: ActorRef[RecorderActor.Command]) extends Command
++  case class Recorder(roomId: Long, userId:String, recorderRef: ActorRef[RecorderActor.Command]) extends Command
+ 
+   case class CloseRoom(roomId: Long) extends Command
+ 
+@@ -35,10 +35,6 @@
+ 
+   case class ChildDead4Recorder(roomId: Long, childName: String, value: ActorRef[RecorderActor.Command]) extends Command
+ 
+-//  case class ChildDead4PushPipe(liveId: String, childName: String, value: ActorRef[StreamPushPipe.Command]) extends Command
+-//
+-//  case class ChildDead4PullPipe(liveId: String, childName: String, value: ActorRef[StreamPullPipe.Command]) extends Command
+-
+   case class ClosePipe(liveId: String) extends Command
+ 
+   case object Timer4Stop
+@@ -47,10 +43,6 @@
+ 
+   case class Timer4PipeClose(liveId: String)
+ 
+-//  val pipeMap = mutable.Map[String, PipeStream]()
+-
+-//  val pullPipeMap = mutable.Map[String, ActorRef[StreamPullPipe.Command]]()
+-//  val pushPipeMap = mutable.Map[String, ActorRef[StreamPushPipe.Command]]()
+ 
+   def create(roomId: Long, userIdList:List[String], pushLiveCode: String,  layout: Int): Behavior[Command]= {
+     Behaviors.setup[Command]{ ctx =>
+@@ -58,14 +50,14 @@
+       Behaviors.withTimers[Command] {
+         implicit timer =>
+           log.info(s"roomActor start----")
+-          work(mutable.Map[Long, List[ActorRef[GrabberActor.Command]]](), mutable.Map[Long,ActorRef[RecorderActor.Command]](), mutable.Map[Long, List[String]]())
++          work(mutable.Map[Long, List[ActorRef[GrabberActor.Command]]](), mutable.Map[Long,List[ActorRef[RecorderActor.Command]]](), mutable.Map[Long, List[String]]())
+       }
+     }
+   }
+ 
+   def work(
+             grabberMap: mutable.Map[Long, List[ActorRef[GrabberActor.Command]]],
+-            recorderMap: mutable.Map[Long,ActorRef[RecorderActor.Command]],
++            recorderMap: mutable.Map[Long,List[ActorRef[RecorderActor.Command]]],
+             roomLiveMap: mutable.Map[Long, List[String]]
+           )(implicit stashBuffer: StashBuffer[Command],
+             timer: TimerScheduler[Command]):Behavior[Command] = {
+@@ -74,13 +66,16 @@
+ 
+         case msg:NewRoom =>
+           log.info(s"${ctx.self} receive a msg $msg")
+-          val pushLiveUrl = s"rtmp://$srsServerUrl/live/${msg.roomId}_${msg.userIdList(0)}"
+-          log.info(s"pushurl:$pushLiveUrl")
+-          val recorderActor = getRecorderActor(ctx,msg.userIdList, msg.roomId, s"${msg.roomId}_${msg.userIdList(0)}" , pushLiveUrl, msg.pushLiveCode, msg.layout)
+-          val grabberActorList = msg.userIdList.drop(1).map{
++          val recorderActorMap = mutable.Map[String,ActorRef[RecorderActor.Command]]()
++          msg.userIdList.map{
++            id =>
++              val recorderActor = getRecorderActor(ctx, msg.userIdList.filter(_!=id), msg.roomId, id, msg.pushLiveCode, msg.layout)
++              recorderActorMap.put(id,recorderActor)
++          }
++          val grabberActorList = msg.userIdList.map{
+             id =>
+               val url = s"rtmp://$srsServerUrl/live/$id"
+-              getGrabberActor(ctx,msg.roomId,id,url,recorderActor)
++              getGrabberActor(ctx, msg.roomId, id, url, msg.userIdList)
+           }
+ 
+ 
+@@ -93,13 +88,13 @@
+ 
+ 
+           grabberMap.put(msg.roomId, grabberActorList)
+-          recorderMap.put(msg.roomId, recorderActor)
++          recorderMap.put(msg.roomId, recorderActorMap.values.toList)
+           roomLiveMap.put(msg.roomId,List())
+           Behaviors.same
+ 
+         case UpdateRoomInfo(roomId, layout) =>
+           if(recorderMap.get(roomId).nonEmpty) {
+-            recorderMap.get(roomId).foreach(_ ! RecorderActor.UpdateRoomInfo(roomId,layout ))
++            recorderMap.get(roomId).get.foreach(_ ! RecorderActor.UpdateRoomInfo(roomId,layout ))
+           } else {
+             log.info(s"${roomId} recorder not exist")
+           }
+@@ -109,7 +104,7 @@
+           log.info(s"${ctx.self} receive a msg $msg")
+           val grabberActor = grabberMap.get(msg.roomId)
+           if(grabberActor.isDefined){
+-            grabberActor.get.foreach(_ ! GrabberActor.Recorder(msg.recorderRef))
++            grabberActor.get.foreach(_ ! GrabberActor.Recorder(msg.userId, msg.recorderRef))
+           } else {
+             log.info(s"${msg.roomId} grabbers not exist")
+           }
+@@ -145,12 +140,6 @@
+ //          timer.startSingleTimer(Timer4Stop, Stop, 1500.milli)
+ //          Behaviors.same
+ 
+-//        case ClosePipe(liveId) =>
+-//          pushPipeMap.get(liveId).foreach( a => a ! StreamPushPipe.ClosePipe)
+-//          pullPipeMap.remove(liveId)
+-//          pushPipeMap.remove(liveId)
+-//          pipeMap.remove(liveId)
+-//          Behaviors.same
+ 
+         case Stop =>
+           log.info(s"${ctx.self} stopped ------")
+@@ -166,33 +155,26 @@
+           recorderMap.remove(roomId)
+           Behaviors.same
+ 
+-//        case ChildDead4PullPipe(liveId, childName, value) =>
+-//          log.info(s"${childName} is dead ")
+-//          pullPipeMap.remove(liveId)
+-//          Behaviors.same
+-//
+-//        case ChildDead4PushPipe(liveId, childName, value) =>
+-//          log.info(s"${childName} is dead ")
+-//          pushPipeMap.remove(liveId)
+-//          Behaviors.same
+       }
+ 
+     }
+   }
+ 
+-  def getGrabberActor(ctx: ActorContext[Command], roomId: Long, liveId: String, url:String, recorderRef: ActorRef[RecorderActor.Command]) = {
++  def getGrabberActor(ctx: ActorContext[Command], roomId: Long, liveId: String, url:String, userIdList:List[String]) = {
+     val childName = s"grabberActor_$liveId"
+     ctx.child(childName).getOrElse{
+-      val actor = ctx.spawn(GrabberActor.create(roomId, liveId, url:String, recorderRef), childName)
++      val actor = ctx.spawn(GrabberActor.create(roomId, liveId, url:String, userIdList, mutable.Map[String,ActorRef[RecorderActor.Command]]()), childName)
+       ctx.watchWith(actor,ChildDead4Grabber(roomId, childName, actor))
+       actor
+     }.unsafeUpcast[GrabberActor.Command]
+   }
+ 
+-  def getRecorderActor(ctx: ActorContext[Command], userIdList:List[String], roomId:Long, pushLiveId:String, pushLiveUrl:String,  pushLiveCode: String,layout: Int) = {
+-    val childName = s"recorderActor_$pushLiveId"
++  def getRecorderActor(ctx: ActorContext[Command], userIdList:List[String], roomId:Long,  userId:String,  pushLiveCode: String,layout: Int) = {
++    val childName = s"recorderActor_${roomId}_$userId"
+     ctx.child(childName).getOrElse{
+-      val actor = ctx.spawn(RecorderActor.create(roomId,userIdList,pushLiveUrl, layout), childName)
++      val pushLiveUrl = s"rtmp://$srsServerUrl/live/${roomId}_$userId"
++      log.info(s"pushLiveUrl:$pushLiveUrl")
++      val actor = ctx.spawn(RecorderActor.create(roomId,userIdList,pushLiveUrl, userId, layout), childName)
+       ctx.watchWith(actor,ChildDead4Recorder(roomId, childName, actor))
+       actor
+     }.unsafeUpcast[RecorderActor.Command]
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/core/RoomManager.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/core/RoomManager.scala	(date 1582357865000)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/core/RoomManager.scala	(date 1582544563000)
+@@ -5,6 +5,7 @@
+ import org.slf4j.LoggerFactory
+ 
+ import scala.collection.mutable
++import scala.collection.mutable.ListBuffer
+ 
+ /**
+   * User: cq
+@@ -21,7 +22,7 @@
+ 
+   case class UpdateRoomInfo(roomId: Long, layout:Int ) extends Command
+ 
+-  case class RecorderRef(roomId: Long, ref: ActorRef[RecorderActor.Command]) extends Command
++  case class RecorderRef(roomId: Long, userId:String, ref: ActorRef[RecorderActor.Command]) extends Command
+ 
+   case class ChildDead(roomId: Long, childName: String, value: ActorRef[RoomActor.Command]) extends Command
+ 
+@@ -58,11 +59,11 @@
+           }
+           Behaviors.same
+ 
+-        case RecorderRef(roomId, ref) =>
++        case RecorderRef(roomId,userId, ref) =>
+           log.info(s"${ctx.self} receive a msg${msg}")
+           val roomActor = roomInfoMap.get(roomId)
+           if(roomActor.nonEmpty){
+-            roomActor.foreach(_ ! RoomActor.Recorder(roomId, ref) )
++            roomActor.foreach(_ ! RoomActor.Recorder(roomId, userId, ref) )
+           }
+           Behaviors.same
+ 
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestPullAndPush.scala
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestPullAndPush.scala	(date 1582357865000)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestPullAndPush.scala	(date 1582544563000)
+@@ -42,10 +42,13 @@
+   val FilePath2 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/mov_bbb.mp4"
+   val FilePath3 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/big_buck_bunny.mp4"
+ 
+-  val OutPath1 = "rtmp://10.1.29.247:42069/live/10001"
+-  val OutPath2 = "rtmp://10.1.29.247:42069/live/10002"
+-  val OutPath3 = "rtmp://10.1.29.247:42069/live/10003"
+-  val FileOutPath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
++  val OutPath1 = "rtmp://47.92.170.2:42069/live/10001"
++  val OutPath2 = "rtmp://47.92.170.2:42069/live/10002"
++  val OutPath3 = "rtmp://47.92.170.2:42069/live/10003"
++  val FileImageOutPath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image"
++  val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out1.flv"
++  val FileOutPath2 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out2.flv"
++  val FileOutPath3 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out3.flv"
+   var audioChannels = 2 //todo 待议
+   var frameRate = 30
+   val bitRate = 2000000
+@@ -112,7 +115,7 @@
+           )
+           println("start success grab")
+           println(i)
+-          val outputStream = new FileOutputStream(new File(FileOutPath))
++          val outputStream = new FileOutputStream(new File(FileOutPath1))
+           val recorder = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
+           recorder.setFrameRate(frameRate)
+           recorder.setVideoBitrate(bitRate)
+@@ -169,11 +172,11 @@
+   def main(args: Array[String]): Unit = {
+     val threadPool:ExecutorService = Executors.newFixedThreadPool(60)
+     try{
+-//      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
+-//      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
++      threadPool.execute(new PushPipeThread(FilePath1,OutPath1))
++      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
+ //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
+ //      Thread.sleep(3000)
+-      newConnect(10001,List("10002","10001"),"",1)
++//      newConnect(10001,List("10001","10002","10003"),"",1)
+ //      threadPool.execute(new PullPipeThread())
+     }finally {
+       threadPool.shutdown()
+Index: processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/新建文本文档.txt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/新建文本文档.txt	(date 1582357865000)
++++ processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/新建文本文档.txt	(date 1582544563000)
+@@ -1,8 +1,8 @@
+ ffmpeg -stream_loop -1 -re -i trailer.mkv -f flv rtmp://10.1.29.247:42069/live/10001
+ 
+-ffmpeg -re  -stream_loop -1 -i trailer.mkv -vcodec copy -acodec copy -f flv -y rtmp://10.1.29.247:42069/live/10002
++ffmpeg -re  -stream_loop -1 -i trailer.mkv -vcodec copy -acodec copy -f flv -y rtmp://47.92.170.2:42069/live/10002
+ 
+-ffplay -i rtmp://10.1.29.247:42069/live/10001
++ffplay -i rtmp://47.92.170.2:42069/live/10001
+ 
+ 
+ rtmp://47.92.170.2:42069/live/10001
+\ No newline at end of file
+diff --git processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image/img_10001_10002.jpg processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image/img_10001_10002.jpg
+new file mode 100644
+index 0000000000000000000000000000000000000000..8f2af3eaa492def4ad39dcf92c1df3c6a1d7ffb6
+GIT binary patch
+literal 20
+ac%1ux<NpH&0WUXCHwH!~1_nkTWB>qD?*!`r
+
+diff --git processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image/img_10001_10003.jpg processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image/img_10001_10003.jpg
+new file mode 100644
+index 0000000000000000000000000000000000000000..2b7015992d41e74277a0a29ab7d935674d4fadd2
+GIT binary patch
+literal 17712
+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
+Y=YQb+Z~JfiZ~JfiZ~OmSV<AudFR6M+PXGV_
+
+diff --git processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image/img_10002_10003.jpg processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/image/img_10002_10003.jpg
+new file mode 100644
+index 0000000000000000000000000000000000000000..8057b851bbe6093172207680ff79ee313a0ad48f
+GIT binary patch
+literal 10000
+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
+KzcigM_x}f{Yyd|9
+

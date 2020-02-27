@@ -5,6 +5,7 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, StashBuffer, TimerSch
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * User: cq
@@ -16,6 +17,8 @@ object RoomManager {
   sealed trait Command
 
   case class NewConnection(roomId: Long,  userIdList:List[String], pushLiveCode: String, layout: Int) extends Command
+
+  case class CloseConnection(roomId: Long) extends Command
 
   case class CloseRoom(roomId: Long) extends Command
 
@@ -45,9 +48,19 @@ object RoomManager {
 
         case msg:NewConnection =>
           log.info(s"${ctx.self} receive a msg${msg}")
-          val roomActor = getRoomActor(ctx, msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
-          roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
-          roomInfoMap.put(msg.roomId, roomActor)
+          if(roomInfoMap.get(msg.roomId).nonEmpty){
+            val roomActor =roomInfoMap.get(msg.roomId).get
+            roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
+          }else{
+            val roomActor = getRoomActor(ctx, msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
+            roomActor ! RoomActor.NewRoom(msg.roomId, msg.userIdList, msg.pushLiveCode, msg.layout)
+            roomInfoMap.put(msg.roomId, roomActor)
+          }
+          Behaviors.same
+
+        case msg:CloseConnection =>
+          roomInfoMap.get(msg.roomId).foreach(_ ! RoomActor.Stop)
+          roomInfoMap -= msg.roomId
           Behaviors.same
 
         case msg:UpdateRoomInfo =>

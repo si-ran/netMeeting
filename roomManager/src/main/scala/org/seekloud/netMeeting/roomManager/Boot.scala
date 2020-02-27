@@ -12,7 +12,7 @@ import akka.util.Timeout
 import akka.actor.typed.scaladsl.adapter._
 import akka.dispatch.MessageDispatcher
 import org.seekloud.netMeeting.roomManager.common.AppSettings
-import org.seekloud.netMeeting.roomManager.core.{UserManager, RoomManager}
+import org.seekloud.netMeeting.roomManager.core.{EmailActor, RoomManager, UserManager}
 import org.seekloud.netMeeting.roomManager.http.HttpService
 
 import scala.util.{Failure, Success}
@@ -42,6 +42,8 @@ object Boot extends HttpService {
   val userManager: ActorRef[UserManager.Command] = system.spawn(UserManager.init(), "userManager")
 
   val roomManager: ActorRef[RoomManager.Command] = system.spawn(RoomManager.init(), "roomManager")
+
+  val emailActor: ActorRef[EmailActor.Command] = system.spawn(EmailActor.init(), "emailActor")
 
   val log: LoggingAdapter = Logging(system, getClass)
 

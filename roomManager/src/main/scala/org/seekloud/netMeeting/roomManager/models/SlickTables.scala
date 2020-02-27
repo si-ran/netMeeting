@@ -27,18 +27,19 @@ trait SlickTables {
    *  @param headImg Database column head_img SqlType(varchar), Length(256,true), Default()
    *  @param coverImg Database column cover_img SqlType(varchar), Length(256,true), Default()
    *  @param createTime Database column create_time SqlType(int8)
-   *  @param rtmpUrl Database column rtmp_url SqlType(varchar), Length(100,true) */
-  case class rUserInfo(uid: Long, userName: String, account: String, password: String, headImg: String = "", coverImg: String = "", createTime: Long, rtmpUrl: String)
+   *  @param rtmpUrl Database column rtmp_url SqlType(varchar), Length(100,true)
+   *  @param email Database column email SqlType(varchar), Length(128,true), Default() */
+  case class rUserInfo(uid: Long, userName: String, account: String, password: String, headImg: String = "", coverImg: String = "", createTime: Long, rtmpUrl: String, email: String = "")
   /** GetResult implicit for fetching rUserInfo objects using plain SQL queries */
   implicit def GetResultrUserInfo(implicit e0: GR[Long], e1: GR[String]): GR[rUserInfo] = GR{
     prs => import prs._
-    rUserInfo.tupled((<<[Long], <<[String], <<[String], <<[String], <<[String], <<[String], <<[Long], <<[String]))
+    rUserInfo.tupled((<<[Long], <<[String], <<[String], <<[String], <<[String], <<[String], <<[Long], <<[String], <<[String]))
   }
   /** Table description of table user_info. Objects of this class serve as prototypes for rows in queries. */
   class tUserInfo(_tableTag: Tag) extends profile.api.Table[rUserInfo](_tableTag, "user_info") {
-    def * = (uid, userName, account, password, headImg, coverImg, createTime, rtmpUrl) <> (rUserInfo.tupled, rUserInfo.unapply)
+    def * = (uid, userName, account, password, headImg, coverImg, createTime, rtmpUrl, email) <> (rUserInfo.tupled, rUserInfo.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = ((Rep.Some(uid), Rep.Some(userName), Rep.Some(account), Rep.Some(password), Rep.Some(headImg), Rep.Some(coverImg), Rep.Some(createTime), Rep.Some(rtmpUrl))).shaped.<>({r=>import r._; _1.map(_=> rUserInfo.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = ((Rep.Some(uid), Rep.Some(userName), Rep.Some(account), Rep.Some(password), Rep.Some(headImg), Rep.Some(coverImg), Rep.Some(createTime), Rep.Some(rtmpUrl), Rep.Some(email))).shaped.<>({r=>import r._; _1.map(_=> rUserInfo.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column uid SqlType(bigserial), AutoInc, PrimaryKey */
     val uid: Rep[Long] = column[Long]("uid", O.AutoInc, O.PrimaryKey)
@@ -56,6 +57,8 @@ trait SlickTables {
     val createTime: Rep[Long] = column[Long]("create_time")
     /** Database column rtmp_url SqlType(varchar), Length(100,true) */
     val rtmpUrl: Rep[String] = column[String]("rtmp_url", O.Length(100,varying=true))
+    /** Database column email SqlType(varchar), Length(128,true), Default() */
+    val email: Rep[String] = column[String]("email", O.Length(128,varying=true), O.Default(""))
   }
   /** Collection-like TableQuery object for table tUserInfo */
   lazy val tUserInfo = new TableQuery(tag => new tUserInfo(tag))

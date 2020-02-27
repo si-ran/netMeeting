@@ -4,7 +4,7 @@ val scalaV = "2.12.10"
 
 val projectName = "netMeeting"
 
-val projectVersion = "19.11.1"
+val projectVersion = "20.2.24"
 
 def commonSettings = Seq(
   version := projectVersion,
@@ -101,10 +101,11 @@ lazy val roomManager = (project in file("roomManager")).enablePlugins(PackPlugin
     //packSettings,
     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
     packMain := Map("roomManager" -> roomManagerMain),
-    packJvmOpts := Map("roomManager" -> Seq("-Xmx64m", "-Xms32m")),
+    packJvmOpts := Map("roomManager" -> Seq("-Xmx1g", "-Xms512m")),
     packExtraClasspath := Map("roomManager" -> Seq("."))
   )
   .settings(
+    libraryDependencies ++= Dependencies.bytedecoLibs,
     libraryDependencies ++= Dependencies.backendDependencies
   )
   .settings {
@@ -145,7 +146,7 @@ lazy val processor = (project in file("processor")).enablePlugins(PackPlugin)
     //packSettings,
     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
     packMain := Map("processor" -> processorMain),
-    packJvmOpts := Map("processor" -> Seq("-Xmx6g", "-Xms3g")),
+    packJvmOpts := Map("processor" -> Seq("-Xmx3g", "-Xms2g")),
     packExtraClasspath := Map("processor" -> Seq("."))
   )
   .settings(

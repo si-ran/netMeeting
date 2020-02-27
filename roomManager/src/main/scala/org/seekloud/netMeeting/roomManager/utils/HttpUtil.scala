@@ -16,14 +16,16 @@
 
 package org.seekloud.netMeeting.roomManager.utils
 
+import java.io.File
 import java.nio.charset.Charset
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import javax.net.ssl.{ManagerFactoryParameters, TrustManager, TrustManagerFactory, X509TrustManager}
 
+import javax.net.ssl.{ManagerFactoryParameters, TrustManager, TrustManagerFactory, X509TrustManager}
 import io.netty.handler.ssl.util.SimpleTrustManagerFactory
 import io.netty.handler.ssl.{SslContext, SslContextBuilder}
 import org.asynchttpclient._
+import org.asynchttpclient.request.body.multipart.FilePart
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -147,6 +149,29 @@ trait HttpUtil {
       addHeader("Content-Type", "application/json").
       setBody(jsonStr)
     executeRequest(methodName, request, cs, needLogRsp)
+  }
+
+  def postFileRequestSend(
+    methodName: String,
+    url: String,
+    parameters: List[(String, String)],
+    file: File,
+    fileName: String,
+    responseCharsetName: String = "UTF-8"
+  )(implicit executor: ExecutionContext): Future[Either[Throwable, String]] = {
+    log.info("Post Request [" + methodName + "] Processing...")
+    log.debug(methodName + " url=" + url)
+    log.debug(methodName + " parameters=" + parameters)
+    log.debug(methodName + " postData=" + file.getName)
+
+    val request = ahClient.
+      preparePost(url).
+      setFollowRedirect(true).
+      setRequestTimeout(60 * 1000).
+      addQueryParams(parameters.map { kv => new Param(kv._1, kv._2) }.asJava).
+      addBodyPart(new FilePart("fileUpload", file, null, null, fileName))
+    val cs = Charset.forName(responseCharsetName)
+    executeRequest(methodName, request, cs)
   }
 
   def getRequestSend(

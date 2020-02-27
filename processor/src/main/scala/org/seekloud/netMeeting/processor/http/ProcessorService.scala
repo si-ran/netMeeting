@@ -29,8 +29,18 @@ trait ProcessorService extends ServiceUtils{
         complete(parseJsonError)
     }
   }
+  private def closeConnect = (path("closeConnect") & post){
+    entity(as[Either[Error, CloseConnect]]){
+      case Right(req) =>
+        log.info(s"post method $CloseConnect")
+        roomManager ! RoomManager.CloseConnection(req.roomId)
+        complete(SuccessRsp())
+      case Left(e) =>
+        complete(parseJsonError)
+    }
+  }
 
   val processorRoute:Route = pathPrefix("processor") {
-    newConnect
+    newConnect ~ closeConnect
   }
 }

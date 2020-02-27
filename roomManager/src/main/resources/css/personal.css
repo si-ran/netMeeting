@@ -1,0 +1,125 @@
+.header-top-container .header{
+    display: flex;
+    flex-flow: row nowrap;
+    height: 50px;
+    box-shadow: 0px 0px 5px #aaa;
+    align-items: center;
+    padding-left: 80px;
+    background-color: #fff;
+}
+.header-top-container .header-left{
+
+}
+.header-top-container .header-right{
+
+}
+.header-top-container .header-title{
+    font-family: sans-serif;
+    font-weight: bold;
+    font-size: 32px
+}
+/*----------*/
+.personal-page{
+    margin: auto;
+    max-width: 960px;
+}
+/*----------*/
+.personal-info{
+    position: relative;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: start;
+    margin: 100px 0 0 0;
+    height: 100px;
+    border-radius: 8px;
+    box-shadow: 0 0 3px #ccc;
+    background-color: #fff;
+}
+.personal-info .info-right{
+    display: flex;
+    flex-flow: column-reverse nowrap;
+    padding: 10px 15px;
+}
+.info-right .detail{
+    padding: 5px 10px;
+    border-radius: 5px;
+    color: #0396ff;
+    border: 1px solid #0396ff;
+}
+.personal-info .info-left{
+    display: flex;
+    flex-flow: row nowrap;
+    flex-grow: 1;
+    margin: 0 0 0 30px;
+    padding: 20px 0;
+}
+.info-left .head-img{
+    position: relative;
+    top: -80px;
+    margin: 0 20px 0 0;
+    width: 156px;
+    height: 156px;
+    border-radius: 12px;
+    background-color: #fff;
+    border: 2px solid #fff;
+}
+.info-left .name{
+    font-size: 26px;
+    font-weight: bold;
+}
+/*----------*/
+.personal-other{
+    position: relative;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    margin: 10px 0 0 0;
+}
+.message{
+    width: 71%;
+    background-color: #fff;
+    box-shadow: 0 0 3px #ccc;
+}
+.message .msg-header{
+    position: relative;
+    height: 50px;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    border-bottom: 1px solid #dfdfdf;
+}
+.msg-header .li{
+    margin: 0 0 0 20px;
+    font-size: 18px;
+}
+.msg-header .active::before{
+    content: '';
+    position: absolute;
+    bottom: 1px;
+    left: 0;
+    width: 100%;
+    outline: 2px solid #0084ff;
+}
+.msg-header .active{
+    position: relative;
+    margin: 0 0 0 20px;
+    line-height: 50px;
+    text-align: center;
+    font-size: 18px;
+}
+.message .msg-content{
+    min-height: 300px;
+}
+.friends{
+    margin: 0 0 0 10px;
+    width: 28%;
+}
+.fri-header{
+    height: 50px;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    border-bottom: 1px solid #dfdfdf;
+    background-color: #fff;
+    box-shadow: 0 0 3px #ccc;
+}

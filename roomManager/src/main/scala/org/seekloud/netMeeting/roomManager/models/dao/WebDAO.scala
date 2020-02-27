@@ -17,11 +17,15 @@ import scala.concurrent.Future
 object WebDAO {
 
   def addUserInfo(userInfo: UserInfo) = {
-    db.run(tUserInfo += rUserInfo(-1, userInfo.account, userInfo.account, userInfo.password, "", "", userInfo.create_time, userInfo.rtmp_url))
+    db.run(tUserInfo += rUserInfo(-1, userInfo.account, userInfo.account, userInfo.password, "", "", userInfo.create_time, userInfo.rtmp_url, userInfo.email))
   }
 
   def getUserInfoByAccount(account: String) ={
     db.run(tUserInfo.filter(_.account === account).result.headOption)
+  }
+
+  def updateHeadImg(userId: Long, ImgUrl: String) ={
+    db.run(tUserInfo.filter(_.uid === userId).map(_.headImg).update(ImgUrl))
   }
 
 }

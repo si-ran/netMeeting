@@ -23,4 +23,18 @@ object ClientProtocol {
     msg: String = "ok"
   ) extends Response
 
+  //url: netMeeting/client/sendEmail   post
+  case class SendEmailReq(
+    email: String,
+    fromName: String,
+    toName: String,
+    time: Long,
+    roomId: String,
+  )
+
+  case class SendEmailRsp(
+    errCode: Int = 0,
+    msg: String = "ok"
+  ) extends Response
+
 }

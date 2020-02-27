@@ -27,6 +27,10 @@ object MainPage extends PageSwitcher {
 
   //currentPage, 包含mainDiv和导航栏
   private val currentPage: Rx[Elem] = currentPageHash.map {
+    case "personal" :: id :: Nil =>
+      <div>
+        {new PersonalPage(id.toLong).render}
+      </div>
 
     case "user" :: id :: Nil =>
       <div>
