@@ -60,6 +60,7 @@ object AppSettings {
   val roomManagerHost = appConfig.getString("roomManagerHost")
   val rtpServerDst = appConfig.getString("rtpServerDst")
   val bitRate = appConfig.getInt("bitRate")
+  val sampleRate = appConfig.getInt("sampleRate")
   val imageWidth = appConfig.getInt("imageWidth")
   val imageHeight = appConfig.getInt("imageHeight")
   val isTest = appConfig.getBoolean("isTest")

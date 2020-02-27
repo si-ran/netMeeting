@@ -17,27 +17,39 @@ import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.javacv._
 import org.slf4j.LoggerFactory
 import org.bytedeco.ffmpeg.global.avutil
+import org.seekloud.netMeeting.processor.core.GrabberActor.log
 
 import scala.collection.mutable.ListBuffer
 import scala.io.StdIn
+import scala.util.{Success, Try}
 
 object SoundMix  {
   //sound
-  val peopleNum = 3
+  val peopleNum = 2
   val audioChannels = 2
   val sampleFormat = avutil.AV_SAMPLE_FMT_S16
   val complexFilter = s" amix=inputs=$peopleNum:duration=longest:dropout_transition=3 "
   val sampleRate = 44100
 
+  val FilePath = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo"
+
   //file
-  val urlList = List[String]("H:/wav/BNS_CloseMic.wav", "H:/wav/BNS_OpenMic.wav", "H:/wav/OpenTeamTalk.wav")
+  val urlList = List[String](s"$FilePath/big_buck_bunny.mp4", s"$FilePath/trailer.mkv")
   var grabberList = List[FFmpegFrameGrabber]()
 
 
   def main(args: Array[String]): Unit = {
     (0 until peopleNum).foreach{i =>
       val grabber = new FFmpegFrameGrabber(urlList(i))
-      grabber.start()
+      Try{
+        grabber.start()
+      }match {
+        case Success(value) =>
+          println("start success grab")
+        case e: Exception =>
+          println(s"exception occured in creant grabber")
+      }
+
       grabberList = grabber :: grabberList
     }
 
@@ -72,6 +84,7 @@ object SoundMix  {
 //    println(frame.opaque)
 //    println(frame.audioChannels)
 //    println(frame.sampleRate)
+
 
 
     var continue = true

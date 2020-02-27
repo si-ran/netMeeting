@@ -113,7 +113,7 @@ object GrabberActor {
           val sampleRate = grabber.getSampleRate
           val height = grabber.getImageHeight
           val width = grabber.getImageWidth
-          recorder ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId)
+//          recorder ! RecorderActor.UpdateRecorder(channel, sampleRate, grabber.getFrameRate, width, height, liveId)
 
           if(frame != null){
             if(frame.image != null){

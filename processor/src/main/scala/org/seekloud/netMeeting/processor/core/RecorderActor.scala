@@ -17,7 +17,6 @@ import org.seekloud.netMeeting.processor.common.AppSettings._
 
 import scala.concurrent.duration._
 import org.seekloud.netMeeting.processor.Boot.roomManager
-import org.seekloud.netMeeting.processor.test.TestPullAndPush.{FileImageOutPath,FileOutPath1, FileOutPath2, FileOutPath3}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -32,6 +31,7 @@ object RecorderActor {
   var audioChannels = 2 //todo 待议
   val sampleFormat = 1 //todo 待议
   var frameRate = 30
+  val layout_x = 2
 
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -51,7 +51,7 @@ object RecorderActor {
 
   case class NewFrame(userId: String, frame: Frame) extends Command
 
-  case class UpdateRecorder(channel: Int, sampleRate: Int, frameRate: Double, width: Int, height: Int, liveId: String) extends Command
+//  case class UpdateRecorder(channel: Int, sampleRate: Int, frameRate: Double, width: Int, height: Int, liveId: String) extends Command
 
   case object TimerKey4Close
 
@@ -63,6 +63,8 @@ object RecorderActor {
 
   case class ImageDraw(liveId:String,frame:Frame) extends VideoCommand
 
+  case object Image4Test extends VideoCommand
+
   case class UpdateFrameQueue(userIdList:List[String]) extends VideoCommand
 
   case class SetLayout(layout: Int) extends VideoCommand
@@ -72,8 +74,6 @@ object RecorderActor {
   case object Close extends VideoCommand
 
   case class Ts4User(var time: Long = 0)
-
-  case class Image(val liveId:String,var frame: Frame = null)
 
   case class Ts4LastImage(var time: Long = -1)
 
@@ -90,7 +90,10 @@ object RecorderActor {
           log.info(s"recorderActor start----")
           log.info(s"${ctx.self} userIdList:${userIdList}")
           avutil.av_log_set_level(-8)
-          val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480)
+          val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
+//          val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
+//          val outputStream = new FileOutputStream(new File(FileOutPath1))
+//          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
           recorder4ts.setFrameRate(frameRate)
           recorder4ts.setVideoBitrate(bitRate)
           recorder4ts.setVideoCodec(avcodec.AV_CODEC_ID_H264)
@@ -103,7 +106,6 @@ object RecorderActor {
             case e: Exception =>
               log.error(s" recorder meet error when start:$e")
           }
-          roomManager ! RoomManager.RecorderRef(roomId, ctx.self)
           ctx.self ! InitFilter
           init(roomId,  userIdList, layout, recorder4ts, null, null, null, 30000, (0, 0))
       }
@@ -127,29 +129,22 @@ object RecorderActor {
           for(i<- 0 until userIdList.length){
             str+=s"[$i:a]"
           }
-          val ffFilterN = new FFmpegFrameFilter(s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3:weights=1 1[a]", audioChannels)
+          log.info(s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3 [a]")
+          val ffFilterN = new FFmpegFrameFilter(s"$str amix=inputs=${userIdList.length}:duration=longest:dropout_transition=3 [a]", audioChannels)
           ffFilterN.setAudioChannels(audioChannels)
           ffFilterN.setSampleFormat(sampleFormat)
           ffFilterN.setAudioInputs(userIdList.size)
           ffFilterN.start()
+          roomManager ! RoomManager.RecorderRef(roomId, ctx.self)
           init(roomId, userIdList, layout, recorder4ts, ffFilterN, drawer, ts4User, tsDiffer, canvasSize)
-
-        case UpdateRecorder(channel, sampleRate, f, width, height, liveId) =>
-            log.info(s"$roomId updateRecorder channel:$channel, sampleRate:$sampleRate, frameRate:$f, width:$width, height:$height")
-            recorder4ts.setFrameRate(f)
-            recorder4ts.setAudioChannels(channel)
-            recorder4ts.setSampleRate(sampleRate)
-            ffFilter.setAudioChannels(channel)
-            ffFilter.setSampleRate(sampleRate)
-            recorder4ts.setImageWidth(width)
-            recorder4ts.setImageHeight(height)
-            init(roomId, userIdList, layout, recorder4ts, ffFilter, drawer,  ts4User, tsDiffer,  (640,  480))
 
         case NewFrame(userId, frame) =>
           val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
           val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
           userIdList.foreach{
-            id => frameMapQueue.put(id,mutable.Queue[Frame]())
+            id => {
+              frameMapQueue.put(id,mutable.Queue[Frame]())
+            }
           }
           val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,
            new Java2DFrameConverter, layout, "defaultImg.jpg", roomId, (640, 360), userIdList), s"drawer_${roomId}_$userId")
@@ -186,6 +181,7 @@ object RecorderActor {
       msg match {
         case NewFrame(liveId, frame) =>
           if (frame.image != null) {
+//            drawer ! Image4Test
             if(liveId == userIdList(0)){
               drawer ! ImageDraw(liveId,frame)
             }else{
@@ -196,12 +192,14 @@ object RecorderActor {
             try {
               for(i <- 0 until userIdList.length){
                 if(userIdList(i) == liveId){
-                  ffFilter.pushSamples(i, frame.audioChannels, frame.sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
+                  ffFilter.pushSamples(i, frame.audioChannels, sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
                 }
               }
               val f = ffFilter.pullSamples().clone()
-              if(f!=null){
-                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
+              if(f != null){
+//                log.info("record sample")
+                recorder4ts.record(f)
+//                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
               }
             } catch {
               case ex: Exception =>
@@ -212,7 +210,17 @@ object RecorderActor {
 
         case UpdateUserList(userList4updata:List[String]) =>
           drawer ! UpdateFrameQueue(userList4updata)
-          work(roomId,userList4updata,layout,recorder4ts,ffFilter,drawer,ts4User,tsDiffer,canvasSize)
+          var str =""
+          for(i<- 0 until userList4updata.length){
+            str+=s"[$i:a]"
+          }
+          log.info(s"$str amix=inputs=${userList4updata.length}:duration=longest:dropout_transition=3 [a]")
+          val ffFilterN = new FFmpegFrameFilter(s"$str amix=inputs=${userList4updata.length}:duration=longest:dropout_transition=3 [a]", audioChannels)
+          ffFilterN.setAudioChannels(audioChannels)
+          ffFilterN.setSampleFormat(sampleFormat)
+          ffFilterN.setAudioInputs(userList4updata.size)
+          ffFilterN.start()
+          work(roomId,userList4updata,layout,recorder4ts,ffFilterN,drawer,ts4User,tsDiffer,canvasSize)
 
         case msg: UpdateRoomInfo =>
           log.info(s"$roomId got msg: $msg in work.")
@@ -252,15 +260,22 @@ object RecorderActor {
            userIdList:List[String]): Behavior[VideoCommand] = {
     Behaviors.setup[VideoCommand] { ctx =>
       Behaviors.receiveMessage[VideoCommand] {
+        case Image4Test =>
+          graph.drawString("Hello",100,100)
+          val frame = convert.convert(canvas)
+          recorder4ts.record(frame)
+          Behaviors.same
+
         case t:Image4Mix =>
           frameMapQueue.get(t.liveId).foreach( _ += t.frame)
           Behaviors.same
+
         case f:ImageDraw =>
           val time = f.frame.timestamp
           val size = frameMapQueue.size
-          val layout_x_y= createLayoutNum(size)
-          val width = canvasSize._1/layout_x_y(1)
-          val height = canvasSize._2/layout_x_y(0)
+          val layout_y = (size+1)/layout_x
+          val width = canvasSize._1/layout_x
+          val height = canvasSize._2/layout_y
           frameMapQueue.get(f.liveId).foreach( _ += f.frame)
           for(i <- 0 until userIdList.length){
             val queue = frameMapQueue.get(userIdList(i)).get
@@ -268,45 +283,9 @@ object RecorderActor {
             if(queue.nonEmpty){
               img = convert.convert(queue.dequeue())
             }
-            graph.drawImage(img, i%layout_x_y(1)*width, i/layout_x_y(1)*height, width,height,null)
-            graph.drawString(s"User ${i+1}",i%layout_x_y(1)*width+50,i/layout_x_y(1)*height+50)
+            graph.drawImage(img, i%layout_x*width, i/layout_x*height, width,height,null)
+            graph.drawString(s"User ${i+1}",i%layout_x*width+50,i/layout_x*height+50)
           }
-//          if(userIdList.length>=2){
-//            val queue1 = frameMapQueue.get(userIdList(1)).get
-//            var image1:BufferedImage = null
-//            if(queue1.nonEmpty){
-//              image1 = convertList(0).convert(queue1.dequeue())
-//            }
-//            graph.drawImage(image1,0,0,320,180,null)
-//            graph.drawString("用户1",50,50)
-//          }
-//          if(userIdList.length>=3){
-//            val queue2 = frameMapQueue.get(userIdList(2)).get
-//            var image2:BufferedImage = null
-//            if(queue2.nonEmpty){
-//              image2 = convertList(1).convert(queue2.dequeue())
-//            }
-//            graph.drawImage(image2,320,0,320,180,null)
-//            graph.drawString("用户2",370,50)
-//          }
-//          if(userIdList.length>=4){
-//            val queue3 = frameMapQueue.get(userIdList(3)).get
-//            var image3 : BufferedImage = null
-//            if(queue3.nonEmpty){
-//              image3 = convertList(2).convert(queue3.dequeue())
-//            }
-//            graph.drawImage(image3,0,180,320,180,null)
-//            graph.drawString("用户3",50,230)
-//          }
-//          if(userIdList.length>=5){
-//            val queue4 = frameMapQueue.get(userIdList(4)).get
-//            var image4 : BufferedImage = null
-//            if(queue4.nonEmpty){
-//              image4 = convertList(2).convert(queue4.dequeue())
-//            }
-//            graph.drawImage(image4,320,180,320,180,null)
-//            graph.drawString("用户4",370,230)
-//          }
           val frame = convert.convert(canvas)
 //          log.info(s"${ctx.self} frame=$frame, userIdList=${userIdList}")
           recorder4ts.record(frame.clone())
@@ -330,20 +309,4 @@ object RecorderActor {
       }
     }
   }
-
-  def createLayoutNum(size:Int) ={
-    val listbuffer =ListBuffer[Int](1,size)
-    var min = Math.abs(size - 1)
-    for(i<- 1 until size){
-      for(j<- 1 until size){
-        if (i*j == size && Math.abs(i-j) < min){
-          listbuffer(0) = i
-          listbuffer(1) = j
-          min = Math.abs(i-j)
-        }
-      }
-    }
-    listbuffer.toList
-  }
-
 }
