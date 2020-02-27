@@ -188,9 +188,8 @@ object RoomActor {
 
           case msg: RAKickOutReq =>
             userMap.get(msg.userId).foreach{ actor =>
-              dispatchTo(actor, KickOutRsp())
+              dispatchTo(actor, KickOutReq(msg.roomId, msg.userId))
             }
-            dispatchTo(hostFrontActor, KickOutRsp())
             ctx.self ! RAUserExit(msg.userId)
             Behaviors.same
 

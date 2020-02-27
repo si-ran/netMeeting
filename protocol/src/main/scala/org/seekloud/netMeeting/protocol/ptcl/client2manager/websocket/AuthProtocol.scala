@@ -106,11 +106,7 @@ object AuthProtocol {
   case class KickOutReq(
                       roomId: Long,
                       userId: Long
-                    ) extends WsMsgRm2Host with WsMsgAudience
-  case class KickOutRsp(
-                      errCode: Int = 0,
-                      msg: String = "ok"
-                    ) extends WsMsgHost with WsMsgRm2Audience //发给host和指定用户接收
+                    ) extends WsMsgRm2Host with WsMsgAudience //host转发给指定用户
 
   //TODO
   case class GiveHost2(
