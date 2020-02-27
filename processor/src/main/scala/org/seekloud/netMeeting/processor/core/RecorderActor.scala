@@ -195,7 +195,7 @@ object RecorderActor {
               drawer ! Image4Mix(liveId,frame)
             }
           }
-          if (frame.samples != null) {
+          /*if (frame.samples != null) {
             try {
               val index = userIdList.indexWhere(_ == liveId)
               ffFilter.pushSamples(index, frame.audioChannels, sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
@@ -209,7 +209,7 @@ object RecorderActor {
               case ex: Exception =>
                 log.debug(s"$liveId record sample error system: $ex")
             }
-          }
+          }*/
           Behaviors.same
 
         case UpdateUserList(userList4updata:List[String]) =>
