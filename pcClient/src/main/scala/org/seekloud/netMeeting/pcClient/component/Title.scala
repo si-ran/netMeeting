@@ -46,7 +46,7 @@ class Title extends Application{
     AnchorPane.setRightAnchor(close, 0.0)
     val canvas = new Canvas(640, 360)
     val vBox = new VBox(title, canvas)
-    val icon = new Image("/img/camera.png")
+    val icon = new Image("/img/icon.png")
     val titleIcon = new Label()
     titleIcon.setId("icon")
     titleIcon.setPrefWidth(33)

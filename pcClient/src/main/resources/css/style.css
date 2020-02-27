@@ -12,6 +12,10 @@
     -fx-background-position: center;
 }
 
+#setting {
+    -fx-background-image: url("../img/set.png");
+}
+
 
 #winClose {
     -fx-cursor: hand;

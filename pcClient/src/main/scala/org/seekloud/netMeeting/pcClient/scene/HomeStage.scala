@@ -38,7 +38,7 @@ class HomeStage(userId: Long) extends Application{
   import HomeStage._
 
   val stage = new Stage()
-  val icon = new Image("/img/camera.png")
+  val icon = new Image("/img/icon.png")
 
   def getUserId = userId
 
@@ -70,13 +70,10 @@ class HomeStage(userId: Long) extends Application{
 
 //  val pane = new BorderPane(anchorPane)
   val group = new Group()
-//  val imageView = new ImageView(new Image("/img/bg.png"))
-//  group.getChildren.addAll(imageView, anchorPane)
+
   group.getChildren.add(anchorPane)
 
   val scene = new Scene(group, 380, 720)
-/*  val bg = new BackgroundImage(new Image("/img/bg.png", scene.getWidth, scene.getHeight, false, true, true), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT)
-  pane.setBackground(new Background(bg))*/
 
   startMeeting.setCursor(Cursor.HAND)
   joinMeeting.setCursor(Cursor.HAND)
