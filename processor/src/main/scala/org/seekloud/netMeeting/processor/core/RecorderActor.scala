@@ -273,6 +273,7 @@ object RecorderActor {
 
         case t:Image4Mix =>
           frameMapQueue.get(t.liveId).foreach{queue =>
+            println(s"${t.liveId} offer frame")
             queue.clear()
             queue.offer(t.frame)
           }
@@ -285,6 +286,7 @@ object RecorderActor {
           val width = canvasSize._1/layout_x
           val height = canvasSize._2/layout_y
           frameMapQueue.get(f.liveId).foreach{queue =>
+            println(s"${f.liveId} offer frame")
             queue.clear()
             queue.offer(f.frame)
           }
@@ -294,7 +296,7 @@ object RecorderActor {
             if(frame != null && frame.image != null){
               img = convert.convert(frame)
             }else {
-              log.warn(s"frame from deq is null")
+              log.warn(s"$i frame from deq is null")
             }
             graph.drawImage(img, i%layout_x*width, i/layout_x*height, width,height,null)
             graph.drawString(s"User ${i+1}",i%layout_x*width+50,i/layout_x*height+50)
