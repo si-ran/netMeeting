@@ -123,3 +123,34 @@
     background-color: #fff;
     box-shadow: 0 0 3px #ccc;
 }
+/*----------*/
+.video-list{
+    display: flex;
+    flex-flow: column nowrap;
+}
+.video-card{
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f0;
+}
+.video-img{
+    width: 160px;
+    height: 120px;
+}
+.video-info{
+    display: flex;
+    flex-flow: column nowrap;
+    flex-grow: 1;
+    color: #888;
+}
+.video-btn{
+    align-self: flex-end;
+    margin: 0 20px 30px 0;
+    padding: 3px 15px;
+    color: #0084ff;
+    background-color: #e5f2ff;
+    border-radius: 10px;
+    border: 1px solid #0084ff;
+    cursor: pointer;
+}

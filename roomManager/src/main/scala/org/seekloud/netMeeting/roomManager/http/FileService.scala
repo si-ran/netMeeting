@@ -16,13 +16,14 @@ import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.{ByteString, Timeout}
 import io.circe._
 import io.circe.generic.auto._
-import org.seekloud.netMeeting.protocol.ptcl.WebProtocol.SaveHeadImgRsp
+import org.seekloud.netMeeting.protocol.ptcl.WebProtocol._
 import org.seekloud.netMeeting.roomManager.utils.{FileUtil, HestiaClient, ServiceUtils}
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.roomManager.Boot.{executor, materializer}
 import org.seekloud.netMeeting.roomManager.common.AppSettings
 import org.seekloud.netMeeting.roomManager.models.dao.WebDAO
 
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 
@@ -52,10 +53,13 @@ trait FileService extends SessionBase with ServiceUtils {
           storeFile(fileContent) { f =>
             val res = HestiaClient.upload(f, fileInfo.fileName)
             dealFutureResult(
-              res.map{ result =>
-                val imgName = result.right.get
-                WebDAO.updateHeadImg(user.videoUserInfo.userId.toLong, imgName)
-                complete(SaveHeadImgRsp(imgName))
+              res.map{
+                case Right(value) =>
+                  val imgName = value
+                  WebDAO.updateHeadImg(user.videoUserInfo.userId.toLong, imgName)
+                  complete(SaveHeadImgRsp(imgName))
+                case Left(e) =>
+                  complete(SaveHeadImgRsp("-", 10001, s"img error: $e"))
               }
             )
           }
@@ -63,27 +67,19 @@ trait FileService extends SessionBase with ServiceUtils {
     }
   }
 
-//  val getVideo = (path("getVideo") & post){
-//    adminAuth{_ =>
-//      parameters(
-//        'videoSrc.as[Int]
-//      ){ path =>
-//        val savePath = path match {
-//          case 0 => AppSettings.compareSrcSavePath
-//          case 1 => AppSettings.compareTstSavePath
-//          case _ => AppSettings.compareSrcSavePath
-//        }
-//        entity(as[Either[Error, GetVideoReq]]){
-//          case Right(req) =>
-//            val file = new File(savePath)
-//            val fileList = file.list()
-//            complete(GetVideoRsp(fileList.toList))
-//          case Left(e) =>
-//            complete(ErrorRsp(200001, s"decode error $e"))
-//        }
-//      }
-//    }
-//  }
+  val getVideo = (path("getVideo") & get){
+    userAuth{ user =>
+      val savePath = "./video/"
+      val file = new File(savePath)
+      dealFutureResult(
+        Future{
+          file.list()
+        }.map{ lists =>
+          complete(GetVideoRsp(lists.toList))
+        }
+      )
+    }
+  }
 
 //  val getVideoNumber = (path("getVideoNumber") & get) {
 //    //todo try catch
@@ -127,7 +123,7 @@ trait FileService extends SessionBase with ServiceUtils {
 //  }
 
   val fileRoute: Route = pathPrefix("file") {
-    saveHeadImg
+    saveHeadImg ~ getVideo
   }
 
 }

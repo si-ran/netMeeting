@@ -48,4 +48,10 @@ object WebProtocol {
     msg: String = "ok"
   ) extends Response
 
+  case class GetVideoRsp(
+    data: List[String],
+    errCode: Int = 0,
+    msg: String = "ok"
+  ) extends Response
+
 }

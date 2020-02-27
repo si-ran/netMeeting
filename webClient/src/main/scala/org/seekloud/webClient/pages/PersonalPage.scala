@@ -34,9 +34,11 @@ class PersonalPage() extends Page {
   )
 
   val userInfo = Var(WebInfo())
+  val videoInfos = Var(List.empty[String])
 
   private def init(): Unit ={
     obtainUserInfo()
+    obtainVideoList()
   }
 
   private def obtainUserInfo(): Unit = {
@@ -52,6 +54,21 @@ class PersonalPage() extends Page {
         else{}
       case Left(error) =>
         dom.window.location.hash = "/"
+        PopWindow.commonPop(s"error： $error")
+    }
+  }
+
+  private def obtainVideoList(): Unit = {
+    Http.getAndParse[GetVideoRsp](Routes.File.getVideo).map{
+      case Right(value) =>
+        if(value.errCode == 0){
+          videoInfos := value.data
+        }
+        else if(value.errCode == 20001){
+          PopWindow.commonPop(s"录像获取失败:${value.msg}")
+        }
+        else{}
+      case Left(error) =>
         PopWindow.commonPop(s"error： $error")
     }
   }
@@ -79,6 +96,23 @@ class PersonalPage() extends Page {
     }
   }
 
+  private val videoListElem = {
+    <div class="video-list">
+    {videoInfos.map{ infos =>
+      infos.map{ info =>
+        <div class="video-card">
+          <img class="video-img" src="/netMeeting/static/img/video.png"></img>
+          <div class="video-info">
+            <div class="video-room">房间: {info}</div>
+            <div class="video-time">时间: {TimeTool.dateFormatDefault(new Date().getTime)}</div>
+          </div>
+          <div class="video-btn">观看</div>
+        </div>
+      }
+    }}
+    </div>
+  }
+
   override def render: Elem ={
     dom.window.setTimeout(()=>init(), 0)
     <div style="background-color: #f6f6f6">
@@ -102,7 +136,7 @@ class PersonalPage() extends Page {
               <div class="li active">录像</div>
               <div class="li">消息</div>
             </div>
-            <div class="msg-content">-----</div>
+            <div class="msg-content">{videoListElem}</div>
           </div>
           <div class="friends">
             <div class="fri-header">好友</div>

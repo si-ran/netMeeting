@@ -37,6 +37,8 @@ object Routes {
 
     val saveHeadImg = base + s"/saveHeadImg"
 
+    val getVideo = base + s"/getVideo"
+
   }
 
 
