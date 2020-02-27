@@ -14,6 +14,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route}
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.{ByteString, Timeout}
+import ch.megard.akka.http.cors.scaladsl.CorsDirectives.cors
+import ch.megard.akka.http.cors.scaladsl.model.HttpOriginMatcher
+import ch.megard.akka.http.cors.scaladsl.settings.CorsSettings
 import io.circe._
 import io.circe.generic.auto._
 import org.seekloud.netMeeting.protocol.ptcl.WebProtocol._
@@ -33,6 +36,10 @@ trait FileService extends SessionBase with ServiceUtils {
   implicit val scheduler: Scheduler
 
   private val log = LoggerFactory.getLogger(this.getClass)
+
+  private val settings = CorsSettings.defaultSettings.withAllowedOrigins(
+    HttpOriginMatcher.*
+  )
 
   private def storeFile(source: Source[ByteString, Any]): Directive1[java.io.File] = {
     val dest = java.io.File.createTempFile("akka-http-upload", ".tmp")
@@ -81,6 +88,17 @@ trait FileService extends SessionBase with ServiceUtils {
     }
   }
 
+  val getRecord: Route = (path("getRecord" / Segments(1)) & get & pathEndOrSingleSlash & cors(settings)){
+    case fileName :: Nil =>
+      println(s"getRecord req for $fileName")
+      val f = new File(s"./video/$fileName").getAbsoluteFile
+      getFromFile(f,ContentTypes.`application/octet-stream`)
+
+    case x =>
+      log.error(s"errs in getRecord: $x")
+      complete("no video")
+  }
+
 //  val getVideoNumber = (path("getVideoNumber") & get) {
 //    //todo try catch
 //    adminAuth{ _ =>
@@ -123,7 +141,7 @@ trait FileService extends SessionBase with ServiceUtils {
 //  }
 
   val fileRoute: Route = pathPrefix("file") {
-    saveHeadImg ~ getVideo
+    saveHeadImg ~ getVideo ~ getRecord
   }
 
 }

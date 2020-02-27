@@ -106,7 +106,7 @@ class PersonalPage() extends Page {
             <div class="video-room">房间: {info}</div>
             <div class="video-time">时间: {TimeTool.dateFormatDefault(new Date().getTime)}</div>
           </div>
-          <div class="video-btn">观看</div>
+          <div class="video-btn" onclick={()=>dom.window.location.hash = s"/video/$info"}>观看</div>
         </div>
       }
     }}

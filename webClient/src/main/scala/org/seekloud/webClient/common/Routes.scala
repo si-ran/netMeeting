@@ -39,6 +39,8 @@ object Routes {
 
     val getVideo = base + s"/getVideo"
 
+    val getRecord = base + s"/getRecord" //录像路径
+
   }
 
 
