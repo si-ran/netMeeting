@@ -194,8 +194,8 @@ object RmManager {
           //for debug
 //          val pushUrl = "rtmp://10.1.29.247:42069/live/test1"
 //          val pullUrl = "rtmp://10.1.29.247:42069/live/test1"
-//          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
-//          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
+          val pushUrl = "rtmp://47.92.170.2:42069/live/test1"
+          val pullUrl = "rtmp://47.92.170.2:42069/live/test1"
 
           val captureManager = getCaptureManager(ctx, pushUrl, pullUrl, gc4Self, gc4Pull)
           captureManager ! CaptureManager.Start
@@ -209,7 +209,7 @@ object RmManager {
           timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
 
           //debug
-//          ctx.self ! StartPull
+          ctx.self ! StartPull
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
         case SendPing =>

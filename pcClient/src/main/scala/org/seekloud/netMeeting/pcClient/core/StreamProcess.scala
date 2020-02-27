@@ -110,7 +110,7 @@ object StreamProcess {
           val grabber = new FFmpegFrameGrabber(url)
           grabber.setImageWidth(encodeConfig.imgWidth)
           grabber.setImageHeight(encodeConfig.imgHeight)
-//          grabber.setOption("rw_timeout", "2000000")
+          grabber.setOption("rw_timeout", "2000000")
           Future {
             log.debug(s"stream grabber is starting...")
             grabber.start()

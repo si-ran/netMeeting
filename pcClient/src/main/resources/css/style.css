@@ -1,0 +1,32 @@
+#title {
+    -fx-background-color: #2861ff;
+    /*-fx-border-width:2;*/
+    /*-fx-border-color: #b0ff56;*/
+
+}
+
+#icon {
+    /*-fx-background-color: #2861ff;*/
+    -fx-background-image: url("../img/camera_dark.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: center;
+}
+
+
+#winClose {
+    -fx-cursor: hand;
+    /*-fx-background-color: #ffff;*/
+    -fx-background-image: url("../img/close_light.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: center;
+}
+
+#winClose:hover {
+    -fx-background-color: #ff2035;
+    -fx-background-image: url("../img/close_light.png");
+}
+
+#winClose:pressed {
+    -fx-background-color: #ff443d;
+    -fx-background-image: url("../img/close_light.png");
+}
