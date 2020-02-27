@@ -119,47 +119,4 @@ class LivePane extends Application{
   }
 }
 
-/*object LivePane {
-
-  private var loadingException: Exception = null
-
-  @throws[Exception]
-  def tryLoad(): Unit = {
-    if (loadingException != null) throw loadingException
-    else try {
-      Loader.load(classOf[avutil])
-      Loader.load(classOf[swresample])
-      Loader.load(classOf[avcodec])
-      Loader.load(classOf[avformat])
-      Loader.load(classOf[swscale])
-      /* initialize libavcodec, and register all codecs and formats */ av_jni_set_java_vm(Loader.getJavaVM, null)
-      avcodec_register_all()
-      av_register_all()
-      avformat_network_init
-      Loader.load(classOf[avdevice])
-      avdevice_register_all()
-    } catch {
-      case t: Throwable =>
-        if (t.isInstanceOf[FrameRecorder.Exception]){
-          loadingException = t.asInstanceOf[FrameRecorder.Exception]
-          throw loadingException
-        }
-        else{
-          loadingException = new FrameRecorder.Exception("Failed to load " + classOf[FFmpegFrameRecorder], t)
-          throw loadingException
-        }
-    }
-  }
-
-  def main(args: Array[String]): Unit = {
-    tryLoad()
-    val file = new File("pcClient/src/main/resources/img/camera.png")
-//    println(file.canRead)
-    val bufferedImage = ImageIO.read(file)
-    val canvasFrame = new CanvasFrame("file")
-    val converter = new Java2DFrameConverter
-    val frame = converter.convert(bufferedImage)
-    canvasFrame.showImage(frame)
-  }
-}*/
 

@@ -83,6 +83,8 @@ object RmManager {
 
   private case object PING_KEY
 
+  final case object PullStreamError extends RmCommand
+
   /**
     * host
     */
@@ -90,14 +92,18 @@ object RmManager {
 
   final case class EstablishNewMeetingRsp(errorCode: Int = 0, msg: String = "ok") extends RmCommand
 
+  final case class MediaControl(userId: Long, needImage: Boolean, needSound: Boolean) extends RmCommand
+
+  final case class GiveHost2User(userId: Long) extends RmCommand
+
+  final case class KickOut(userId: Long) extends RmCommand
+
   /**
     * client
     */
   final case class ClientJoin(roomId: Long, userId: Long) extends RmCommand
 
   final case class ClientJoinRsp(roomInfo: RoomInfo, acceptance: Boolean) extends RmCommand
-
-  final case class PushStream() extends RmCommand
 
   final case object PUSH_STREAM_DELAY_KEY
 
@@ -216,16 +222,39 @@ object RmManager {
           sender.foreach(_ ! PingPackage)
           Behaviors.same
 
-        case msg: EstablishNewMeetingRsp =>
-          Behaviors.same
+//        case msg: EstablishNewMeetingRsp =>
+//          Behaviors.same
 
         case StartPull =>
           log.debug("got msg startPull")
           captureManager.foreach(_ ! CaptureManager.StartEncode)
           Behaviors.same
 
+        case PullStreamError =>
+          //todo 拉流失败时候处理
+          Behaviors.same
+
+
+        /**
+          * 处理ws消息
+           */
         case msg: UpdateRoomInfos =>
           pageController.foreach(_.setRoomInfo(msg.roomInfo))
+          Behaviors.same
+
+        case msg: MediaControl =>
+          log.debug(s"send msg $msg")
+          sender.foreach(_ ! MediaControlReq(roomId.get, msg.userId, msg.needImage, msg.needSound))
+          Behaviors.same
+
+        case msg: GiveHost2User =>
+          log.debug(s"send msg $msg")
+          sender.foreach(_ ! GiveHost2(roomId.get, msg.userId))
+          Behaviors.same
+
+        case msg: KickOut =>
+          log.debug(s"send msg $msg")
+          sender.foreach(_ ! KickOutReq(roomId.get, msg.userId))
           Behaviors.same
 
         case Close =>
@@ -280,22 +309,19 @@ object RmManager {
           Behaviors.same
 
         case msg: ClientJoinRsp =>
-          msg.acceptance match {
-            case true =>
-              roomInfo = Some(msg.roomInfo)
-              pageController.foreach(_.setRoomInfo(msg.roomInfo))
-              captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
-            //              timer.startPeriodicTimer(PUSH_STREAM_DELAY_KEY, PushStream(), 10.seconds)
-//              clientBehavior(gc4Self, gc4Pull, pageController, sender)
-            case _ =>
-              //todo join refused
-              log.info(s"join refused.")
-//              Behaviors.same
-          }
+          roomInfo = Some(msg.roomInfo)
+          pageController.foreach(_.setRoomInfo(msg.roomInfo))
+          captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
           Behaviors.same
 
-        case PushStream() =>
-          captureManagerOpt.foreach(_ ! CaptureManager.StartEncode)
+
+        /**
+          * ws msg handler
+          */
+        case msg: GiveHost2User =>
+          val newRoomInfo = RoomInfo(roomInfo.get.roomId, roomInfo.get.userId, msg.userId)
+          roomInfo = Some(newRoomInfo)
+          pageController.foreach(_.setRoomInfo(newRoomInfo))
           Behaviors.same
 
         case msg: UpdateRoomInfos =>
@@ -419,12 +445,6 @@ object RmManager {
       case msg: HeatBeat =>
         log.debug(s"ws got msg $msg")
 
-      case msg: EstablishMeetingRsp =>
-        log.debug(s"ws got msg $msg")
-        if(meetingType == MeetingType.CREATE)
-          if(msg.errorCode == 0){
-            rmManager ! EstablishNewMeetingRsp()
-          }
 
       case msg: JoinRsp =>
         log.debug(s"ws got msg $msg")
@@ -445,6 +465,40 @@ object RmManager {
           rmManager ! UpdateRoomInfos(msg.roomInfo)
         else
           log.info(s"update roomInfo error: ${msg.errCode}  ${msg.msg}")
+
+      /**
+        * host msg
+         */
+      case msg: EstablishMeetingRsp =>
+        log.debug(s"ws got msg $msg")
+        if(meetingType == MeetingType.CREATE)
+          if(msg.errorCode == 0){
+            rmManager ! EstablishNewMeetingRsp()
+          }
+
+
+      /**
+        * client msg
+        */
+      case msg: GiveHost2 =>
+        log.debug(s"rec ws msg $msg")
+        if(meetingType == MeetingType.JOIN) {
+          //todo 处理主持人消息
+          rmManager ! GiveHost2User(msg.userId)
+        }
+
+      case msg: MediaControlReq =>
+        log.debug(s"rec ws msg $msg")
+        if(meetingType == MeetingType.JOIN) {
+          //todo 处理声音
+        }
+
+      case msg: KickOutReq =>
+        log.debug(s"rec ws msg $msg")
+        if(meetingType == MeetingType.JOIN) {
+          //todo 退出
+        }
+
 
       case TextMsg(msg) =>
         log.debug(s"rev ws msg: $msg")

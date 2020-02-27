@@ -31,9 +31,7 @@ object LivingStage{
 
     def mediaControl(userId: Long, needImage: Boolean, needSound: Boolean)
 
-    def giveMicrophone2(userId: Long)
-
-    def invite(userId: Long, roomId: Long)
+    def kickOut(userId: Long)
   }
 }
 
@@ -126,17 +124,21 @@ class LivingStage(userId: Long) extends Application{
     anchorControl4Self.host.setSelected(isHost)
     val indexOfHost = roomInfo.userId.indexWhere(_ == roomInfo.hostId)
     if(isHost) {
-      (0 until roomInfo.userId.length).foreach{i =>
-        if(i < indexOfHost) {
-          anchorPaneList(i).setVisible(true)
-        } else if(i > indexOfHost) {
-          anchorPaneList(i-1).setVisible(true)
+      (0 until roomInfo.userId.length).foreach{ i =>
+        if(roomInfo.userId(i) != roomInfo.hostId) {
+          val index = if(i < indexOfHost) i else i-1
+          log.debug(s"index: $index")
+          anchorPaneList(index).setVisible(true)
+          val host = anchorControlList(index).host
+          host.setDisable(false)
+          host.setOnAction{_ =>
+            listener.giveHost2(roomInfo.userId(i))
+            anchorControl4Self.host.setSelected(false)
+            anchorPaneList.foreach(_.setVisible(false))
+            //todo 显示主持人的bar
+          }
         }
       }
-//      anchorPane1.setVisible(true)
-//      anchorPane2.setVisible(true)
-//      anchorPane3.setVisible(true)
-//      anchorPane4.setVisible(true)
     } else {
       if(indexOfHost == -1) {
         log.warn(s"hostId is not in userList")

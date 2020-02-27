@@ -108,13 +108,16 @@ class PageController(
 
       override def giveHost2(userId: Long): Unit = {
         livingStage.setHost(false)
+        rmManager ! RmManager.GiveHost2User(userId)
       }
 
-      override def giveMicrophone2(userId: Long): Unit = {}
+      override def mediaControl(userId: Long, needImage: Boolean = true, needSound: Boolean = true): Unit = {
+        rmManager ! RmManager.MediaControl(userId, needImage, needSound)
+      }
 
-      override def invite(userId: Long, roomId: Long): Unit = {}
-
-      override def mediaControl(userId: Long, needImage: Boolean = true, needSound: Boolean = true): Unit = {}
+      override def kickOut(userId: Long): Unit = {
+        rmManager ! RmManager.KickOut(userId)
+      }
     })
 
   }

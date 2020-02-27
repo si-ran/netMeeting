@@ -195,6 +195,7 @@ object StreamProcess {
           try {
             val frame = grabber.grab()
             if (null != frame) {
+
               if (null != frame.image) {
                 //                  println(s"image: ${frame.timestamp}")
                 imageFirstTs = if(imageFirstTs == 0) frame.timestamp else imageFirstTs
@@ -208,50 +209,25 @@ object StreamProcess {
                 soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
                 soundQueue.offer(frame.clone())
               }
-            }
-            else{
-              println("frame is null")
-            }
-            if(imageQueue.size() > 50 && soundQueue.size() > 50){
-              timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
-            }
-            else{
-              ctx.self ! GrabFrame
-            }
-          } catch {
-            case e: Exception =>
-              log.info(s"net grab error ${e.getMessage}")
-          }
- /*         Try(grabber.grab()) match {
-            case Success(frame) =>
-              if (null != frame) {
-                if (null != frame.image) {
-//                  println(s"image: ${frame.timestamp}")
-                  imageFirstTs = if(imageFirstTs == 0) frame.timestamp else imageFirstTs
-                  if(imageFirstTs != 0 && soundFirstTs != 0){
-                    timerIntervalBase = imageFirstTs - soundFirstTs
-                  }
-                  imageQueue.offer(frame.clone())
-                }
-                if(null != frame.samples) {
-//                  println(s"sound ${frame.timestamp}")
-                  soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
-                  soundQueue.offer(frame.clone())
-                }
-                /*if(imageQueue.size() > 50 && soundQueue.size() > 50){
-                  timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
-                }
-                else{
-                  ctx.self ! GrabFrame
-                }*/
+
+              if(imageQueue.size() > 50 && soundQueue.size() > 50){
+                timer.startSingleTimer(GRAB_FRAME_KEY, GrabFrame, (1000/encodeConfig.frameRate).millis)
+              }
+              else{
                 ctx.self ! GrabFrame
               }
+            }
+            else{
+              parent ! CaptureManager.StreamProcessError
+              println("frame is null")
+              ctx.self ! Close
+            }
 
-            case Failure(ex) =>
-//              ctx.self ! Restart
-              log.error(s"grab error: $ex")
-              log.info(s"stop grab stream")
-          }*/
+          } catch {
+            case e: Exception =>
+              ctx.self ! Close
+              log.info(s"net grab error ${e.getMessage}")
+          }
           Behaviors.same
 
         case Restart =>

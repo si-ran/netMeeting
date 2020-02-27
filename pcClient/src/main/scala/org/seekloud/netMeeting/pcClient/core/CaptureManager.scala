@@ -90,6 +90,10 @@ object CaptureManager {
 
   final case object StartStreamProcessSuccess extends CaptureCommand
 
+
+  //拉流失败
+  final case object StreamProcessError extends CaptureCommand
+
   final case class ChangeEncodeFlag(imageFlag: Option[Boolean] = None, soundFlag: Option[Boolean] = None) extends CaptureCommand
 
 //  final case class Ready4GrabStream(url: String) extends CaptureCommand
@@ -220,6 +224,9 @@ object CaptureManager {
             case _ =>
               idle(rmManager, pushUrl, pullUrl, gc4Self, gc4Pull, encodeFlag=true, imageMode, encodeConfig, drawActorOpt, grabberMap, soundCaptureOpt, recorderActorOpt, streamProcessOpt)
           }
+
+        case StreamProcessError =>
+          Behaviors.same
 
 /*          encodeFlag match {
             case true =>

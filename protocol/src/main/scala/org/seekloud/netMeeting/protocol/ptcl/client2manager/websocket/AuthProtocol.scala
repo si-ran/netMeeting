@@ -107,22 +107,22 @@ object AuthProtocol {
                       roomId: Long,
                       userId: Long
                     ) extends WsMsgRm2Host with WsMsgAudience
-  case class KickOutRsp(
+ /* case class KickOutRsp(
                       errCode: Int = 0,
                       msg: String = "ok"
                     ) extends WsMsgHost with WsMsgRm2Audience //发给host和指定用户接收
-
+*/
   //TODO
   case class GiveHost2(
                         roomId: Long,
                         userId: Long
                       ) extends WsMsgHost with WsMsgRm2Audience
 
-  //TODO 指定sb说话
+/*  //TODO 指定sb说话
   case class GiveMicrophone2(
                               roomId: Long,
                               userId: Long
-                            ) extends WsMsgHost with WsMsgRm2Audience
+                            ) extends WsMsgHost with WsMsgRm2Audience*/
 
   //TODO 邀请用户加入会议
   case class InviteReq(
@@ -136,21 +136,13 @@ object AuthProtocol {
                            userId: Long,
                            needAudio: Boolean = true,
                            needVideo: Boolean = true
-                         ) extends WsMsgRm2Audience with WsMsgAudience //host发给rm，rm转发给对应用户
+                         ) extends WsMsgRm2Audience with WsMsgHost //host发给rm，rm转发给对应用户
 
-  case class MediaControlRsp(
+  /*case class MediaControlRsp(
                           errCode: Int = 0,
                           msg: String = "ok"
                         ) extends WsMsgHost with WsMsgRm2Audience //仅主持人接收rsp
-
-  //TODO
-  case class SpeakRsp4Host(
-                     roomId: Long,
-                     userId: Long,  //申请人id
-                     acceptance: Boolean
-                     ) extends WsMsgHost
-
-
+*/
   //TODO
   case class UpdateRoomInfo(
                              roomInfo: RoomInfo,
