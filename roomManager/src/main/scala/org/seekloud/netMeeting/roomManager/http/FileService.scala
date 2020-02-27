@@ -46,9 +46,7 @@ trait FileService extends SessionBase with ServiceUtils {
   }
 
   private val saveHeadImg = (path("saveHeadImg") & post) {
-    parameters {
-      'userId.as[Long]
-    }{ userId =>
+    userAuth{ user =>
       fileUpload("fileUpload") {
         case (fileInfo, fileContent) =>
           storeFile(fileContent) { f =>
@@ -56,7 +54,7 @@ trait FileService extends SessionBase with ServiceUtils {
             dealFutureResult(
               res.map{ result =>
                 val imgName = result.right.get
-                WebDAO.updateHeadImg(userId, imgName)
+                WebDAO.updateHeadImg(user.videoUserInfo.userId.toLong, imgName)
                 complete(SaveHeadImgRsp(imgName))
               }
             )

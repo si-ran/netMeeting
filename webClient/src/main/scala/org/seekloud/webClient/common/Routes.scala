@@ -17,7 +17,19 @@ object Routes {
 
     val signUp = base + s"/signUp"
 
+    val signIn = base + "/signIn"
+
+    val userInfo = base + "/userInfo"
+
   }
+
+//  object client{
+//
+//    val base: String = baseUrl + "/client"
+//
+//    val signIn = base + "/signIn"
+//
+//  }
 
   object File{
 

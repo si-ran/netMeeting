@@ -24,6 +24,10 @@ object WebDAO {
     db.run(tUserInfo.filter(_.account === account).result.headOption)
   }
 
+  def getUserInfoById(id: Long) ={
+    db.run(tUserInfo.filter(_.uid === id).result.headOption)
+  }
+
   def updateHeadImg(userId: Long, ImgUrl: String) ={
     db.run(tUserInfo.filter(_.uid === userId).map(_.headImg).update(ImgUrl))
   }
