@@ -91,7 +91,7 @@ object RecorderActor {
         implicit timer =>
           log.info(s"recorderActor start----")
           log.info(s"${ctx.self} userIdList:${userIdList}")
-          avutil.av_log_set_level(-8)
+//          avutil.av_log_set_level(-8)
           val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
 //          val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
 //          val outputStream = new FileOutputStream(new File(FileOutPath1))
