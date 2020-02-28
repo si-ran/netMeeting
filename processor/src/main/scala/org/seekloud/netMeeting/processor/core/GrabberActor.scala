@@ -46,7 +46,6 @@ object GrabberActor {
   def create(
               parent: ActorRef[RoomActor.Command],
               needQueue: Boolean,
-              roomId: Long,
               liveId: String,
               url: String,
               recorderRef: ActorRef[RecorderActor.Command],
@@ -56,9 +55,9 @@ object GrabberActor {
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command] {
         implicit timer =>
-          log.info(s"grabberActor start----")
+          log.info(s"grabberActor start----$liveId")
           ctx.self ! InitGrab
-          init(parent, needQueue, roomId, liveId, url, recorderRef, queue)
+          init(parent, needQueue, liveId, url, recorderRef, queue)
       }
     }
   }
@@ -66,7 +65,6 @@ object GrabberActor {
   def init(
             parent: ActorRef[RoomActor.Command],
             needQueue: Boolean,
-            roomId: Long,
             liveId: String,
             url: String,
             recorderRef:ActorRef[RecorderActor.Command],
@@ -99,7 +97,8 @@ object GrabberActor {
 
         case msg: GrabberStartSuccess =>
 //          ctx.self ! GrabFrame
-          switchBehavior(ctx, "work", work(parent, needQueue, roomId, liveId, msg.grabber, recorderRef, queue, url))
+          parent ! RoomActor.StartGrabberSuccess(liveId)
+          switchBehavior(ctx, "work", work(parent, needQueue, liveId, msg.grabber, recorderRef, queue, url))
 
         case x =>
           log.info(s"grab got unknown msg in init $x")
@@ -111,7 +110,6 @@ object GrabberActor {
   def work(
             parent: ActorRef[RoomActor.Command],
             needQueue: Boolean,
-            roomId: Long,
             liveId: String,
             grabber: FFmpegFrameGrabber,
             recorder: ActorRef[RecorderActor.Command],
@@ -122,18 +120,24 @@ object GrabberActor {
     Behaviors.receive[Command] {(ctx, msg) =>
       msg match {
         case GrabFrame =>
+//          log.info(s"DEBUG $liveId grab frame")
           try {
             val frame = grabber.grab()
             if (null != frame) {
               if (null != frame.image) {
                 if(needQueue) {
-                  queue.clear()
-                  queue.offer(frame.clone())
+                  queue.synchronized{
+                    queue.clear()
+                    queue.offer(frame.clone())
+                  }
+
                 }else {
                     //todo 发送给recorder
+                  recorder ! RecorderActor.RecorderImage(liveId, frame.clone())
                 }
               }
               if(null != frame.samples) {
+                recorder ! RecorderActor.RecorderSound(liveId, frame.clone())
                 //todo 发送给recorder
               }
               ctx.self ! GrabFrame
@@ -148,6 +152,7 @@ object GrabberActor {
           Behaviors.same
 
         case Close =>
+          log.info(s"grabber $liveId closed.")
           try{
             grabber.stop()
           }catch {

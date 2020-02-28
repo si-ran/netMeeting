@@ -39,6 +39,8 @@ object RecorderActor {
   var frameRate = 30
   val layout_x = 2
 
+  val canvasFrame = new CanvasFrame("test")
+
   val width = 640
   val height = 360
 
@@ -70,7 +72,7 @@ object RecorderActor {
 
   case class StartFilterSuccess(ffFilter: FFmpegFrameFilter) extends Command
 
-  case class StartRecorderSuccess(recorder: FFmpegFrameRecorder, ffFilter: FFmpegFrameFilter) extends Command
+  case class StartRecorderSuccess(recorder: FFmpegFrameRecorder1, ffFilter: FFmpegFrameFilter) extends Command
 
   case class RecorderImage(liveId: String, frame: Frame) extends Command
 
@@ -93,6 +95,7 @@ object RecorderActor {
 
   case class NewFrame(userId: String, frame: Frame) extends Command
 
+  case class UpdateQueue(queMap: mutable.HashMap[String, LinkedBlockingDeque[Frame]]) extends Command
 
   case object TimerKey4Close
 
@@ -116,11 +119,11 @@ object RecorderActor {
 
   case object Close extends VideoCommand*/
 
-  case class Ts4User(var time: Long = 0)
+/*  case class Ts4User(var time: Long = 0)
 
   case class Ts4LastImage(var time: Long = -1)
 
-  case class Ts4LastSample(var time: Long = 0)
+  case class Ts4LastSample(var time: Long = 0)*/
 
   private val emptyAudio = ShortBuffer.allocate(1024 * 2)
   private val emptyAudio4one = ShortBuffer.allocate(1152)
@@ -146,12 +149,12 @@ object RecorderActor {
       implicit val stashBuffer: StashBuffer[Command] = StashBuffer[Command](Int.MaxValue)
       Behaviors.withTimers[Command] {
         implicit timer =>
-          log.debug(s"recorderActor start----")
+          log.info(s"recorderActor start----")
 //          log.info(s"${ctx.self} userIdList:${userIdList}")
 //          avutil.av_log_set_level(-8)
           ctx.self ! InitFilter
 
-          init(parent, roomId,  userIdList, layout, pushLiveUrl, queMap)
+          init(parent, roomId,  userIdList, layout, pushLiveUrl, null)
       }
     }
   }
@@ -191,7 +194,7 @@ object RecorderActor {
           Behaviors.same
 
         case msg: StartFilterSuccess =>
-          val recorder = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
+          val recorder = new FFmpegFrameRecorder1(pushLiveUrl, 640, 360, audioChannels)
           recorder.setVideoOption("tune", "zerolatency")
           recorder.setVideoOption("preset", "ultrafast")
           recorder.setVideoOption("crf", "23")
@@ -217,8 +220,13 @@ object RecorderActor {
           }
           Behaviors.same
 
+        case msg: UpdateQueue =>
+          log.info(s"got msg in init $msg")
+          init(parent, roomId, userIdList, layout, pushLiveUrl, msg.queMap)
+
         case msg: StartRecorderSuccess =>
-          switchBehavior(ctx, "work", work(parent, roomId, userIdList, queMap,  layout,msg.recorder, msg.ffFilter))
+          parent ! RoomActor.StartRecorderSuccess
+          switchBehavior(ctx, "work", work(parent, roomId, userIdList, queMap,  layout, msg.recorder, msg.ffFilter))
 
 
 /*        case NewFrame(userId, frame) =>
@@ -248,7 +256,7 @@ object RecorderActor {
             userIdList:List[String],
             queMap: mutable.HashMap[String, LinkedBlockingDeque[Frame]],
             layout: Int,
-            recorder: FFmpegFrameRecorder,
+            recorder: FFmpegFrameRecorder1,
             ffFilter: FFmpegFrameFilter,
           )(
             implicit timer: TimerScheduler[Command],
@@ -257,31 +265,38 @@ object RecorderActor {
     Behaviors.receive[Command] { (ctx, msg) =>
       msg match {
         case msg: RecorderImage =>
+//          log.info(s"DEBUG got msg $msg")
           var frameList = List[Frame](msg.frame)
-          val index = userIdList.indexWhere(_ == msg.liveId)
-          (0 until userIdList.length).foreach{i =>
-            if(i != index) {
-              val queOpt = queMap.get(userIdList(i))
-              if(queOpt.isDefined) {
-                val frame = queOpt.get.peek()
-                if(frame != null && frame.image != null) {
-                  frameList = frame :: frameList
+          if(queMap != null) {
+            val index = userIdList.indexWhere(_ == msg.liveId)
+            (0 until userIdList.length).foreach{i =>
+              if(i != index) {
+                val queOpt = queMap.get(userIdList(i))
+                if(queOpt.isDefined) {
+                  val frame = queOpt.get.peek()
+                  if(frame != null && frame.image != null) {
+                    frameList = frame :: frameList
+                  }
                 }
-              }
 
+              }
             }
+            val frame = imgCombination(frameList)
+            canvasFrame.showImage(frame)
+//            log.info(s"DEBUG record image")
+            recorder.record(frame)
           }
-          val frame = imgCombination(frameList)
-          recorder.record(frame)
           Behaviors.same
 
         case msg: RecorderSound =>
+//          log.info(s"got msg $msg")
           if(msg.frame != null && msg.frame.samples != null) {
             try {
               val index = userIdList.indexWhere(_ == msg.liveId)
               ffFilter.pushSamples(index, 2, sampleRate, ffFilter.getSampleFormat, msg.frame.samples: _*)
               val frame = ffFilter.pullSamples()
               if(frame != null && frame.samples != null) {
+//                log.info(s"DEBUG record sound")
                 recorder.record(frame)
               }
             } catch {
@@ -290,6 +305,11 @@ object RecorderActor {
             }
           }
           Behaviors.same
+
+        case msg: UpdateQueue =>
+          log.debug(s"got msg in work $msg")
+          work(parent, roomId, userIdList, msg.queMap, layout, recorder, ffFilter)
+
 
         case Close =>
           try {

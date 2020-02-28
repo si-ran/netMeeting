@@ -41,9 +41,13 @@ object Boot extends HttpService {
 //  val streamPullActor:ActorRef[Command] = system.spawn(StreamPullActor.create(), "streamPullActor")
 
   def main(args: Array[String]): Unit = {
+    val roomId = 100011
+    val userIdList = List[String]("100011", "100021")
+    roomManager ! RoomManager.NewConnection(roomId, userIdList, "",1)
 
-    Http().bindAndHandle(routes, httpInterface, httpPort)
-    log.info(s"Listen to the $httpInterface:$httpPort")
-    log.info("Done")
+
+//    Http().bindAndHandle(routes, httpInterface, httpPort)
+//    log.info(s"Listen to the $httpInterface:$httpPort")
+//    log.info("Done")
   }
 }
