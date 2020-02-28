@@ -64,8 +64,8 @@ class TestPage(id: String) extends Page{
     <div class="all-top video-match-page">
       <div class="button-list">
         <button onclick={(e: Event)=>wsClient.sendByteMsg(EstablishMeetingReq("url", id.toLong, id.toLong))}>创建房间{id}</button>
-        <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10001))}>加入10001</button>
-        <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10002))}>加入10002</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10011))}>加入10011</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10012))}>加入10012</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(UserRecordReq(1))}>开始录制</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(UserRecordStopReq(1))}>停止录制</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(Disconnect)}>断线</button>
