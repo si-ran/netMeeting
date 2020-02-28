@@ -78,6 +78,10 @@ object SignUpPage extends Page {
     }
   }
 
+  private def changeMode(choose: Int) ={
+
+  }
+
   private val signUpElem = {
     <div class="signUp-page">
       <div class="sign-up-top">用户注册</div>
@@ -109,10 +113,12 @@ object SignUpPage extends Page {
   override def render: Elem ={
     dom.window.setTimeout(()=>init(), 0)
     <div class="sign-page">
+      {mode.map{ flag =>
       <div class="sign-header">
-        <div class="li" onclick={() => mode := 0}>注册</div>
-        <div class="li" onclick={() => mode := 1}>登录</div>
+        <div class={if(flag == 0) "li active" else "li"} onclick={() => {mode := 0}}>注册</div>
+        <div class={if(flag == 1) "li active" else "li"} onclick={() => {mode := 1}}>登录</div>
       </div>
+    }}
       {mode.map {
       case 0 => signUpElem
       case 1 => signInElem
