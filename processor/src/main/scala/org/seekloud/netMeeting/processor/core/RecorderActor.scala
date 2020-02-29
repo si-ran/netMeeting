@@ -96,6 +96,7 @@ object RecorderActor {
 //          val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
 //          val outputStream = new FileOutputStream(new File(FileOutPath1))
 //          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
+
           recorder4ts.setFrameRate(frameRate)
           recorder4ts.setVideoBitrate(bitRate)
           recorder4ts.setVideoCodec(avcodec.AV_CODEC_ID_H264)
