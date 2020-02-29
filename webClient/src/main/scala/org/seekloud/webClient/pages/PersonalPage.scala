@@ -97,6 +97,18 @@ class PersonalPage() extends Page {
     }
   }
 
+  private val editElem = {
+    <div class="edit-page">
+      <div class="edit-contain">
+        <input id="new-nick" placeholder="新昵称"></input>
+        <input id="new-email" placeholder="新邮箱"></input>
+      </div>
+      <div class="edit-confirm">
+        <div class="button" onclick={()=> println("还没写好")}>提交</div>
+      </div>
+    </div>
+  }
+
   private val videoListElem = {
     <div class="video-list">
     {videoInfos.map{ infos =>
@@ -107,7 +119,8 @@ class PersonalPage() extends Page {
             <div class="video-room">房间: {info}</div>
             <div class="video-time">时间: {TimeTool.dateFormatDefault(new Date().getTime)}</div>
           </div>
-          <div class="video-btn" onclick={()=>dom.window.location.href = s"/netMeeting/file/getRecord/$info"}>观看</div>
+          <!--div class="video-btn" onclick={()=>dom.window.location.href = s"/netMeeting/file/getRecord/$info"}>观看</div-->
+          <div class="video-btn" onclick={()=>dom.window.location.hash = s"/video/$info"}>观看</div>
         </div>
       }
     }}
@@ -131,7 +144,7 @@ class PersonalPage() extends Page {
             </div>
           </div>
           <div class="info-right">
-            <div class="button detail">个人详细资料</div>
+            <div class="button detail" onclick={()=>PopWindow.elemPop("编辑资料", editElem)}>修改个人资料</div>
           </div>
         </div>
       }}

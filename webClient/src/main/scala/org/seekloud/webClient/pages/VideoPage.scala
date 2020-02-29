@@ -33,8 +33,11 @@ class VideoPage(fileName: String) extends Page{
 
   override def render: Elem ={
     dom.window.setTimeout(()=>init(), 0)
-    <div class="video-page">
-      <video width="320" height="240" controls="true">
+    <div class="video-page" style="
+    position: relative;
+    height: 720px;
+    background-color: #000;">
+      <video style="width: 100%; height: 100%" controls="true">
         <source src={Routes.File.getRecord + s"/$fileName"} type="video/mp4"></source>
       </video>
     </div>

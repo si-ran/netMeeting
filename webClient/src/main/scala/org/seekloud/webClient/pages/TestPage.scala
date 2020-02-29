@@ -68,6 +68,10 @@ class TestPage(id: String) extends Page{
         <button onclick={(e: Event)=>wsClient.sendByteMsg(JoinReq(id.toLong, 10012))}>加入10012</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(UserRecordReq(1))}>开始录制</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(UserRecordStopReq(1))}>停止录制</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(MediaControlReq(10011, 10012))}>房间10011控制10012</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(SpeakReq(10011, id.toLong))}>申请说话</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(SpeakRsp(10011, 10012, true))}>10012同意说话</button>
+        <button onclick={(e: Event)=>wsClient.sendByteMsg(KickOutReq(10011, 10012))}>10011踢出10012</button>
         <button onclick={(e: Event)=>wsClient.sendByteMsg(Disconnect)}>断线</button>
       </div>
       <div class="text-list">

@@ -52,6 +52,7 @@
     border-radius: 5px;
     color: #0396ff;
     border: 1px solid #0396ff;
+    cursor: pointer;
 }
 .personal-info .info-left{
     position: relative;
@@ -70,6 +71,7 @@
     border-radius: 12px;
     background-color: #fff;
     border: 2px solid #fff;
+    cursor: pointer;
 }
 .info-left .name{
     display: flex;
@@ -202,4 +204,36 @@
 }
 .fri-li .fri-email{
 
+}
+/*----------*/
+.edit-page{
+    display: flex;
+    flex-flow: column nowrap;
+}
+.edit-page>.edit-contain{
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    margin-top: 20px;
+}
+.edit-page>.edit-contain input{
+    width: 240px;
+    height: 24px;
+    margin: 0 0 28px 0;
+    padding: 2px 5px;
+    border-radius: 5px;
+    border-style: none;
+    border: 1px solid #aaa;
+}
+.edit-page>.edit-confirm{
+    padding: 0 0 0 0;
+}
+.edit-page>.edit-confirm .button{
+    width: 120px;
+    margin: auto;
+    padding: 6px 0;
+    text-align: center;
+    cursor: pointer;
+    background-color: #d0d0d0;
+    border-radius: 10px;
 }
