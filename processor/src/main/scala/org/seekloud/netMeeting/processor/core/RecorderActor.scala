@@ -151,6 +151,7 @@ object RecorderActor {
             }
           }
           val size = frameMapQueue.size
+
           val layout_y = (size+1)/layout_x
           val width = canvasSize._1/layout_x
           val height = canvasSize._2/layout_y
