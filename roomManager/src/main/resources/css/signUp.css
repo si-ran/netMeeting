@@ -3,8 +3,9 @@
     width: 337px;
     /*! border: 1px solid #888; */
     padding: 0 0 0 0;
-    box-shadow: 2px 2px 5px #aaa;
+    /* box-shadow: 2px 2px 5px #aaa; */
     border-radius: 10px;
+    background-color: rgba(245,245,248,0.5);
 }
 .sign-header{
     display: flex;

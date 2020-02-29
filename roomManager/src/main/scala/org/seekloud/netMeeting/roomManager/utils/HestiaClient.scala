@@ -154,8 +154,8 @@ object HestiaClient extends HttpUtil with CirceSupport {
     //    }.failed.foreach{ e =>
     //      print("wrong")
     //    }
-    val file = new File("D:/test.png")
-    val f = upload(file, "test.png")
+    val file = new File("D:/141.png")
+    val f = upload(file, "141.png")
     f.map(s =>
       println(s.right.get)
     ).failed.foreach { e =>

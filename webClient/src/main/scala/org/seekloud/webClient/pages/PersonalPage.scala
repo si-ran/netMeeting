@@ -69,6 +69,7 @@ class PersonalPage() extends Page {
         }
         else{}
       case Left(error) =>
+        dom.window.location.hash = "/"
         PopWindow.commonPop(s"error： $error")
     }
   }
@@ -106,7 +107,7 @@ class PersonalPage() extends Page {
             <div class="video-room">房间: {info}</div>
             <div class="video-time">时间: {TimeTool.dateFormatDefault(new Date().getTime)}</div>
           </div>
-          <div class="video-btn" onclick={()=>dom.window.location.hash = s"/video/$info"}>观看</div>
+          <div class="video-btn" onclick={()=>dom.window.location.href = s"/netMeeting/file/getRecord/$info"}>观看</div>
         </div>
       }
     }}
@@ -140,7 +141,16 @@ class PersonalPage() extends Page {
           </div>
           <div class="friends">
             <div class="fri-header">好友</div>
-            <div class="fri-content">-----</div>
+            <div class="fri-content">
+              <div class="fri-li">
+                <img class="fri-head" src="/netMeeting/static/img/user.png"></img>
+                <div class="fri-email">xusiran@bupt.edu.cn</div>
+              </div>
+              <div class="fri-li">
+                <img class="fri-head" src="/netMeeting/static/img/user.png"></img>
+                <div class="fri-email">xusiran@bupt.edu.cn</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

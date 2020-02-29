@@ -112,18 +112,25 @@ object SignUpPage extends Page {
 
   override def render: Elem ={
     dom.window.setTimeout(()=>init(), 0)
-    <div class="sign-page">
-      {mode.map{ flag =>
-      <div class="sign-header">
-        <div class={if(flag == 0) "li active" else "li"} onclick={() => {mode := 0}}>注册</div>
-        <div class={if(flag == 1) "li active" else "li"} onclick={() => {mode := 1}}>登录</div>
+    <div style="
+    background-image: url(http://pic.neoap.com/hestia/files/image/roomManager/0ab839d687b46e3613055ad2a35e2b12.png);
+    background-size: 100% 100%;
+    position: absolute;
+    width: 100%;
+    height: 100%;">
+      <div class="sign-page" >
+        {mode.map{ flag =>
+        <div class="sign-header">
+          <div class={if(flag == 0) "li active" else "li"} onclick={() => {mode := 0}}>注册</div>
+          <div class={if(flag == 1) "li active" else "li"} onclick={() => {mode := 1}}>登录</div>
+        </div>
+      }}
+        {mode.map {
+        case 0 => signUpElem
+        case 1 => signInElem
+        case _ => signUpElem
+      }}
       </div>
-    }}
-      {mode.map {
-      case 0 => signUpElem
-      case 1 => signInElem
-      case _ => signUpElem
-    }}
     </div>
   }
 
