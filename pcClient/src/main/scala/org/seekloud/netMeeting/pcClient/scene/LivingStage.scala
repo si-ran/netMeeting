@@ -160,8 +160,8 @@ class LivingStage(userId: Long) extends Application{
   def getGc4Pull() = this.canvas4Pull.getGraphicsContext2D
 
   override def start(primaryStage: Stage): Unit = {
-    val icon = new Image("/img/camera.png")
-    val icon1 = new Image("/img/camera.png")
+    val icon = new Image("/img/icon.png")
+    val icon1 = new Image("/img/icon.png")
     canvas4Self.getGraphicsContext2D.drawImage(icon,(400-225)/2, 0, 225, 225)
     canvas4Pull.getGraphicsContext2D.drawImage(icon1,140, 0, 360, 360)
     //    val pane = new Pane(canvas)

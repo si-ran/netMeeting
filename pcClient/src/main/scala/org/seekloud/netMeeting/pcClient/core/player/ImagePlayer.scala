@@ -86,6 +86,7 @@ object ImagePlayer {
             speed =
               if (frame.timestamp - timestamp > 80000) 1.5f
               else if (frame.timestamp - timestamp > 40000) 1.3f
+              else if (timestamp - frame.timestamp > 100000) 0.1f
               else if (timestamp - frame.timestamp > 80000) 0.4f
               else if (timestamp - frame.timestamp > 40000) 0.6f
               else 1.0f

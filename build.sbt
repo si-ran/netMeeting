@@ -66,7 +66,7 @@ lazy val pcClient = (project in file("pcClient")).enablePlugins(PackPlugin)
   .settings(
     mainClass in reStart := Some(pcClientMain),
     javaOptions in reStart ++= Seq(
-      "-Xmx3g"
+      "-Xmx2g"
     )
   )
   .settings(name := "pcClient")
@@ -76,7 +76,7 @@ lazy val pcClient = (project in file("pcClient")).enablePlugins(PackPlugin)
     //packSettings,
     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
     packMain := Map("pcClient" -> pcClientMain),
-    packJvmOpts := Map("pcClient" -> Seq("-Xmx4096m", "-Xms4096m")),
+    packJvmOpts := Map("pcClient" -> Seq("-Xmx3g", "-Xms500m")),
     packExtraClasspath := Map("pcClient" -> Seq("."))
   )
   .settings(
