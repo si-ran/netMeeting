@@ -26,7 +26,7 @@ object ProcessorClient extends HttpUtil {
   def newConnect(roomId:Long, userList: List[Long]):Future[Either[String,NewConnectRsp]] = {
     val url = processorBaseUrl + "/newConnect"
     //FIXME 临时处理
-    val cntUserList = userList :+ 10003
+    val cntUserList = userList
     val jsonString = NewConnectReq(roomId, cntUserList.map(_.toString)).asJson.noSpaces
     postJsonRequestSend("newConnect",url,List(),jsonString,timeOut = 60 * 1000).map{
       case Right(v) =>
