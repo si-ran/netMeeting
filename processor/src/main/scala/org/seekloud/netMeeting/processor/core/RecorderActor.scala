@@ -203,12 +203,12 @@ object RecorderActor {
                   ffFilter.pushSamples(i, frame.audioChannels, sampleRate, ffFilter.getSampleFormat, frame.samples: _*)
                 }
               }
-//              val f = ffFilter.pullSamples().clone()
-//              if(f != null){
-////                log.info("record sample")
-//                recorder4ts.record(f)
-////                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
-//              }
+              val f = ffFilter.pullSamples().clone()
+              if(f != null){
+//                log.info("record sample")
+                recorder4ts.record(f)
+//                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
+              }
             } catch {
               case ex: Exception =>
                 log.debug(s"$liveId record sample error system: $ex")
@@ -276,23 +276,19 @@ object RecorderActor {
 
         case t:Image4Mix =>
           frameMapQueue.get(t.liveId).foreach( _ += t.frame)
-          var draw = true
-          var str = "size :"
-          frameMapQueue.values.toList.foreach{q =>
-            str = str + s"${q.size} "
-            if(q.isEmpty) draw=false
-          }
+//          var draw = true
+//          var str = "size :"
+//          frameMapQueue.values.toList.foreach{q =>
+//            str = str + s"${q.size} "
+//            if(q.isEmpty) draw=false
+//          }
 //          log.info(str)
-          if(draw) ctx.self ! ImageDraw
+          if(userIdList(0) == t.liveId) ctx.self ! ImageDraw
+//          if(draw) ctx.self ! ImageDraw
           Behaviors.same
 
         case ImageDraw =>
-          val f = ffilter.pullSamples()
-          if(f != null){
-            //                log.info("record sample")
-            recorder4ts.record(f)
-            //                recorder4ts.recordSamples(f.sampleRate, f.audioChannels, f.samples: _*)
-          }
+//          log.info(s"${userIdList.length}  ${frameMapQueue.size}")
           for(i <- 0 until userIdList.length){
             val queue = frameMapQueue.get(userIdList(i)).get
             var img:BufferedImage=null
@@ -321,6 +317,10 @@ object RecorderActor {
                 frameMapQueue -= id
               }
           }
+          val size = frameMapQueue.size
+          val layout_y = (size+1)/layout_x
+          val width = 640/layout_x
+          val height = 480/layout_y
           draw(canvas, graph, lastTime, frameMapQueue, recorder4ts, ffilter, convert, layout, bgImg, roomId, width, height, userIdList4Updata)
       }
     }

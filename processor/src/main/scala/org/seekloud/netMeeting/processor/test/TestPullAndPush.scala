@@ -69,7 +69,7 @@ object TestPullAndPush {
       println("grabber started")
       val ffLength = grabber.getLengthInFrames()
       println(s"length = $ffLength")
-      val recorder = new FFmpegFrameRecorder(outPath,640,480,audioChannels)
+      val recorder = new FFmpegFrameRecorder(outPath,640,360,audioChannels)
       recorder.setFrameRate(frameRate)
       recorder.setVideoBitrate(bitRate)
       recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
@@ -121,6 +121,7 @@ object TestPullAndPush {
           recorder.setVideoBitrate(bitRate)
           recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
           recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC)
+
           recorder.setMaxBFrames(0)
           recorder.setFormat("flv")
           try{
@@ -146,8 +147,8 @@ object TestPullAndPush {
     }
   }
 
-//  val processorBaseUrl = "http://127.0.0.1:30388/netMeeting/processor"
-  val processorBaseUrl = "http://47.92.170.2:42068/netMeeting/processor"
+  val processorBaseUrl = "http://127.0.0.1:42068/netMeeting/processor"
+//  val processorBaseUrl = "http://47.92.170.2:42068/netMeeting/processor"
 //  val processorBaseUrl = "http://10.1.29.247:42068/netMeeting/processor"
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -196,7 +197,7 @@ object TestPullAndPush {
 //      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
 //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
 //      Thread.sleep(3000)
-      newConnect(10002,List("10001","10002"),"",1)
+      newConnect(10001,List("10001","10002","10003"),"",1)
 //        stop(10001)
 //      threadPool.execute(new PullPipeThread())
     }finally {
