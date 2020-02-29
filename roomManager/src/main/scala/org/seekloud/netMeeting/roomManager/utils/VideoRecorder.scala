@@ -60,8 +60,8 @@ class VideoRecorder(roomId: Long, pullUrl: String) {
     grabber.setOption("rw_timeout", "20000000")
     recorder = new FFmpegFrameRecorder(outUrl, 640, 360)
     grabber.start()
-    recorder.setImageWidth(grabber.getImageWidth / 2)
-    recorder.setImageHeight(grabber.getImageHeight / 2)
+    recorder.setImageWidth(grabber.getImageWidth)
+    recorder.setImageHeight(grabber.getImageHeight)
     recorder.setAudioChannels(grabber.getAudioChannels)
     recorder.start()
     while(flag){
@@ -70,9 +70,7 @@ class VideoRecorder(roomId: Long, pullUrl: String) {
         recorder.record(frame)
       }
       if(frame.samples != null) {
-        if (frame != null) {
-          recorder.recordSamples(frame.sampleRate, frame.audioChannels, frame.samples: _*)
-        }
+        recorder.recordSamples(frame.sampleRate, frame.audioChannels, frame.samples: _*)
       }
 
     }
