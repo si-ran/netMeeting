@@ -147,8 +147,8 @@ object TestPullAndPush {
     }
   }
 
-  val processorBaseUrl = "http://127.0.0.1:42068/netMeeting/processor"
-//  val processorBaseUrl = "http://47.92.170.2:42068/netMeeting/processor"
+//  val processorBaseUrl = "http://127.0.0.1:42068/netMeeting/processor"
+  val processorBaseUrl = "http://47.92.170.2:42068/netMeeting/processor"
 //  val processorBaseUrl = "http://10.1.29.247:42068/netMeeting/processor"
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -197,7 +197,7 @@ object TestPullAndPush {
 //      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
 //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
 //      Thread.sleep(3000)
-      newConnect(10001,List("10001","10002","10003"),"",1)
+      newConnect(11111,List("10100","10200","10300"),"",1)
 //        stop(10001)
 //      threadPool.execute(new PullPipeThread())
     }finally {

@@ -33,6 +33,7 @@ object RecorderActor {
   val sampleFormat = 1 //todo 待议
   var frameRate = 30
   val layout_x = 2
+  val layout_y = 2
 
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -111,7 +112,7 @@ object RecorderActor {
               log.error(s" recorder meet error when start:$e")
           }
           ctx.self ! InitFilter
-          init(roomId,  userIdList, layout, recorder4ts, null, null, null, 30000, (640, 480))
+          init(roomId,  userIdList, layout, recorder4ts, null, null, null, 30000, (imageWidth, imageHeight))
       }
     }
   }
@@ -143,17 +144,13 @@ object RecorderActor {
           init(roomId, userIdList, layout, recorder4ts, ffFilterN, drawer, ts4User, tsDiffer, canvasSize)
 
         case NewFrame(userId, frame) =>
-          val canvas = new BufferedImage(640, 480, BufferedImage.TYPE_3BYTE_BGR)
+          val canvas = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_3BYTE_BGR)
           val frameMapQueue = scala.collection.mutable.Map[String,mutable.Queue[Frame]]()
           userIdList.foreach{
             id => {
               frameMapQueue.put(id,mutable.Queue[Frame]())
             }
           }
-          val size = frameMapQueue.size
-
-
-          val layout_y = (size+1)/layout_x
           val width = canvasSize._1/layout_x
           val height = canvasSize._2/layout_y
           val drawer = ctx.spawn(draw(canvas, canvas.getGraphics, Ts4LastImage(), frameMapQueue, recorder4ts,ffFilter,
@@ -319,10 +316,6 @@ object RecorderActor {
                 frameMapQueue -= id
               }
           }
-          val size = frameMapQueue.size
-          val layout_y = (size+1)/layout_x
-          val width = 640/layout_x
-          val height = 480/layout_y
           draw(canvas, graph, lastTime, frameMapQueue, recorder4ts, ffilter, convert, layout, bgImg, roomId, width, height, userIdList4Updata)
       }
     }
