@@ -202,13 +202,13 @@ object StreamProcess {
                 if(imageFirstTs != 0 && soundFirstTs != 0){
                   timerIntervalBase = imageFirstTs - soundFirstTs
                 }
-                println(s"image: ${frame.timestamp}")
+//                println(s"image: ${frame.timestamp}")
                 imageQueue.offer(frame.clone())
               }
               if(null != frame.samples) {
                 //                  println(s"sound ${frame.timestamp}")
                 soundFirstTs = if(imageFirstTs == 0) frame.timestamp else soundFirstTs
-                println(s"sound: ${frame.timestamp}")
+//                println(s"sound: ${frame.timestamp}")
                 soundQueue.offer(frame.clone())
               }
 
