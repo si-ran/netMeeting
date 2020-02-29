@@ -19,6 +19,14 @@ object Routes {
 
   }
 
+  object File{
+
+    val base: String = baseUrl + "/file"
+
+    val saveHeadImg = base + s"/saveHeadImg"
+
+  }
+
 
 
 }

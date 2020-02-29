@@ -29,7 +29,13 @@ object RoomManager {
 
   case class RMJoinRoom(roomId: Long, userId: Long, userFrontActor: ActorRef[WsMsgManager], replyTo: ActorRef[UserActor.Command]) extends Command
 
-  case class RMClientSpeakReq(userId: Long, roomId: Long) extends Command
+  case class RMClientSpeakReq(roomId: Long, userId: Long) extends Command
+
+  case class RMClientSpeakRsp(roomId: Long, userId: Long, acceptance: Boolean) extends Command
+
+  case class RMMediaControlReq(roomId: Long, userId: Long, needAudio: Boolean, needVideo: Boolean) extends Command
+
+  case class RMKickOutReq(roomId: Long, userId: Long) extends Command
 
   case class RMUserExit(userId: Long, roomId: Long) extends Command
 
@@ -116,16 +122,6 @@ object RoomManager {
           }
           Behaviors.same
 
-        case RMClientSpeakReq(uId, rId) =>
-          val roomActor = getOptionRoomActor(ctx, rId)
-          if(roomActor.nonEmpty){
-            roomActor.foreach( _ ! RoomActor.RAClientSpeakReq(uId))
-          }
-          else{
-            log.debug(s"speaker request error, no room: $rId")
-          }
-          Behaviors.same
-
         case RMUserExit(uId, rId) =>
           val roomActor = getOptionRoomActor(ctx, rId)
           if(roomActor.nonEmpty){
@@ -142,9 +138,46 @@ object RoomManager {
           ctx.unwatch(actor)
           Behaviors.same
 
-        //todo 接受http消息
+        //接受userActor的ws消息
+        case msg: RMClientSpeakReq =>
+          val roomActor = getOptionRoomActor(ctx, msg.roomId)
+          if(roomActor.nonEmpty){
+            roomActor.foreach( _ ! RoomActor.RAClientSpeakReq(msg.userId))
+          }
+          else{
+            log.debug(s"RMClientSpeakReq error, no room: ${msg.roomId}")
+          }
+          Behaviors.same
 
-        //todo 接受userActor的ws消息
+        case msg: RMClientSpeakRsp =>
+          val roomActor = getOptionRoomActor(ctx, msg.roomId)
+          if(roomActor.nonEmpty){
+            roomActor.foreach( _ ! RoomActor.RAClientSpeakRsp(msg.userId, msg.acceptance))
+          }
+          else{
+            log.debug(s"RMClientSpeakRsp error, no room: ${msg.roomId}")
+          }
+          Behaviors.same
+
+        case msg: RMMediaControlReq =>
+          val roomActor = getOptionRoomActor(ctx, msg.roomId)
+          if(roomActor.nonEmpty){
+            roomActor.foreach( _ ! RoomActor.RAMediaControlReq(msg.roomId, msg.userId, msg.needAudio, msg.needVideo))
+          }
+          else{
+            log.debug(s"RMMediaControlReq error, no room: ${msg.roomId}")
+          }
+          Behaviors.same
+
+        case msg: RMKickOutReq =>
+          val roomActor = getOptionRoomActor(ctx, msg.roomId)
+          if(roomActor.nonEmpty){
+            roomActor.foreach( _ ! RoomActor.RAKickOutReq(msg.roomId, msg.userId))
+          }
+          else{
+            log.debug(s"RMKickOutReq error, no room: ${msg.roomId}")
+          }
+          Behaviors.same
 
         case _ =>
           Behaviors.same

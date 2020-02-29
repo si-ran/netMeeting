@@ -25,7 +25,9 @@ object ProcessorClient extends HttpUtil {
 
   def newConnect(roomId:Long, userList: List[Long]):Future[Either[String,NewConnectRsp]] = {
     val url = processorBaseUrl + "/newConnect"
-    val jsonString = NewConnectReq(roomId, userList.map(_.toString)).asJson.noSpaces
+    //FIXME 临时处理
+    val cntUserList = 10003l :: userList
+    val jsonString = NewConnectReq(roomId, cntUserList.map(_.toString)).asJson.noSpaces
     postJsonRequestSend("newConnect",url,List(),jsonString,timeOut = 60 * 1000).map{
       case Right(v) =>
         decode[NewConnectRsp](v) match{
@@ -34,13 +36,31 @@ object ProcessorClient extends HttpUtil {
             Right(value)
           case Left(e) =>
             log.error(s"newConnect decode error : $e")
-            Left("Error")
+            Left(e.toString)
         }
       case Left(error) =>
         log.error(s"newConnect postJsonRequestSend error : $error")
-        Left("Error")
+        Left(error.toString)
     }
+  }
 
+  def closeConnection(roomId:Long):Future[Either[String,CloseConnectionRsp]] = {
+    val url = processorBaseUrl + "/closeConnection"
+    val jsonString = CloseConnectionReq(roomId).asJson.noSpaces
+    postJsonRequestSend("newConnect",url,List(),jsonString,timeOut = 60 * 1000).map{
+      case Right(v) =>
+        decode[CloseConnectionRsp](v) match{
+          case Right(value) =>
+            log.info(s"closeConnection success $v")
+            Right(value)
+          case Left(e) =>
+            log.error(s"closeConnection decode error : $e")
+            Left(e.toString)
+        }
+      case Left(error) =>
+        log.error(s"closeConnection postJsonRequestSend error : $error")
+        Left(error.toString)
+    }
   }
 
 //  def main(args: Array[String]): Unit = {

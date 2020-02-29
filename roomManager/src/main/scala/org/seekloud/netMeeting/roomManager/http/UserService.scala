@@ -63,7 +63,8 @@ trait UserService extends ServiceUtils with SessionBase {
                   account = value.account,
                   password = value.password,
                   create_time = System.currentTimeMillis(),
-                  rtmp_url = ""
+                  rtmp_url = "",
+                  email = value.email
                 )
               ).map{ _ =>
                 complete(SignUpRsp())

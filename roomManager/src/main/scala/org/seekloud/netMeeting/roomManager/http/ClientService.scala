@@ -13,9 +13,9 @@ import io.circe._
 import io.circe.syntax._
 import org.seekloud.netMeeting.protocol.ptcl.ClientProtocol._
 import org.seekloud.netMeeting.protocol.ptcl.{ClientProtocol, CommonRsp}
-import org.seekloud.netMeeting.roomManager.Boot.{executor, scheduler, timeout, userManager}
+import org.seekloud.netMeeting.roomManager.Boot.{emailActor, executor, scheduler, timeout, userManager}
 import org.seekloud.netMeeting.roomManager.common.AppSettings
-import org.seekloud.netMeeting.roomManager.core.UserManager
+import org.seekloud.netMeeting.roomManager.core.{EmailActor, UserManager}
 import org.seekloud.netMeeting.roomManager.models.dao.WebDAO
 import org.seekloud.netMeeting.roomManager.protocol.CommonInfoProtocol.UserInfo
 import org.seekloud.netMeeting.roomManager.utils.{ProcessorClient, SecureUtil, ServiceUtils}
@@ -55,8 +55,21 @@ trait ClientService extends ServiceUtils with SessionBase {
     }
   }
 
+  private val emailSend: Route = (path("emailSend") & post){
+    entity(as[Either[Error, SendEmailReq]]) {
+      case Right(value) =>
+        val sendFuture: Future[SendEmailRsp] = emailActor ? (EmailActor.SendEmail(value.email, value.fromName, value.toName, value.time, value.roomId, _))
+        dealFutureResult(
+          sendFuture.map{response => complete(response)}
+        )
+      case Left(error) =>
+        log.debug("parse error")
+        complete(SignInRsp(None, 10000, "json parse error"))
+    }
+  }
+
   val clientRoute: Route = pathPrefix("client") {
-    signIn
+    signIn ~ emailSend
   }
 
 }

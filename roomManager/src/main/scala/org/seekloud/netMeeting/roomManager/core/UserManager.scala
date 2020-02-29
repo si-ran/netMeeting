@@ -100,7 +100,7 @@ object UserManager {
           Behaviors.same
 
         case ChildDead(id, actor) =>
-          log.debug(s"user:$id is dead")
+          log.debug(s"user:$id userActor is dead")
           userMap.remove(id)
           ctx.unwatch(actor)
           Behaviors.same
