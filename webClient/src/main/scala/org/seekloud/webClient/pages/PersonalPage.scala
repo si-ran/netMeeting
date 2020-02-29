@@ -119,12 +119,16 @@ class PersonalPage() extends Page {
     <div style="background-color: #f6f6f6">
       {new HeaderBarTop().render}
       <div class="personal-page">
+        <div class="personal-color"></div>
         {userInfo.map{ info =>
         <div class="personal-info">
           <div class="info-left">
             <input style="display: none" type="file" id="headImg-file" onchange={(e: Event)=>saveHeadImg(e.target.asInstanceOf[Input].value, e.target.asInstanceOf[Input].files)}></input>
             <img id="headImg" class="head-img" src={info.headImg} onclick={()=>dom.document.getElementById("headImg-file").asInstanceOf[HTMLElement].click()}></img>
-            <div class="name">{info.nickname}</div>
+            <div class="name">
+              <div class="name-nick">{info.nickname}</div>
+              <div class="name-email">{info.email}</div>
+            </div>
           </div>
           <div class="info-right">
             <div class="button detail">个人详细资料</div>
