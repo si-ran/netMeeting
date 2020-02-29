@@ -72,7 +72,7 @@ object RecorderActor {
 
   case class StartFilterSuccess(ffFilter: FFmpegFrameFilter) extends Command
 
-  case class StartRecorderSuccess(recorder: FFmpegFrameRecorder1, ffFilter: FFmpegFrameFilter) extends Command
+  case class StartRecorderSuccess(recorder: FFmpegFrameRecorder, ffFilter: FFmpegFrameFilter) extends Command
 
   case class RecorderImage(liveId: String, frame: Frame) extends Command
 
@@ -194,7 +194,7 @@ object RecorderActor {
           Behaviors.same
 
         case msg: StartFilterSuccess =>
-          val recorder = new FFmpegFrameRecorder1(pushLiveUrl, 640, 360, audioChannels)
+          val recorder = new FFmpegFrameRecorder(pushLiveUrl, 640, 360, audioChannels)
           recorder.setVideoOption("tune", "zerolatency")
           recorder.setVideoOption("preset", "ultrafast")
           recorder.setVideoOption("crf", "23")
@@ -256,7 +256,7 @@ object RecorderActor {
             userIdList:List[String],
             queMap: mutable.HashMap[String, LinkedBlockingDeque[Frame]],
             layout: Int,
-            recorder: FFmpegFrameRecorder1,
+            recorder: FFmpegFrameRecorder,
             ffFilter: FFmpegFrameFilter,
           )(
             implicit timer: TimerScheduler[Command],
