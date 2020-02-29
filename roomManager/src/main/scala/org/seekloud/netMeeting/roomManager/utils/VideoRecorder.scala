@@ -69,6 +69,12 @@ class VideoRecorder(roomId: Long, pullUrl: String) {
       if(null != frame) {
         recorder.record(frame)
       }
+      if(frame.samples != null) {
+        if (frame != null) {
+          recorder.recordSamples(frame.sampleRate, frame.audioChannels, frame.samples: _*)
+        }
+      }
+
     }
 //    recordFrame()
     println("stop")

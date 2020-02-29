@@ -101,7 +101,7 @@ object RoomActor {
       Behaviors.withTimers[Command] { implicit timer =>
         Behaviors.receiveMessage[Command] {
           case RAHostCreate(url, hostId, hostFrontActor) =>
-            val recorder = new VideoRecorder(roomId, s"rtmp://47.92.170.2:42069/live/${roomId}_t")
+            val recorder = new VideoRecorder(roomId, s"rtmp://47.92.170.2:42069/live/${roomId}_x")
             val mixSingle = new TestMixSingle()
             dispatchTo(hostFrontActor, EstablishMeetingRsp())
             switchBehavior(ctx,"idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url, recorder, mixSingle))
