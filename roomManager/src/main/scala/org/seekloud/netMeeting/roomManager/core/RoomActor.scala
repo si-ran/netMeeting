@@ -131,9 +131,9 @@ object RoomActor {
           case RAUserJoin(userId, userFrontActor) =>
             userMap.put(userId, userFrontActor)
             val newRoomInfo = RoomInfo(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList, roomInfo.hostId)
-            Future{
-              mixSingle.recordStart(roomInfo.hostId :: userMap.keys.toList, roomInfo.roomId)
-            }
+//            Future{
+//              mixSingle.recordStart(roomInfo.hostId :: userMap.keys.toList, roomInfo.roomId)
+//            }
 //            Future{
 //              recorder.recordStart()
 //            }.onComplete{
@@ -142,52 +142,52 @@ object RoomActor {
 //              case Failure(exception) =>
 //                log.debug(s"$exception")
 //            }
-            dispatchTo(hostFrontActor, JoinRsp(
-              newRoomInfo,
-              acceptance = true
-            ))
-            dispatchAllTo(userMap.values, JoinRsp(
-              newRoomInfo,
-              acceptance = true
-            ))
-//            ProcessorClient.newConnect(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList).map{
-//              case Right(value) =>
-//                if(value.errCode == 0){
-//                  Future{
-//                    recorder.recordStart()
-//                  }.onComplete{
-//                    case Success(value) =>
-//                      log.info(s"room ${roomInfo.roomId} record ok")
-//                    case Failure(exception) =>
-//                      log.debug(s"$exception")
-//                  }
-//                  dispatchTo(hostFrontActor, JoinRsp(
-//                    newRoomInfo,
-//                    acceptance = true
-//                  ))
-//                  dispatchAllTo(userMap.values, JoinRsp(
-//                    newRoomInfo,
-//                    acceptance = true
-//                  ))
-//                }
-//                else{
-//                  log.debug(s"processor error: errCode ${value.errCode}, msg ${value.msg}")
-//                }
-//              case Left(error) =>
-//                log.debug(s"processor error: $error")
-//                dispatchTo(hostFrontActor, JoinRsp(
-//                  newRoomInfo,
-//                  acceptance = false,
-//                  errCode = 20001,
-//                  msg = s"processor错误：$error"
-//                ))
-//                dispatchAllTo(userMap.values, JoinRsp(
-//                  newRoomInfo,
-//                  acceptance = false,
-//                  errCode = 20001,
-//                  msg = s"processor错误：$error"
-//                ))
-//            }
+//            dispatchTo(hostFrontActor, JoinRsp(
+//              newRoomInfo,
+//              acceptance = true
+//            ))
+//            dispatchAllTo(userMap.values, JoinRsp(
+//              newRoomInfo,
+//              acceptance = true
+//            ))
+            ProcessorClient.newConnect(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList).map{
+              case Right(value) =>
+                if(value.errCode == 0){
+                  Future{
+                    recorder.recordStart()
+                  }.onComplete{
+                    case Success(value) =>
+                      log.info(s"room ${roomInfo.roomId} record ok")
+                    case Failure(exception) =>
+                      log.debug(s"$exception")
+                  }
+                  dispatchTo(hostFrontActor, JoinRsp(
+                    newRoomInfo,
+                    acceptance = true
+                  ))
+                  dispatchAllTo(userMap.values, JoinRsp(
+                    newRoomInfo,
+                    acceptance = true
+                  ))
+                }
+                else{
+                  log.debug(s"processor error: errCode ${value.errCode}, msg ${value.msg}")
+                }
+              case Left(error) =>
+                log.debug(s"processor error: $error")
+                dispatchTo(hostFrontActor, JoinRsp(
+                  newRoomInfo,
+                  acceptance = false,
+                  errCode = 20001,
+                  msg = s"processor错误：$error"
+                ))
+                dispatchAllTo(userMap.values, JoinRsp(
+                  newRoomInfo,
+                  acceptance = false,
+                  errCode = 20001,
+                  msg = s"processor错误：$error"
+                ))
+            }
             idle(newRoomInfo, hostFrontActor, userMap, mixUrl, recorder, mixSingle)
 
           case RAClientSpeakReq(uId) =>
@@ -218,22 +218,25 @@ object RoomActor {
             userMap.remove(uId)
             val userList = roomInfo.userId.filterNot(_ == uId)
             if(userList.isEmpty){
-//              recorder.recordStop()
-//              ProcessorClient.closeConnection(roomInfo.roomId)
-              mixSingle.recordStop()
+              recorder.recordStop()
+              ProcessorClient.closeConnection(roomInfo.roomId)
+//              mixSingle.recordStop()
               log.info(s"roomId: ${roomInfo.roomId} is empty, dead")
               Behaviors.stopped
             }
+            else if(userList.length > 1){
+              ProcessorClient.newConnect(roomInfo.roomId, userList)
+//              mixSingle.recordStop()
+//              Future{
+//                while(true){
+//                  if(mixSingle.grabbers.isEmpty){
+//                    mixSingle.recordStart(userList, roomInfo.roomId)
+//                  }
+//                }
+//              }
+              idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl, recorder, mixSingle)
+            }
             else{
-//              ProcessorClient.newConnect(roomInfo.roomId, userList)
-              mixSingle.recordStop()
-              Future{
-                while(true){
-                  if(mixSingle.grabbers.isEmpty){
-                    mixSingle.recordStart(userList, roomInfo.roomId)
-                  }
-                }
-              }
               idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl, recorder, mixSingle)
             }
 
