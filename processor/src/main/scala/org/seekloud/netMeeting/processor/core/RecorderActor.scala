@@ -196,6 +196,7 @@ object RecorderActor {
               drawer ! Image4Mix(liveId,frame)
 //            }
           }
+
           if (frame.samples != null) {
             try {
               for(i <- 0 until userIdList.length){
