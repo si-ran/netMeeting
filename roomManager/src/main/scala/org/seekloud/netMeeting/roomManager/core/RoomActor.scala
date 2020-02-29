@@ -12,7 +12,7 @@ import org.seekloud.netMeeting.roomManager.Boot.executor
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.seekloud.netMeeting.protocol.ptcl.client2manager.websocket.AuthProtocol._
 import org.seekloud.netMeeting.roomManager.common.AppSettings
-import org.seekloud.netMeeting.roomManager.utils.{ProcessorClient, VideoRecorder}
+import org.seekloud.netMeeting.roomManager.utils.{ProcessorClient, TestMixSingle, VideoRecorder}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -102,8 +102,9 @@ object RoomActor {
         Behaviors.receiveMessage[Command] {
           case RAHostCreate(url, hostId, hostFrontActor) =>
             val recorder = new VideoRecorder(roomId, s"rtmp://47.92.170.2:42069/live/${roomId}_x")
+            val mixSingle = new TestMixSingle()
             dispatchTo(hostFrontActor, EstablishMeetingRsp())
-            switchBehavior(ctx,"idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url, recorder))
+            switchBehavior(ctx,"idle", idle(RoomInfo(roomId, List(hostId), hostId), hostFrontActor, mutable.HashMap.empty[Long, ActorRef[WsMsgManager]], url, recorder, mixSingle))
 
           case unknownMsg =>
             log.info(s"init unknown msg : $unknownMsg")
@@ -117,7 +118,8 @@ object RoomActor {
     hostFrontActor: ActorRef[WsMsgManager],
     userMap: mutable.HashMap[Long, ActorRef[WsMsgManager]], //无host
     mixUrl: String,
-    recorder: VideoRecorder
+    recorder: VideoRecorder,
+    mixSingle: TestMixSingle
   )(
     implicit stashBuffer: StashBuffer[Command],
     sendBuffer: MiddleBufferInJvm,
@@ -129,6 +131,25 @@ object RoomActor {
           case RAUserJoin(userId, userFrontActor) =>
             userMap.put(userId, userFrontActor)
             val newRoomInfo = RoomInfo(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList, roomInfo.hostId)
+//            Future{
+//              mixSingle.recordStart(roomInfo.hostId :: userMap.keys.toList, roomInfo.roomId)
+//            }
+//            Future{
+//              recorder.recordStart()
+//            }.onComplete{
+//              case Success(value) =>
+//                log.info(s"room ${roomInfo.roomId} record ok")
+//              case Failure(exception) =>
+//                log.debug(s"$exception")
+//            }
+//            dispatchTo(hostFrontActor, JoinRsp(
+//              newRoomInfo,
+//              acceptance = true
+//            ))
+//            dispatchAllTo(userMap.values, JoinRsp(
+//              newRoomInfo,
+//              acceptance = true
+//            ))
             ProcessorClient.newConnect(roomInfo.roomId, roomInfo.hostId :: userMap.keys.toList).map{
               case Right(value) =>
                 if(value.errCode == 0){
@@ -167,7 +188,7 @@ object RoomActor {
                   msg = s"processor错误：$error"
                 ))
             }
-            idle(newRoomInfo, hostFrontActor, userMap, mixUrl, recorder)
+            idle(newRoomInfo, hostFrontActor, userMap, mixUrl, recorder, mixSingle)
 
           case RAClientSpeakReq(uId) =>
             dispatchTo(hostFrontActor, SpeakReq(roomInfo.roomId, uId))
@@ -180,21 +201,16 @@ object RoomActor {
             Behaviors.same
 
           case msg: RAMediaControlReq =>
-            if(userMap.get(msg.userId).nonEmpty){
-              dispatchTo(userMap(msg.userId), MediaControlReq(msg.roomId, msg.userId, msg.needAudio, msg.needVideo))
+            userMap.get(msg.userId).foreach{ actor =>
+              dispatchTo(actor, MediaControlReq(msg.roomId, msg.userId, msg.needAudio, msg.needVideo))
               log.debug(s"RAMediaControlReq success room ${msg.roomId} and user ${msg.userId}")
-            }
-            else{
-              dispatchTo(hostFrontActor, MediaControlRsp(20011, "房间无此用户"))
-              log.debug("RAMediaControlReq no user")
             }
             Behaviors.same
 
           case msg: RAKickOutReq =>
             userMap.get(msg.userId).foreach{ actor =>
-              dispatchTo(actor, KickOutRsp())
+              dispatchTo(actor, KickOutReq(msg.roomId, msg.userId))
             }
-            dispatchTo(hostFrontActor, KickOutRsp())
             ctx.self ! RAUserExit(msg.userId)
             Behaviors.same
 
@@ -204,12 +220,24 @@ object RoomActor {
             if(userList.isEmpty){
               recorder.recordStop()
               ProcessorClient.closeConnection(roomInfo.roomId)
+//              mixSingle.recordStop()
               log.info(s"roomId: ${roomInfo.roomId} is empty, dead")
               Behaviors.stopped
             }
-            else{
+            else if(userList.length > 1){
               ProcessorClient.newConnect(roomInfo.roomId, userList)
-              idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl, recorder)
+//              mixSingle.recordStop()
+//              Future{
+//                while(true){
+//                  if(mixSingle.grabbers.isEmpty){
+//                    mixSingle.recordStart(userList, roomInfo.roomId)
+//                  }
+//                }
+//              }
+              idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl, recorder, mixSingle)
+            }
+            else{
+              idle(RoomInfo(roomInfo.roomId, userList, roomInfo.hostId), hostFrontActor, userMap, mixUrl, recorder, mixSingle)
             }
 
           case unknownMsg =>

@@ -4,7 +4,7 @@
     height: 50px;
     box-shadow: 0px 0px 5px #aaa;
     align-items: center;
-    padding-left: 80px;
+    padding-left: 50px;
     background-color: #fff;
 }
 .header-top-container .header-left{
@@ -20,8 +20,15 @@
 }
 /*----------*/
 .personal-page{
+    position: relative;
     margin: auto;
-    max-width: 960px;
+    max-width: 1020px;
+}
+.personal-color{
+    margin-top: 20px;
+    height: 120px;
+    width: 100%;
+    background-color: #bdbdbd;
 }
 /*----------*/
 .personal-info{
@@ -29,8 +36,8 @@
     display: flex;
     flex-flow: row nowrap;
     justify-content: start;
-    margin: 100px 0 0 0;
-    height: 100px;
+    padding: 20px 25px;
+    height: 110px;
     border-radius: 8px;
     box-shadow: 0 0 3px #ccc;
     background-color: #fff;
@@ -38,34 +45,47 @@
 .personal-info .info-right{
     display: flex;
     flex-flow: column-reverse nowrap;
-    padding: 10px 15px;
+    /* padding: 10px 15px; */
 }
 .info-right .detail{
     padding: 5px 10px;
     border-radius: 5px;
     color: #0396ff;
     border: 1px solid #0396ff;
+    cursor: pointer;
 }
 .personal-info .info-left{
+    position: relative;
     display: flex;
     flex-flow: row nowrap;
     flex-grow: 1;
-    margin: 0 0 0 30px;
-    padding: 20px 0;
+    /* margin: 0 0 0 30px; */
+    /* padding: 15px 0; */
 }
 .info-left .head-img{
     position: relative;
-    top: -80px;
+    bottom: 60px;
     margin: 0 20px 0 0;
-    width: 156px;
-    height: 156px;
+    width: 168px;
+    height: 168px;
     border-radius: 12px;
     background-color: #fff;
     border: 2px solid #fff;
+    cursor: pointer;
 }
 .info-left .name{
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: space-around;
+}
+.name .name-nick{
     font-size: 26px;
     font-weight: bold;
+}
+.name .name-email{
+    font-size: 21px;
+    font-weight: bold;
+    color: #686868;
 }
 /*----------*/
 .personal-other{
@@ -110,6 +130,42 @@
 .message .msg-content{
     min-height: 300px;
 }
+/*----------*/
+.video-list{
+    display: flex;
+    flex-flow: column nowrap;
+}
+.video-card{
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.video-img{
+    width: 90px;
+    height: 70px;
+}
+.video-info{
+    display: flex;
+    flex-flow: column nowrap;
+    flex-grow: 1;
+    align-self: center;
+    margin: 0 30px;
+    color: #888;
+    font-size: 13px;
+}
+.video-btn{
+    align-self: flex-end;
+    margin: 0 10px 10px 0;
+    padding: 3px 15px;
+    color: #0084ff;
+    background-color: #e5f2ff;
+    border-radius: 10px;
+    border: 1px solid #0084ff;
+    cursor: pointer;
+}
+/*----------*/
 .friends{
     margin: 0 0 0 10px;
     width: 28%;
@@ -119,7 +175,65 @@
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
+    padding: 0 10px;
     border-bottom: 1px solid #dfdfdf;
     background-color: #fff;
     box-shadow: 0 0 3px #ccc;
+    font-size: 18px;
+}
+.fri-content{
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: stretch;
+    padding: 5px 3px;
+}
+.fri-li{
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: space-between;
+    margin: 5px 0;
+    padding: 10px 5px;
+    border-bottom: 1px solid #ccc;
+    color: #888;
+    font-weight: bold;
+}
+.fri-li .fri-head{
+    width: 48px;
+    height: 48px;
+}
+.fri-li .fri-email{
+
+}
+/*----------*/
+.edit-page{
+    display: flex;
+    flex-flow: column nowrap;
+}
+.edit-page>.edit-contain{
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    margin-top: 20px;
+}
+.edit-page>.edit-contain input{
+    width: 240px;
+    height: 24px;
+    margin: 0 0 28px 0;
+    padding: 2px 5px;
+    border-radius: 5px;
+    border-style: none;
+    border: 1px solid #aaa;
+}
+.edit-page>.edit-confirm{
+    padding: 0 0 0 0;
+}
+.edit-page>.edit-confirm .button{
+    width: 120px;
+    margin: auto;
+    padding: 6px 0;
+    text-align: center;
+    cursor: pointer;
+    background-color: #d0d0d0;
+    border-radius: 10px;
 }
