@@ -10,7 +10,7 @@ import akka.actor.typed.scaladsl.{Behaviors, StashBuffer, TimerScheduler}
 import javax.imageio.ImageIO
 import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_RGBA
 import org.bytedeco.ffmpeg.global.{avcodec, avutil}
-import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, Frame, Java2DFrameConverter}
+import org.bytedeco.javacv.{FFmpegFrameFilter, FFmpegFrameRecorder, FFmpegFrameRecorder1, Frame, Java2DFrameConverter}
 import org.seekloud.netMeeting.processor.Boot.executor
 import org.slf4j.LoggerFactory
 import org.seekloud.netMeeting.processor.common.AppSettings._
@@ -91,7 +91,7 @@ object RecorderActor {
           log.info(s"recorderActor start----")
           log.info(s"${ctx.self} userIdList:${userIdList}")
           avutil.av_log_set_level(-8)
-          val recorder4ts = new FFmpegFrameRecorder(pushLiveUrl, 640, 480, audioChannels)
+          val recorder4ts = new FFmpegFrameRecorder1(pushLiveUrl, 640, 480, audioChannels)
 //          val FileOutPath1 = "D:/ScalaWorkSpace/netMeeting/processor/src/main/scala/org/seekloud/netMeeting/processor/test/TestVideo/out.flv"
 //          val outputStream = new FileOutputStream(new File(FileOutPath1))
 //          val recorder4ts = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
@@ -117,7 +117,7 @@ object RecorderActor {
   }
 
   def init(roomId: Long, userIdList:List[String], layout: Int,
-           recorder4ts: FFmpegFrameRecorder,
+           recorder4ts: FFmpegFrameRecorder1,
            ffFilter: FFmpegFrameFilter,
            drawer: ActorRef[VideoCommand],
            ts4User: List[Ts4User],
@@ -177,7 +177,7 @@ object RecorderActor {
   }
 
   def work(roomId: Long, userIdList:List[String], layout: Int,
-           recorder4ts: FFmpegFrameRecorder,
+           recorder4ts: FFmpegFrameRecorder1,
            ffFilter: FFmpegFrameFilter,
            drawer: ActorRef[VideoCommand],
            ts4User: List[Ts4User],
@@ -263,7 +263,7 @@ object RecorderActor {
   }
 
   def draw(canvas: BufferedImage, graph: Graphics, lastTime: Ts4LastImage, frameMapQueue: mutable.Map[String,mutable.Queue[Frame]],
-           recorder4ts: FFmpegFrameRecorder,ffilter:FFmpegFrameFilter,convert:Java2DFrameConverter,
+           recorder4ts: FFmpegFrameRecorder1,ffilter:FFmpegFrameFilter,convert:Java2DFrameConverter,
            layout: Int = 0, bgImg: String, roomId: Long, width:Int, height:Int,
            userIdList:List[String]): Behavior[VideoCommand] = {
     Behaviors.setup[VideoCommand] { ctx =>
