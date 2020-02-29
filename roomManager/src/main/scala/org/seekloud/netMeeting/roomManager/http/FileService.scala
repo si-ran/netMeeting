@@ -76,7 +76,7 @@ trait FileService extends SessionBase with ServiceUtils {
 
   val getVideo = (path("getVideo") & get){
     userAuth{ user =>
-      val savePath = "./video/"
+      val savePath = "../video/"
       val file = new File(savePath)
       dealFutureResult(
         Future{
@@ -91,7 +91,7 @@ trait FileService extends SessionBase with ServiceUtils {
   val getRecord: Route = (path("getRecord" / Segments(1)) & get & pathEndOrSingleSlash & cors(settings)){
     case fileName :: Nil =>
       println(s"getRecord req for $fileName")
-      val f = new File(s"./video/$fileName").getAbsoluteFile
+      val f = new File(s"../video/$fileName").getAbsoluteFile
       getFromFile(f,ContentTypes.`application/octet-stream`)
 
     case x =>

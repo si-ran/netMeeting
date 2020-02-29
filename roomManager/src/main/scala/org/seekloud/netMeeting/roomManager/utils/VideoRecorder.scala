@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
   */
 class VideoRecorder(roomId: Long, pullUrl: String) {
 
-  private val outUrl = s"./video/video_${roomId}_${System.currentTimeMillis() / 1000}.mp4"
+  private val outUrl = s"../video/video_${roomId}_${System.currentTimeMillis() / 1000}.mp4"
   private var flag = true //注意只在recordStop中修改
   private var grabber: FFmpegFrameGrabber = _
   private var recorder: FFmpegFrameRecorder = _
