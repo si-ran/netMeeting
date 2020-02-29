@@ -60,8 +60,8 @@ object TestMixSound {
       val num = filePathList.length
 
       //start recorder
-      val outputStream = new FileOutputStream(new File(FileOutPath1))
-      val recorder = new FFmpegFrameRecorder(outputStream,640,480,audioChannels)
+//      val outputStream = new FileOutputStream(new File(outPath))
+      val recorder = new FFmpegFrameRecorder(outPath,640,480,audioChannels)
       recorder.setFrameRate(frameRate)
       recorder.setVideoBitrate(bitRate)
       recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
@@ -97,7 +97,7 @@ object TestMixSound {
 
       //start grabber
       val grabberList = filePathList.map(new FFmpegFrameGrabber(_))
-      var ffLength = 0
+      var ffLength = 50000
       grabberList.map{
         grabber =>
           try {
@@ -107,11 +107,11 @@ object TestMixSound {
               println(e)
               println(s"exception occured in grabber start")
           }
-          println("grabber started")
-          if(grabber.getLengthInFrames>ffLength){
-            ffLength = grabber.getLengthInFrames()
-          }
-          println(s"length = $ffLength")
+//          println("grabber started")
+//          if(grabber.getLengthInFrames>ffLength){
+//            ffLength = grabber.getLengthInFrames()
+//          }
+//          println(s"length = $ffLength")
       }
 
       var i = 0
@@ -119,10 +119,15 @@ object TestMixSound {
         for(i <- 0 until 2){
           val frame = grabberList(i).grab()
           if(frame != null && frame.samples != null){
-            println(s"not null ${frame.samples.size}")
+            println(s"not null")
             ffFilter.pushSamples(i,audioChannels,sampleRate,sampleFormat,frame.samples:_*)
           }else{
             println("null")
+          }
+          val framesample = ffFilter.pullSamples()
+          if(framesample != null){
+            println("recorded")
+            recorder.record(framesample)
           }
 
           if(frame!=null && frame.image != null){
@@ -136,15 +141,6 @@ object TestMixSound {
             recorder.record(frameImage)
           }
 
-        }
-        i+=1
-      }
-      i = 0
-      while (i<ffLength){
-        val framesample = ffFilter.pullSamples()
-        if(framesample != null){
-          println("recorded")
-          recorder.record(framesample)
         }
         i+=1
       }
@@ -247,7 +243,7 @@ object TestMixSound {
   def main(args: Array[String]): Unit = {
     val threadPool:ExecutorService = Executors.newFixedThreadPool(60)
     try{
-      threadPool.execute(new PushPipeThread(List(FilePath1,FilePath3),OutPath1))
+      threadPool.execute(new PushPipeThread(List(OutPath1,OutPath2),OutPath3))
 //      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
 //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
 //      Thread.sleep(3000)

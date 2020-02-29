@@ -136,7 +136,7 @@ lazy val processor = (project in file("processor")).enablePlugins(PackPlugin)
   .settings(commonSettings: _*)
   .settings(
     mainClass in reStart := Some(processorMain),
-    javaOptions in reStart += "-Xmx4g"
+    javaOptions in reStart += "-Xmx3g"
   )
   .settings(name := "processor")
   .settings(
@@ -145,7 +145,7 @@ lazy val processor = (project in file("processor")).enablePlugins(PackPlugin)
     //packSettings,
     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
     packMain := Map("processor" -> processorMain),
-    packJvmOpts := Map("processor" -> Seq("-Xmx3g", "-Xms2g")),
+    packJvmOpts := Map("processor" -> Seq("-Xmx2g", "-Xms1g")),
     packExtraClasspath := Map("processor" -> Seq("."))
   )
   .settings(
