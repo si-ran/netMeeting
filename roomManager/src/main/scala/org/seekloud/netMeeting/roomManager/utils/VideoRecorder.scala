@@ -3,6 +3,7 @@ package org.seekloud.netMeeting.roomManager.utils
 import akka.actor.Cancellable
 import akka.actor.typed.ActorRef
 import akka.pattern.after
+import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.javacv.{FFmpegFrameGrabber, FFmpegFrameRecorder}
 import org.seekloud.netMeeting.roomManager.Boot.{executor, scheduler}
 import org.seekloud.netMeeting.roomManager.core.UserActor
@@ -63,6 +64,7 @@ class VideoRecorder(roomId: Long, pullUrl: String) {
     recorder.setImageWidth(grabber.getImageWidth)
     recorder.setImageHeight(grabber.getImageHeight)
     recorder.setAudioChannels(grabber.getAudioChannels)
+    recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
     recorder.start()
     while(flag){
       val frame = grabber.grabFrame()
