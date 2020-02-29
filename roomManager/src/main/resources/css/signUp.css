@@ -1,16 +1,45 @@
-.signUp-page{
+.sign-page{
     margin: 100px 150px;
-    width: 250px;
-    border: 1px solid #888;
-    padding: 50px;
-    box-shadow: 2px 2px 5px #aaa;
-    border-radius: 5px;
+    width: 337px;
+    /*! border: 1px solid #888; */
+    padding: 0 0 0 0;
+    /* box-shadow: 2px 2px 5px #aaa; */
+    border-radius: 10px;
+    background-color: rgba(245,245,248,0.5);
+}
+.sign-header{
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-around;
+    align-items: center;
+
+}
+.sign-header .li{
+    flex-grow: 1;
+    line-height: 56px;
+    text-align: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+.sign-header .active{
+    position: relative;
+    bottom: -1px;
+    line-height: 57px;
+    background-color: #fff;
+    border-top: 1px solid #bdbdbd;
+    border-right: 1px solid #bdbdbd;
+    border-left: 1px solid #bdbdbd;
+}
+.signUp-page{
+    border: 1px solid #bdbdbd;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    background-color: #fff;
 }
 .signUp-page>.sign-up-top{
     text-align: center;
-    padding: 0 0 10px 0;
+    padding: 20px 0 10px 0;
     margin: 0 0 40px 0;
-    /*! border-bottom: solid 3px gray; */
     color: #666666;
 }
 .signUp-page>.sign-up-contain{
@@ -22,11 +51,13 @@
     width: 240px;
     height: 24px;
     margin: 0 0 28px 0;
+    padding: 2px 5px;
     border-radius: 5px;
+    border-style: none;
+    border: 1px solid #aaa;
 }
 .signUp-page>.sign-up-confirm{
     padding: 40px 0 40px 0;
-    /*! border-bottom: solid 1px gray; */
 }
 .signUp-page>.sign-up-confirm .button{
     width: 120px;

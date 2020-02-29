@@ -26,6 +26,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object SignUpPage extends Page {
 
+  val mode = Var(0) // 0 -> 登录; 1 -> 注册
+
   private def init(): Unit ={
 
   }
@@ -45,6 +47,7 @@ object SignUpPage extends Page {
           else if(value.errCode == 20001){
             PopWindow.commonPop(s"用户已存在")
           }
+          else{}
         case Left(error) =>
           PopWindow.commonPop(s"注册失败： $error")
       }
@@ -54,8 +57,32 @@ object SignUpPage extends Page {
     }
   }
 
-  override def render: Elem ={
-    dom.window.setTimeout(()=>init(), 0)
+  private def signIn(): Unit = {
+    val account = dom.document.getElementById("account-in").asInstanceOf[Input].value
+    val password = dom.document.getElementById("password-in").asInstanceOf[Input].value
+    val data = SignInReq(account, password).asJson.noSpaces
+    Http.postJsonAndParse[SignInRsp](Routes.User.signIn, data).map{
+      case Right(value) =>
+        if(value.errCode == 0){
+          dom.window.location.hash = s"/personal"
+        }
+        else if(value.errCode == 10001){
+          PopWindow.commonPop(s"用户不存在")
+        }
+        else if(value.errCode == 10002){
+          PopWindow.commonPop(s"密码不正确")
+        }
+        else{}
+      case Left(error) =>
+        PopWindow.commonPop(s"注册失败： $error")
+    }
+  }
+
+  private def changeMode(choose: Int) ={
+
+  }
+
+  private val signUpElem = {
     <div class="signUp-page">
       <div class="sign-up-top">用户注册</div>
       <div class="sign-up-contain">
@@ -66,6 +93,43 @@ object SignUpPage extends Page {
       </div>
       <div class="sign-up-confirm">
         <div class="button" onclick={()=>signUp()}>注册</div>
+      </div>
+    </div>
+  }
+
+  private val signInElem = {
+    <div class="signUp-page">
+      <div class="sign-up-top">用户登录</div>
+      <div class="sign-up-contain">
+        <input id="account-in" placeholder="输入用户名"></input>
+        <input type="password" id="password-in" placeholder="输入密码"></input>
+      </div>
+      <div class="sign-up-confirm">
+        <div class="button" onclick={()=>signIn()}>登录</div>
+      </div>
+    </div>
+  }
+
+  override def render: Elem ={
+    dom.window.setTimeout(()=>init(), 0)
+    <div style="
+    background-image: url(http://pic.neoap.com/hestia/files/image/roomManager/0ab839d687b46e3613055ad2a35e2b12.png);
+    background-size: 100% 100%;
+    position: absolute;
+    width: 100%;
+    height: 100%;">
+      <div class="sign-page" >
+        {mode.map{ flag =>
+        <div class="sign-header">
+          <div class={if(flag == 0) "li active" else "li"} onclick={() => {mode := 0}}>注册</div>
+          <div class={if(flag == 1) "li active" else "li"} onclick={() => {mode := 1}}>登录</div>
+        </div>
+      }}
+        {mode.map {
+        case 0 => signUpElem
+        case 1 => signInElem
+        case _ => signUpElem
+      }}
       </div>
     </div>
   }

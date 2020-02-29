@@ -20,6 +20,7 @@ import org.seekloud.netMeeting.protocol.ptcl.CommonRsp
 import org.seekloud.netMeeting.roomManager.Boot.{executor, scheduler, timeout, userManager}
 import org.seekloud.netMeeting.roomManager.common.AppSettings
 import org.seekloud.netMeeting.roomManager.core.UserManager
+import org.seekloud.netMeeting.roomManager.http.SessionBase
 import org.seekloud.netMeeting.roomManager.models.dao.WebDAO
 import org.seekloud.netMeeting.roomManager.protocol.CommonInfoProtocol.UserInfo
 import org.seekloud.netMeeting.roomManager.utils.{ProcessorClient, SecureUtil, ServiceUtils}
@@ -38,14 +39,6 @@ trait UserService extends ServiceUtils with SessionBase {
       dealFutureResult(
         flowFuture.map(t => handleWebSocketMessages(t))
       )
-    }
-  }
-
-  private val test: Route = path("test"){
-    parameter(
-      'id.as[Long].?
-    ) { id =>
-          complete("ok")
     }
   }
 
@@ -77,8 +70,47 @@ trait UserService extends ServiceUtils with SessionBase {
     }
   }
 
+  private val signIn: Route = (path("signIn") & post){
+    entity(as[Either[Error, SignInReq]]) {
+      case Right(value) =>
+        dealFutureResult(
+          WebDAO.getUserInfoByAccount(value.account).map{
+            case Some(user) =>
+              if(value.password != user.password){
+                complete(SignInRsp(-1, 20002, "密码错误"))
+              }
+              else{
+                val userSession = SessionBase.UserSession(SessionBase.UserInfo(user.uid.toString)).toUserSessionMap
+                addSession(userSession) {
+                  complete(SignInRsp(user.uid))
+                }
+              }
+            case None =>
+              complete(SignInRsp(-1, 20001, "用户不存在"))
+          }
+        )
+      case Left(error) =>
+        log.debug("decode error")
+        complete("error")
+    }
+  }
+
+  private val userInfo: Route = (path("userInfo") & get){
+    userAuth{ user =>
+      dealFutureResult(
+        WebDAO.getUserInfoById(user.videoUserInfo.userId.toLong).map{
+          case Some(info) =>
+            val userInfo = UserSimpleInfo(info.uid, info.userName, info.email, info.headImg)
+            complete(UserInfoRsp(Some(userInfo)))
+          case None =>
+            complete(UserInfoRsp(None, 20001, "用户不存在"))
+        }
+      )
+    }
+  }
+
   val userRoute: Route = pathPrefix("user") {
-    websocketJoin ~ signUp ~ test
+    websocketJoin ~ signUp ~ signIn ~ userInfo
   }
 
 

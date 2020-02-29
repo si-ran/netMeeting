@@ -22,6 +22,36 @@ object WebProtocol {
     fileNameUrl: String,
     errCode: Int = 0,
     msg: String = "ok"
+  ) extends Response
+
+  case class SignInReq(
+    account: String,
+    password: String
   )
+
+  case class SignInRsp(
+    userId: Long,
+    errCode: Int = 0,
+    msg: String = "ok"
+  ) extends Response
+
+  case class UserSimpleInfo(
+    userId: Long,
+    nickname: String,
+    email: String,
+    headImg: String
+  )
+
+  case class UserInfoRsp(
+    data: Option[UserSimpleInfo],
+    errCode: Int = 0,
+    msg: String = "ok"
+  ) extends Response
+
+  case class GetVideoRsp(
+    data: List[String],
+    errCode: Int = 0,
+    msg: String = "ok"
+  ) extends Response
 
 }

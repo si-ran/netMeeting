@@ -146,7 +146,7 @@ object HestiaClient extends HttpUtil with CirceSupport {
     imgStr
   }
 
-  def main1(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
     //    val f = uploadImgByUrl("http://att.newsmth.net/nForum/att/FamilyLife/1759988330/10046")
     //    f.map{
     //      s =>
@@ -154,10 +154,10 @@ object HestiaClient extends HttpUtil with CirceSupport {
     //    }.failed.foreach{ e =>
     //      print("wrong")
     //    }
-    val file = new File("D:/test.png")
-    val f = upload(file, "test.png")
+    val file = new File("D:/141.png")
+    val f = upload(file, "141.png")
     f.map(s =>
-      println(genImgUrl(s.right.get))
+      println(s.right.get)
     ).failed.foreach { e =>
       println("wrong")
     }

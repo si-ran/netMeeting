@@ -43,23 +43,23 @@ object SessionBase {
   val SessionTypeKey = "STKey"
 
 
-  object AdminSessionKey {
-    val SESSION_TYPE = "adminSession"
-    val adminId = "aid"
+  object UserSessionKey {
+    val SESSION_TYPE = "userSession"
+    val userId = "userId"
     val loginTime = "aTime"
   }
 
-  case class AdminInfo (
-    adminId: String,
+  case class UserInfo (
+    userId: String,
   )
-  case class AdminSession(
-    videoUserInfo: AdminInfo,
+  case class UserSession(
+    videoUserInfo: UserInfo,
   ){
-    def toAdminSessionMap = {
+    def toUserSessionMap = {
       Map(
-        SessionTypeKey -> AdminSessionKey.SESSION_TYPE,
-        AdminSessionKey.adminId -> videoUserInfo.adminId,
-        AdminSessionKey.loginTime -> System.currentTimeMillis().toString
+        SessionTypeKey -> UserSessionKey.SESSION_TYPE,
+        UserSessionKey.userId -> videoUserInfo.userId,
+        UserSessionKey.loginTime -> System.currentTimeMillis().toString
       )
     }
   }
@@ -67,17 +67,17 @@ object SessionBase {
 
   implicit class SessionTransformer(sessionMap: Map[String, String]) {
 
-    def toVideoSession: Option[AdminSession] = {
-      logger.debug(s"toAdminSession: change map to session, ${sessionMap.mkString(",")}")
+    def toUserSession: Option[UserSession] = {
+//      logger.debug(s"toAdminSession: change map to session, ${sessionMap.mkString(",")}")
       try{
-        if(sessionMap.get(SessionTypeKey).exists(_.equals(AdminSessionKey.SESSION_TYPE))){
-          if(System.currentTimeMillis() - sessionMap(AdminSessionKey.loginTime).toLong > sessionTimeout){
+        if(sessionMap.get(SessionTypeKey).exists(_.equals(UserSessionKey.SESSION_TYPE))){
+          if(System.currentTimeMillis() - sessionMap(UserSessionKey.loginTime).toLong > sessionTimeout){
             None
           }
           else{
-            Some(AdminSession(
-              AdminInfo(
-                sessionMap(AdminSessionKey.adminId),
+            Some(UserSession(
+              UserInfo(
+                sessionMap(UserSessionKey.userId),
               )
             ))
           }
@@ -100,16 +100,16 @@ trait SessionBase extends SessionSupport with ServiceUtils{
 
   import SessionBase._
   import io.circe.generic.auto._
-  
+
   override val sessionEncoder = SessionSupport.PlaySessionEncoder
   override val sessionConfig = AppSettings.sessionConfig
 
 //  def noSessionError(message:String = "no session") = ErrorRsp(1000102,s"$message")
 
-  protected def setVideoSession(adminSession: AdminSession): Directive0 = setSession(adminSession.toAdminSessionMap)
+  protected def setVideoSession(adminSession: UserSession): Directive0 = setSession(adminSession.toUserSessionMap)
 
-  def adminAuth(f: AdminSession => server.Route) =
-    optionalAdminSession {
+  def userAuth(f: UserSession => server.Route) =
+    optionalUserSession {
       case Some(session) =>
         f(session)
       case None =>
@@ -118,8 +118,8 @@ trait SessionBase extends SessionSupport with ServiceUtils{
     }
 
 
-  protected val optionalAdminSession: Directive1[Option[AdminSession]] = optionalSession.flatMap{
-    case Right(sessionMap) => BasicDirectives.provide(sessionMap.toVideoSession)
+  protected val optionalUserSession: Directive1[Option[UserSession]] = optionalSession.flatMap{
+    case Right(sessionMap) => BasicDirectives.provide(sessionMap.toUserSession)
     case Left(error) =>
       logger.debug(error)
       BasicDirectives.provide(None)

@@ -3,6 +3,7 @@ package org.seekloud.netMeeting.roomManager.utils
 import akka.actor.Cancellable
 import akka.actor.typed.ActorRef
 import akka.pattern.after
+import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.javacv.{FFmpegFrameGrabber, FFmpegFrameRecorder}
 import org.seekloud.netMeeting.roomManager.Boot.{executor, scheduler}
 import org.seekloud.netMeeting.roomManager.core.UserActor
@@ -19,7 +20,7 @@ import scala.util.{Failure, Success}
   */
 class VideoRecorder(roomId: Long, pullUrl: String) {
 
-  private val outUrl = s"./video/video_${roomId}_${System.currentTimeMillis() / 1000}.mp4"
+  private val outUrl = s"../video/video_${roomId}_${System.currentTimeMillis() / 1000}.mp4"
   private var flag = true //注意只在recordStop中修改
   private var grabber: FFmpegFrameGrabber = _
   private var recorder: FFmpegFrameRecorder = _
@@ -60,15 +61,20 @@ class VideoRecorder(roomId: Long, pullUrl: String) {
     grabber.setOption("rw_timeout", "20000000")
     recorder = new FFmpegFrameRecorder(outUrl, 640, 360)
     grabber.start()
-    recorder.setImageWidth(grabber.getImageWidth / 2)
-    recorder.setImageHeight(grabber.getImageHeight / 2)
+    recorder.setImageWidth(grabber.getImageWidth)
+    recorder.setImageHeight(grabber.getImageHeight)
     recorder.setAudioChannels(grabber.getAudioChannels)
+    recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264)
     recorder.start()
     while(flag){
       val frame = grabber.grabFrame()
       if(null != frame) {
         recorder.record(frame)
       }
+      if(frame.samples != null) {
+        recorder.recordSamples(frame.sampleRate, frame.audioChannels, frame.samples: _*)
+      }
+
     }
 //    recordFrame()
     println("stop")
