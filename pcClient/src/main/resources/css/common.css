@@ -6,6 +6,14 @@
     /*!*font-weight: normal;*!*/
     /*!*font-style: normal;*!*/
 /*}*/
+
+#title {
+    /*-fx-background-color: #2861ff;*/
+    -fx-background-color: linear-gradient(to right, #1E90FF, #114bfe);
+    /*-fx-border-width:2;*/
+    /*-fx-border-color: #b0ff56;*/
+
+}
 .homeScene-topBtn {
     -fx-background-radius: 6;
     -fx-background-color: white;

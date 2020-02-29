@@ -49,7 +49,7 @@ class Boot extends javafx.application.Application {
   import Boot._
 
   override def start(primaryStage: Stage): Unit = {
-    val icon = new Image("/img/camera.png")
+    val icon = new Image("/img/icon.png")
     val rmManager = system.spawn(RmManager.create(), "rmManager")
 
     val loginScene = new LoginScene(primaryStage)

@@ -10,7 +10,7 @@ import javafx.scene.control.{Button, Label}
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout._
-import javafx.stage.{Modality, Stage}
+import javafx.stage.{Modality, Stage, StageStyle}
 import org.seekloud.netMeeting.pcClient.component.AnchorControl
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.slf4j.LoggerFactory
@@ -57,11 +57,11 @@ class LivingStage(userId: Long) extends Application{
   val canvas4Pull = new Canvas(640, 360)
 
 
-  val anchorControl4Self = new AnchorControl(130+15,257+15)
-  val anchorControl1 = new AnchorControl(90+400+30, 144+15)
-  val anchorControl2 = new AnchorControl(410+400+30,144+15)
-  val anchorControl3 = new AnchorControl(90+400+30,324+15)
-  val anchorControl4 = new AnchorControl(410+400+30,324+15)
+  val anchorControl4Self = new AnchorControl(130+15,257+15+50)
+  val anchorControl1 = new AnchorControl(90+400+30, 144+15+50)
+  val anchorControl2 = new AnchorControl(410+400+30,144+15+50)
+  val anchorControl3 = new AnchorControl(90+400+30,324+15+50)
+  val anchorControl4 = new AnchorControl(410+400+30,324+15+50)
 
   val anchorPane4Self = anchorControl4Self.getAnchorPane()
   anchorPane4Self.setVisible(true)
@@ -79,15 +79,15 @@ class LivingStage(userId: Long) extends Application{
 
   scene.addEventFilter(MouseEvent.MOUSE_MOVED, (event: MouseEvent) => {
     group.getChildren.remove(1, group.getChildren.size())
-    if(event.getX <= 400+15 && event.getY <= (360-(360-225)/2)+15 && event.getY >= (360-(360-225)/2)-225+15) {
+    if(event.getX <= 400+15 && event.getY <= (360-(360-225)/2)+15 + 50 && event.getY >= (360-(360-225)/2)-225+15 + 50) {
       group.getChildren.add(anchorPane4Self)
-    } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY < canvas4Pull.getHeight/2+15){
+    } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY < canvas4Pull.getHeight/2+15 + 50){
       group.getChildren.add(anchorPane1)
-    } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY < canvas4Pull.getHeight/2+15) {
+    } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY < canvas4Pull.getHeight/2+15+50) {
       group.getChildren.add(anchorPane2)
-    } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY >= canvas4Pull.getHeight/2+15) {
+    } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY >= canvas4Pull.getHeight/2+15 + 50) {
       group.getChildren.add(anchorPane3)
-    } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY >= canvas4Pull.getHeight/2+15) {
+    } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY >= canvas4Pull.getHeight/2+15 + 50) {
       group.getChildren.add(anchorPane4)
     }
   })
@@ -101,7 +101,7 @@ class LivingStage(userId: Long) extends Application{
   //debug
   val testButton = new Button("test")
   testButton.setOnAction{_ =>
-    val roomInfo = RoomInfo(10002, List[Long](10002, 10003, 10004), 10002)
+    val roomInfo = RoomInfo(10002, List[Long](10002, 10004, 10003), 10002)
     this.updateRoomInfo(roomInfo)
   }
 
@@ -137,15 +137,28 @@ class LivingStage(userId: Long) extends Application{
             anchorPaneList.foreach(_.setVisible(false))
             //todo 显示主持人的bar
           }
+
+          val camera = anchorControlList(index).camera
+          val microphone = anchorControlList(index).microphone
+          camera.setOnAction{_ =>
+            listener.mediaControl(roomInfo.userId(i), camera.isSelected, microphone.isSelected)
+          }
+
+          microphone.setOnAction{_ =>
+            listener.mediaControl(roomInfo.userId(i), camera.isSelected, microphone.isSelected)
+          }
         }
       }
     } else {
+
       if(indexOfHost == -1) {
         log.warn(s"hostId is not in userList")
       } else {
         val indexOfSelf = roomInfo.userId.indexWhere(_ == userId)
         val index = if(indexOfSelf < indexOfHost)  indexOfHost-1 else indexOfHost
         anchorPaneList(index).setVisible(true)
+        anchorControlList(index).microphone.setVisible(false)
+        anchorControlList(index).camera.setVisible(false)
         anchorControlList(index).host.setSelected(true)
       }
     }
@@ -161,16 +174,22 @@ class LivingStage(userId: Long) extends Application{
 
   override def start(primaryStage: Stage): Unit = {
     val icon = new Image("/img/icon.png")
-    val icon1 = new Image("/img/icon.png")
+//    val icon1 = new Image("/img/icon.png")
     canvas4Self.getGraphicsContext2D.drawImage(icon,(400-225)/2, 0, 225, 225)
-    canvas4Pull.getGraphicsContext2D.drawImage(icon1,140, 0, 360, 360)
+    canvas4Pull.getGraphicsContext2D.drawImage(icon,140, 0, 360, 360)
     //    val pane = new Pane(canvas)
     val canvasVBox = new VBox(canvas4Self)
     canvasVBox.setAlignment(Pos.CENTER)
-    val hBox = new HBox(canvasVBox, canvas4Pull, testButton)
+    val title = new HBox()
+    title.setPrefHeight(50)
+    title.setId("title")
+    val hBox = new HBox(canvasVBox, canvas4Pull)
     hBox.setSpacing(15)
-    hBox.setPadding(new Insets(15))
-    group.getChildren.addAll(hBox)
+    hBox.setPadding(new Insets(15,0, 15,15))
+    val vBox = new VBox(title, hBox)
+    group.getChildren.addAll(vBox)
+
+//    primaryStage.initStyle(StageStyle.TRANSPARENT)
 
     primaryStage.setScene(scene)
     primaryStage.setTitle("netMeeting")

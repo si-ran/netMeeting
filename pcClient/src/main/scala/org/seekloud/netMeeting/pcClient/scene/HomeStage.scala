@@ -39,6 +39,8 @@ class HomeStage(userId: Long) extends Application{
 
   val stage = new Stage()
   val icon = new Image("/img/icon.png")
+  val start = new Image("/img/camera_blue.png")
+  val join = new Image("/img/video_blue.png")
 
   def getUserId = userId
 
@@ -48,7 +50,7 @@ class HomeStage(userId: Long) extends Application{
 
   val label1 = new Label("新会议")
   val startMeeting = new Canvas(88, 88)
-  startMeeting.getGraphicsContext2D.drawImage(icon, 0, 0, startMeeting.getWidth, startMeeting.getHeight)
+  startMeeting.getGraphicsContext2D.drawImage(start, 0, 10, startMeeting.getWidth-10, startMeeting.getHeight-20)
   val vBox1 = new VBox(startMeeting, label1)
   vBox1.setAlignment(Pos.CENTER)
   vBox1.setPadding(new Insets(10, 0,0,0))
@@ -56,7 +58,7 @@ class HomeStage(userId: Long) extends Application{
   val label2 = new Label("加入会议")
   label2.setTextAlignment(TextAlignment.CENTER)
   val joinMeeting = new Canvas(88, 88)
-  joinMeeting.getGraphicsContext2D.drawImage(icon, 0, 0, startMeeting.getWidth, startMeeting.getHeight)
+  joinMeeting.getGraphicsContext2D.drawImage(join, 0, 0, joinMeeting.getWidth, joinMeeting.getHeight)
   val vBox2 = new VBox(joinMeeting, label2)
   vBox2.setAlignment(Pos.CENTER)
   vBox2.setPadding(new Insets(10, 0,0,0))
@@ -79,7 +81,7 @@ class HomeStage(userId: Long) extends Application{
   joinMeeting.setCursor(Cursor.HAND)
 
   anchorPane.setLayoutX((scene.getWidth-216)/2)
-  anchorPane.setLayoutY((scene.getHeight-118)/2)
+  anchorPane.setLayoutY((scene.getHeight-130)/2)
 
   def setListener(listener: HomeStageListener): Unit = {
     this.listener = listener

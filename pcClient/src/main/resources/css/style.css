@@ -1,5 +1,6 @@
 #title {
-    -fx-background-color: #2861ff;
+    /*-fx-background-color: #2861ff;*/
+    -fx-background-color: linear-gradient(to right, #1E90FF, #114bfe);
     /*-fx-border-width:2;*/
     /*-fx-border-color: #b0ff56;*/
 
