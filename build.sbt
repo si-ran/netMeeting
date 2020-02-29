@@ -146,7 +146,7 @@ lazy val processor = (project in file("processor")).enablePlugins(PackPlugin)
     //packSettings,
     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
     packMain := Map("processor" -> processorMain),
-    packJvmOpts := Map("processor" -> Seq("-Xmx1400m", "-Xms512m")),
+    packJvmOpts := Map("processor" -> Seq("-Xmx1200m", "-Xms512m")),
     packExtraClasspath := Map("processor" -> Seq("."))
   )
   .settings(

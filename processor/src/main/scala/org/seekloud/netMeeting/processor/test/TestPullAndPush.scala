@@ -197,7 +197,7 @@ object TestPullAndPush {
 //      threadPool.execute(new PushPipeThread(FilePath1,OutPath2))
 //      threadPool.execute(new PushPipeThread(FilePath3,OutPath3))
 //      Thread.sleep(3000)
-      newConnect(11111,List("10100","10200","10300"),"",1)
+      newConnect(11111,List("10001","10002","10003"),"",1)
 //        stop(10001)
 //      threadPool.execute(new PullPipeThread())
     }finally {
