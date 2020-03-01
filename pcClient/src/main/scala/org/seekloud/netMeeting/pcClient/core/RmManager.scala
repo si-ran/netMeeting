@@ -15,7 +15,7 @@ import javafx.scene.canvas.GraphicsContext
 import org.seekloud.byteobject.ByteObject._
 import org.seekloud.byteobject.MiddleBufferInJvm
 import org.seekloud.netMeeting.pcClient.Boot
-import org.seekloud.netMeeting.pcClient.Boot.{executor, materializer, system}
+import org.seekloud.netMeeting.pcClient.Boot.{executor, materializer, system, addToPlatform}
 import org.seekloud.netMeeting.pcClient.common.Routes
 import org.seekloud.netMeeting.pcClient.component.WarningDialog
 import org.seekloud.netMeeting.pcClient.scene.PageController
@@ -341,6 +341,9 @@ object RmManager {
           Behaviors.same
 
         case msg: ClientKickOut =>
+          addToPlatform{
+            WarningDialog.initWarningDialog("您已被房主踢出房间！")
+          }
           captureManagerOpt.foreach(_ ! CaptureManager.Close)
           pageController.foreach(_.closeLive())
           switchBehavior(ctx, "init", idle(pageController))
