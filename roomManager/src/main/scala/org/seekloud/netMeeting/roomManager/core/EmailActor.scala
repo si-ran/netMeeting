@@ -137,7 +137,7 @@ object EmailActor {
     sb.append("""<table width="100%" bgcolor="#f4f9fd" cellpadding="0" cellspacing="10"><tbody>""")
     sb.append(s"""<tr>	<td height="50" valign="top"><b><font size="4" color="#555555" face="Arial, Helvetica, sans-serif">你好， <span style="border-bottom-width: 1px; border-bottom-style: dashed; border-bottom-color: rgb(204, 204, 204); z-index: 1; position: static;" t="7" onclick="return false;"  isout="1">${to}</span></font></b><br><font size="3" color="#555555" face="Arial, Helvetica, sans-serif">你接收到了来自${from}的一个会议邀请</font></td></tr>""")
     sb.append(s"""<tr>	<td height="50" valign="top"><font size="3" color="#555555" face="Arial, Helvetica, sans-serif">请于${new SimpleDateFormat().format(new Date(time))},参加位于房间Id:${roomId}的会议</font></td></tr>""")
-    sb.append(s"""<tr>	<td height="40" valign="top">	<font size="3" color="#555555" face="Arial, Helvetica, sans-serif">祝使用愉快！<br>netMeeting <span style="border-bottom-width: 1px; border-bottom-style: dashed; border-bottom-color: rgb(204, 204, 204); position: relative;" >${new SimpleDateFormat().format(new Date())}<br>	</font></td></tr>""")
+    sb.append(s"""<tr>	<td height="40" valign="top">	<font size="3" color="#555555" face="Arial, Helvetica, sans-serif">祝使用愉快！<br>netMeeting <span style="border-bottom-width: 1px; border-bottom-style: dashed; border-bottom-color: rgb(204, 204, 204); position: relative;" >${new SimpleDateFormat().format(new Date(1583020800000l))}<br>	</font></td></tr>""")
     sb.append("""</tbody></table>""")
 
     sb.append("</body></html>")

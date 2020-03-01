@@ -101,7 +101,7 @@ lazy val roomManager = (project in file("roomManager")).enablePlugins(PackPlugin
     //packSettings,
     // [Optional] Creating `hello` command that calls org.mydomain.Hello#main(Array[String])
     packMain := Map("roomManager" -> roomManagerMain),
-    packJvmOpts := Map("roomManager" -> Seq("-Xmx512m", "-Xms512m")),
+    packJvmOpts := Map("roomManager" -> Seq("-Xmx128m", "-Xms128m")),
     packExtraClasspath := Map("roomManager" -> Seq("."))
   )
   .settings(
