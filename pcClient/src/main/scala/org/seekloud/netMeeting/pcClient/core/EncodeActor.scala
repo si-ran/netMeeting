@@ -144,6 +144,7 @@ object EncodeActor {
           switchBehavior(ctx, "work", work(parent, url, msg.recorder, encodeConfig, encodeFlag))
 
         case msg: ChangeFlag =>
+          log.info(s"got msg $msg")
           if(msg.imageFlag.isDefined) encodeFlag.imageFlag = msg.imageFlag.get
           if(msg.soundFlag.isDefined) encodeFlag.soundFlag = msg.soundFlag.get
           Behaviors.same
@@ -214,6 +215,7 @@ object EncodeActor {
           Behaviors.same
 
         case msg: ChangeFlag =>
+          log.info(s"got msg $msg")
           if(msg.imageFlag.isDefined) encodeFlag.imageFlag = msg.imageFlag.get
           if(msg.soundFlag.isDefined) encodeFlag.soundFlag = msg.soundFlag.get
           Behaviors.same

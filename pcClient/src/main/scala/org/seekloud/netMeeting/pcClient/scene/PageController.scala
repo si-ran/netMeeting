@@ -141,4 +141,12 @@ class PageController(
   def setRoomInfo(roomInfo: RoomInfo) = {
     livingStage.updateRoomInfo(roomInfo)
   }
+
+  def updateState(needImage: Boolean, needSound: Boolean) = {
+    livingStage.updateState(needImage, needSound)
+  }
+
+  def closeLive() = {
+    livingStage.close()
+  }
 }

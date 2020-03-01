@@ -12,6 +12,7 @@ import javafx.scene.input.MouseEvent
 import javafx.scene.layout._
 import javafx.stage.{Modality, Stage, StageStyle}
 import org.seekloud.netMeeting.pcClient.component.AnchorControl
+import org.seekloud.netMeeting.pcClient.Boot.{addToPlatform, executor}
 import org.seekloud.netMeeting.protocol.ptcl.CommonInfo.RoomInfo
 import org.slf4j.LoggerFactory
 
@@ -64,7 +65,7 @@ class LivingStage(userId: Long) extends Application{
   val anchorControl4 = new AnchorControl(410+400+30,324+15+50)
 
   val anchorPane4Self = anchorControl4Self.getAnchorPane()
-  anchorPane4Self.setVisible(true)
+  anchorPane4Self.setVisible(false)
   val anchorPane1 = anchorControl1.getAnchorPane()
   val anchorPane2 = anchorControl2.getAnchorPane()
   val anchorPane3 = anchorControl3.getAnchorPane()
@@ -125,9 +126,10 @@ class LivingStage(userId: Long) extends Application{
     val indexOfHost = roomInfo.userId.indexWhere(_ == roomInfo.hostId)
     if(isHost) {
       (0 until roomInfo.userId.length).foreach{ i =>
+        val index = i
         if(roomInfo.userId(i) != roomInfo.hostId) {
-          val index = if(i < indexOfHost) i else i-1
-          log.debug(s"index: $index")
+//          val index = if(i < indexOfHost) i else i-1
+//          log.debug(s"index: $index")
           anchorPaneList(index).setVisible(true)
           val host = anchorControlList(index).host
           host.setDisable(false)
@@ -148,20 +150,40 @@ class LivingStage(userId: Long) extends Application{
             listener.mediaControl(roomInfo.userId(i), camera.isSelected, microphone.isSelected)
           }
         }
+        else { //user is host
+          anchorPaneList(index).setVisible(true)
+          val host = anchorControlList(index).host
+          host.setSelected(true)
+          host.setDisable(true)
+          anchorControlList(index).microphone.setVisible(false)
+          anchorControlList(index).camera.setVisible(false)
+        }
       }
-    } else {
+    } else { // 不是主持人
 
       if(indexOfHost == -1) {
         log.warn(s"hostId is not in userList")
       } else {
-        val indexOfSelf = roomInfo.userId.indexWhere(_ == userId)
-        val index = if(indexOfSelf < indexOfHost)  indexOfHost-1 else indexOfHost
+        val index = roomInfo.userId.indexWhere(_ == userId)
+//        val index = if(indexOfSelf < indexOfHost)  indexOfHost-1 else indexOfHost
         anchorPaneList(index).setVisible(true)
-        anchorControlList(index).microphone.setVisible(false)
-        anchorControlList(index).camera.setVisible(false)
-        anchorControlList(index).host.setSelected(true)
+
+        val microphone = anchorControlList(index).microphone
+        microphone.setVisible(true)
+        microphone.setDisable(true)
+        val camera = anchorControlList(index).camera
+        camera.setVisible(true)
+        camera.setDisable(true)
+        anchorControlList(index).host.setSelected(false)
       }
     }
+  }
+
+  def updateState(needImage: Boolean, needSound: Boolean) = {
+    log.debug(s"got msg updateState")
+    val index = roomInfo.userId.indexWhere(_ == userId)
+    anchorControlList(index).camera.setSelected(needImage)
+    anchorControlList(index).microphone.setSelected(needSound)
   }
 
   def setListener(listener: LivingStageListener) = {
@@ -206,4 +228,9 @@ class LivingStage(userId: Long) extends Application{
     start(stage)
   }
 
+  def close() = {
+    addToPlatform{
+      stage.close()
+    }
+  }
 }

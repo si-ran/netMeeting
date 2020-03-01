@@ -79,7 +79,7 @@ object RmManager {
 
   private case class UpdateRoomInfos(roomInfo: RoomInfo) extends RmCommand
 
-  private case object StartPull extends RmCommand
+  private case class StartPull(roomInfo: RoomInfo) extends RmCommand
 
   private case object PING_KEY
 
@@ -104,6 +104,10 @@ object RmManager {
   final case class ClientJoin(roomId: Long, userId: Long) extends RmCommand
 
   final case class ClientJoinRsp(roomInfo: RoomInfo, acceptance: Boolean) extends RmCommand
+
+  final case class ClientGetMediaControl(userId: Long, needImage: Boolean, needSound: Boolean) extends RmCommand
+
+  final case class ClientKickOut(userId: Long) extends RmCommand
 
   final case object PUSH_STREAM_DELAY_KEY
 
@@ -225,9 +229,10 @@ object RmManager {
 //        case msg: EstablishNewMeetingRsp =>
 //          Behaviors.same
 
-        case StartPull =>
+        case msg: StartPull =>
           log.debug("got msg startPull")
           captureManager.foreach(_ ! CaptureManager.StartEncode)
+          pageController.foreach(_.setRoomInfo(msg.roomInfo))
           Behaviors.same
 
         case PullStreamError =>
@@ -318,11 +323,26 @@ object RmManager {
         /**
           * ws msg handler
           */
+
+        case msg: UpdateRoomInfos =>
+          pageController.foreach(_.setRoomInfo(msg.roomInfo))
+          Behaviors.same
+
         case msg: GiveHost2User =>
           val newRoomInfo = RoomInfo(roomInfo.get.roomId, roomInfo.get.userId, msg.userId)
           roomInfo = Some(newRoomInfo)
           pageController.foreach(_.setRoomInfo(newRoomInfo))
           Behaviors.same
+
+        case msg: ClientGetMediaControl =>
+          pageController.foreach(_.updateState(msg.needImage, msg.needSound))
+          captureManagerOpt.foreach(_ ! CaptureManager.ChangeEncodeFlag(Some(msg.needImage), Some(msg.needSound)))
+          Behaviors.same
+
+        case msg: ClientKickOut =>
+          captureManagerOpt.foreach(_ ! CaptureManager.Close)
+          pageController.foreach(_.closeLive())
+          switchBehavior(ctx, "init", idle(pageController))
 
         case msg: UpdateRoomInfos =>
           pageController.foreach(_.setRoomInfo(msg.roomInfo))
@@ -455,7 +475,7 @@ object RmManager {
             else
               log.info(s"join error: ${msg.errCode}  ${msg.msg}")
           } else {
-            rmManager ! StartPull
+            rmManager ! StartPull(msg.roomInfo)
             pull = false
           }
         }
@@ -473,7 +493,7 @@ object RmManager {
         log.debug(s"ws got msg $msg")
         if(meetingType == MeetingType.CREATE)
           if(msg.errorCode == 0){
-            rmManager ! EstablishNewMeetingRsp()
+//            rmManager ! EstablishNewMeetingRsp()
           }
 
 
@@ -490,13 +510,16 @@ object RmManager {
       case msg: MediaControlReq =>
         log.debug(s"rec ws msg $msg")
         if(meetingType == MeetingType.JOIN) {
-          //todo 处理声音
+          rmManager ! ClientGetMediaControl(msg.userId, msg.needVideo, msg.needAudio)
         }
 
       case msg: KickOutReq =>
         log.debug(s"rec ws msg $msg")
         if(meetingType == MeetingType.JOIN) {
-          //todo 退出
+          if(msg.userId == userId.get) {
+            rmManager ! ClientKickOut(msg.userId)
+          }
+
         }
 
 
