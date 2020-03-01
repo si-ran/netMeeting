@@ -261,6 +261,10 @@ object UserActor {
               roomManager ! RoomManager.RMKickOutReq(rId, uId)
               Behaviors.same
 
+            case GiveHost2(rId, uId) =>
+//              roomManager ! RoomManager
+              Behaviors.same
+
             case Disconnect =>
               log.info(s"user $userId client stop")
               roomManager ! RMUserExit(userId, roomId)

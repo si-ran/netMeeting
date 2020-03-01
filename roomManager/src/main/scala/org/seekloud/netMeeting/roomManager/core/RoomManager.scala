@@ -37,6 +37,8 @@ object RoomManager {
 
   case class RMKickOutReq(roomId: Long, userId: Long) extends Command
 
+  case class RMGiveHost(roomId: Long, userId: Long) extends Command
+
   case class RMUserExit(userId: Long, roomId: Long) extends Command
 
   private final case class SwitchBehavior(
