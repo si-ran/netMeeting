@@ -117,7 +117,7 @@ class PersonalPage() extends Page {
           <img class="video-img" src="/netMeeting/static/img/video.png"></img>
           <div class="video-info">
             <div class="video-room">房间: {info.split('_')(1)}</div>
-            <div class="video-time">时间: {TimeTool.dateFormatDefault(info.split('_')(2).toLong * 1000)}</div>
+            <div class="video-time">时间: {TimeTool.dateFormatDefault(info.split('_')(2).split('.')(0).toLong * 1000)}</div>
           </div>
           <!--div class="video-btn" onclick={()=>dom.window.location.href = s"/netMeeting/file/getRecord/$info"}>观看</div-->
           <div class="video-btn" onclick={()=>dom.window.location.hash = s"/video/$info"}>观看</div>
