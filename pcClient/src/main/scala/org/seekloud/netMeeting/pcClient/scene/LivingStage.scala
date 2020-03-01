@@ -71,8 +71,22 @@ class LivingStage(userId: Long) extends Application{
   val anchorPane3 = anchorControl3.getAnchorPane()
   val anchorPane4 = anchorControl4.getAnchorPane()
 
+  val removePane1 = anchorControl1.getRemovePane()
+  removePane1.setLayoutX(90+400+30+200)
+  removePane1.setLayoutY(5+15+50)
+  val removePane2 = anchorControl2.getRemovePane()
+  removePane2.setLayoutX(410+400+30+200)
+  removePane2.setLayoutY(5+15+50)
+  val removePane3 = anchorControl3.getRemovePane()
+  removePane3.setLayoutX(90+400+30+200)
+  removePane3.setLayoutY(185+15+50)
+  val removePane4 = anchorControl4.getRemovePane()
+  removePane4.setLayoutX(90+400+30+200)
+  removePane4.setLayoutY(185+15+50)
+
   val anchorControlList = List[AnchorControl](anchorControl1, anchorControl2, anchorControl3, anchorControl4)
   val anchorPaneList = List[AnchorPane](anchorPane1, anchorPane2, anchorPane3, anchorPane4)
+  val removeList = List[AnchorPane](removePane1, removePane2, removePane3, removePane4)
 
   anchorControl4Self.microphone.setOnAction(_ => {
     println(s"microphone clicked")
@@ -83,13 +97,13 @@ class LivingStage(userId: Long) extends Application{
     if(event.getX <= 400+15 && event.getY <= (360-(360-225)/2)+15 + 50 && event.getY >= (360-(360-225)/2)-225+15 + 50) {
       group.getChildren.add(anchorPane4Self)
     } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY < canvas4Pull.getHeight/2+15 + 50){
-      group.getChildren.add(anchorPane1)
+      group.getChildren.addAll(anchorPane1, removePane1)
     } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY < canvas4Pull.getHeight/2+15+50) {
-      group.getChildren.add(anchorPane2)
+      group.getChildren.addAll(anchorPane2, removePane2)
     } else if(event.getX < (canvas4Pull.getWidth/2+400+30) && event.getX > 400+30 && event.getY >= canvas4Pull.getHeight/2+15 + 50) {
-      group.getChildren.add(anchorPane3)
+      group.getChildren.addAll(anchorPane3, removePane3)
     } else if(event.getX >= (canvas4Pull.getWidth/2+400+30) && event.getY >= canvas4Pull.getHeight/2+15 + 50) {
-      group.getChildren.add(anchorPane4)
+      group.getChildren.addAll(anchorPane4, removePane4)
     }
   })
 
@@ -115,7 +129,7 @@ class LivingStage(userId: Long) extends Application{
 
 
 
-  def updateRoomInfo(roomInfo: RoomInfo) = {
+  def updateRoomInfo(roomInfo: RoomInfo):Unit = {
 
     anchorPaneList.foreach(_.setVisible(false))
 
@@ -149,8 +163,27 @@ class LivingStage(userId: Long) extends Application{
           microphone.setOnAction{_ =>
             listener.mediaControl(roomInfo.userId(i), camera.isSelected, microphone.isSelected)
           }
+
+          val removePane = removeList(index)
+          removePane.setVisible(true)
+          removePane.setOnMouseClicked((event: MouseEvent) => {
+            removeList.foreach(_.setVisible(false))
+            listener.kickOut(roomInfo.userId(i))
+            val newRoomInfo = RoomInfo(roomInfo.roomId, roomInfo.userId.filter(_ != roomInfo.userId(index)), roomInfo.hostId)
+//            Thread.sleep(1000)
+            updateRoomInfo(newRoomInfo)
+          })
+/*          removePane.addEventFilter(MouseEvent.MOUSE_CLICKED, (event: MouseEvent) => {
+            removeList.foreach(_.setVisible(false))
+            listener.kickOut(roomInfo.userId(i))
+            val newRoomInfo = RoomInfo(roomInfo.roomId, roomInfo.userId.filter(_ != roomInfo.userId(index)), roomInfo.hostId)
+            Thread.sleep(1000)
+            updateRoomInfo(newRoomInfo)
+          })*/
+
         }
         else { //user is host
+          removeList(index).setVisible(false)
           anchorPaneList(index).setVisible(true)
           val host = anchorControlList(index).host
           host.setSelected(true)
@@ -175,6 +208,8 @@ class LivingStage(userId: Long) extends Application{
         camera.setVisible(true)
         camera.setDisable(true)
         anchorControlList(index).host.setSelected(false)
+
+        removeList.foreach(_.setVisible(false))
       }
     }
   }
@@ -209,7 +244,7 @@ class LivingStage(userId: Long) extends Application{
     hBox.setSpacing(15)
     hBox.setPadding(new Insets(15,0, 15,15))
     val vBox = new VBox(title, hBox)
-    group.getChildren.addAll(vBox)
+    group.getChildren.addAll(vBox, removePane1, removePane2, removePane3, removePane4)
 
 //    primaryStage.initStyle(StageStyle.TRANSPARENT)
 

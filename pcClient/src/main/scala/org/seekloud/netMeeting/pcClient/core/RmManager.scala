@@ -219,7 +219,8 @@ object RmManager {
           timer.startPeriodicTimer(PING_KEY, SendPing, 5.seconds)
 
           //debug
-//          ctx.self ! StartPull
+//          val roomInfo = RoomInfo(10002, List[Long](10002, 10004, 10003), 10002)
+//          ctx.self ! StartPull(roomInfo)
           hostBehavior(gc4Self, gc4Pull, pageController, Some(msg.sender), captureManager)
 
         case SendPing =>

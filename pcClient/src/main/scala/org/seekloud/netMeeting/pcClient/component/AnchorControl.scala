@@ -1,7 +1,8 @@
 package org.seekloud.netMeeting.pcClient.component
 
 import javafx.geometry.Pos
-import javafx.scene.control.{ToggleButton, Tooltip}
+import javafx.scene.control.{Label, ToggleButton, Tooltip}
+import javafx.scene.image.ImageView
 import javafx.scene.layout.{AnchorPane, HBox, VBox}
 
 /**
@@ -10,6 +11,13 @@ import javafx.scene.layout.{AnchorPane, HBox, VBox}
   *
   */
 class AnchorControl(x: Double, y: Double) {
+  val remove = new Label()
+  remove.setPrefSize(33.0, 26.0)
+  remove.setId("remove")
+  val removePane = new AnchorPane()
+  removePane.getChildren.add(remove)
+  removePane.setVisible(true)
+
   val host = new ToggleButton("")
   host.getStyleClass.add("host")
   host.setDisable(true)
@@ -42,4 +50,6 @@ class AnchorControl(x: Double, y: Double) {
 
 
   def getAnchorPane() = this.anchorPane
+
+  def getRemovePane() = this.removePane
 }

@@ -14,6 +14,26 @@
     /*-fx-border-color: #b0ff56;*/
 
 }
+
+#remove {
+    -fx-cursor: hand;
+    /*-fx-background-color: #ffff;*/
+    -fx-background-image: url("../img/close_light.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: center;
+}
+
+#remove:hover {
+    -fx-background-color: #ff2035;
+    -fx-background-image: url("../img/close_light.png");
+}
+
+#remove:pressed {
+    -fx-background-color: #ff443d;
+    -fx-background-image: url("../img/close_light.png");
+}
+
+
 .homeScene-topBtn {
     -fx-background-radius: 6;
     -fx-background-color: white;
